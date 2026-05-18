@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, h } from 'vue'
-import { NTree, NButton, NSpin, useMessage, useDialog } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
+import { NTree, NButton, NSpin, NInputGroup, NInput, useMessage, useDialog } from 'naive-ui'
 import type { TreeOption } from 'naive-ui'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
 import ConnectionFormModal from './ConnectionFormModal.vue'
 import type { Connection } from '../../types'
 
+const { t } = useI18n()
 const connectionStore = useConnectionStore()
 const terminalStore = useTerminalStore()
 const message = useMessage()
@@ -15,6 +17,10 @@ const loading = ref(true)
 const showModal = ref(false)
 const editConn = ref<Connection | null>(null)
 const expandedKeys = ref<string[]>([])
+const showGroupInput = ref(false)
+const newGroupName = ref('')
+const newGroupParent = ref<string | null>(null)
+const contextMenuKey = ref<string | null>(null)
 
 onMounted(async () => {
   try {
@@ -22,25 +28,25 @@ onMounted(async () => {
       connectionStore.loadConnections(),
       connectionStore.loadGroups(),
     ])
-    // Expand all groups by default
     expandedKeys.value = connectionStore.groups.map(g => g.id)
   } catch {
-    message.error('Failed to load data')
+    message.error(t('connection.loadFailed'))
   } finally {
     loading.value = false
   }
 })
 
+function isGroupKey(key: string): boolean {
+  return connectionStore.groups.some(g => g.id === key)
+}
+
 const treeData = computed<TreeOption[]>(() => {
   const groups = connectionStore.groups
   const connections = connectionStore.connections
-  const groupMap = new Map(groups.map(g => [g.id, g]))
 
-  // Build group hierarchy
   const groupNodes: TreeOption[] = []
   const groupNodeMap = new Map<string, TreeOption>()
 
-  // First pass: create all group nodes
   for (const group of groups) {
     const node: TreeOption = {
       key: group.id,
@@ -51,7 +57,6 @@ const treeData = computed<TreeOption[]>(() => {
     groupNodeMap.set(group.id, node)
   }
 
-  // Build tree structure for nested groups
   for (const group of groups) {
     const node = groupNodeMap.get(group.id)!
     if (group.parent_id && groupNodeMap.has(group.parent_id)) {
@@ -61,7 +66,6 @@ const treeData = computed<TreeOption[]>(() => {
     }
   }
 
-  // Assign connections to their groups
   const ungrouped: TreeOption[] = []
   for (const conn of connections) {
     const connected = connectionStore.connectedIDs.has(conn.id)
@@ -71,7 +75,7 @@ const treeData = computed<TreeOption[]>(() => {
       prefix: () => h('span', {
         style: `display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${connected ? '#4caf50' : '#666'};flex-shrink:0`
       }),
-      suffix: () => h('span', { style: 'color:#858585;font-size:11px' }, conn.host),
+      suffix: () => h('span', { style: 'color:var(--text-secondary);font-size:11px' }, conn.host),
     }
     if (conn.group_id && groupNodeMap.has(conn.group_id)) {
       groupNodeMap.get(conn.group_id)!.children!.push(node)
@@ -80,18 +84,7 @@ const treeData = computed<TreeOption[]>(() => {
     }
   }
 
-  // Remove empty group nodes
-  function pruneEmpty(nodes: TreeOption[]): TreeOption[] {
-    return nodes.filter(n => {
-      if (n.children) {
-        n.children = pruneEmpty(n.children)
-        return n.children.length > 0
-      }
-      return true
-    })
-  }
-
-  const result = pruneEmpty(groupNodes)
+  const result = [...groupNodes]
   if (ungrouped.length > 0) {
     result.push(...ungrouped)
   }
@@ -101,8 +94,8 @@ const treeData = computed<TreeOption[]>(() => {
 async function handleSelect(keys: string[]) {
   if (keys.length === 0) return
   const key = keys[0]
+  if (isGroupKey(key)) return
 
-  // Check if it's a connection (not a group)
   const conn = connectionStore.connections.find(c => c.id === key)
   if (!conn) return
 
@@ -118,15 +111,8 @@ async function handleSelect(keys: string[]) {
       title: conn.name || conn.host || conn.id,
     })
   } catch (e: any) {
-    message.error(`Connection failed: ${e}`)
+    message.error(t('connection.connectFailed', { error: e }))
   }
-}
-
-function handleContextMenu(e: MouseEvent, option: TreeOption) {
-  // Connection context actions
-  const conn = connectionStore.connections.find(c => c.id === option.key)
-  if (!conn) return
-  // For now, use hover actions (edit/delete below)
 }
 
 function handleEdit(connID: string) {
@@ -141,17 +127,35 @@ function handleDelete(connID: string) {
   const conn = connectionStore.connections.find(c => c.id === connID)
   if (!conn) return
   dialog.warning({
-    title: 'Delete Connection',
-    content: `Are you sure you want to delete "${conn.name}"?`,
-    positiveText: 'Delete',
-    negativeText: 'Cancel',
+    title: t('connection.deleteTitle'),
+    content: t('connection.deleteContent', { name: conn.name }),
+    positiveText: t('common.delete'),
+    negativeText: t('common.cancel'),
     onPositiveClick: async () => {
       try {
         await connectionStore.removeConnection(connID)
         terminalStore.removeTab(connID)
-        message.success(`Deleted "${conn.name}"`)
+        message.success(t('connection.deleted', { name: conn.name }))
       } catch (e: any) {
-        message.error(`Delete failed: ${e}`)
+        message.error(t('connection.deleteFailed', { error: e }))
+      }
+    },
+  })
+}
+
+function handleDeleteGroup(groupID: string) {
+  const group = connectionStore.groups.find(g => g.id === groupID)
+  if (!group) return
+  dialog.warning({
+    title: t('group.deleteGroup'),
+    content: t('group.deleteContent', { name: group.name }),
+    positiveText: t('common.delete'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      try {
+        await connectionStore.removeGroup(groupID)
+      } catch (e: any) {
+        message.error(t('connection.failed', { error: e }))
       }
     },
   })
@@ -162,19 +166,70 @@ function handleNew() {
   showModal.value = true
 }
 
-// Track hovered node for action visibility
-const hoveredKey = ref<string | null>(null)
+function startNewGroup(parentID: string | null) {
+  newGroupParent.value = parentID
+  newGroupName.value = ''
+  showGroupInput.value = true
+}
+
+async function confirmNewGroup() {
+  const name = newGroupName.value.trim()
+  if (!name) {
+    message.warning(t('group.nameRequired'))
+    return
+  }
+  try {
+    await connectionStore.createGroup(name, newGroupParent.value)
+    showGroupInput.value = false
+    newGroupName.value = ''
+  } catch (e: any) {
+    message.error(t('connection.failed', { error: e }))
+  }
+}
+
+function onContextMenu(e: MouseEvent, option: TreeOption) {
+  e.preventDefault()
+  contextMenuKey.value = option.key as string
+}
+
+function clearContextMenu() {
+  contextMenuKey.value = null
+}
+
+const contextIsGroup = computed(() => contextMenuKey.value ? isGroupKey(contextMenuKey.value) : false)
+const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(contextMenuKey.value) : false)
 </script>
 
 <template>
-  <div class="connection-tree">
+  <div class="connection-tree" @click="clearContextMenu">
     <div class="tree-header">
-      <span class="tree-title">Connections</span>
-      <NButton size="tiny" quaternary @click="handleNew" title="New Connection">
-        +
-      </NButton>
+      <span class="tree-title">{{ t('connection.title') }}</span>
+      <div class="tree-header-actions">
+        <NButton size="tiny" quaternary @click="startNewGroup(null)" :title="t('group.newGroup')">
+          <span style="font-size:13px">&#x2295;</span>
+        </NButton>
+        <NButton size="tiny" quaternary @click="handleNew" :title="t('connection.newConnection')">
+          +
+        </NButton>
+      </div>
     </div>
-    <div class="tree-content" @mouseleave="hoveredKey = null">
+
+    <!-- New group inline input -->
+    <div v-if="showGroupInput" class="group-input-row">
+      <NInputGroup>
+        <NInput
+          v-model:value="newGroupName"
+          size="tiny"
+          :placeholder="t('group.namePlaceholder')"
+          @keyup.enter="confirmNewGroup"
+          @keyup.escape="showGroupInput = false"
+        />
+        <NButton size="tiny" type="primary" @click="confirmNewGroup">&#10003;</NButton>
+        <NButton size="tiny" @click="showGroupInput = false">&#10005;</NButton>
+      </NInputGroup>
+    </div>
+
+    <div class="tree-content">
       <NSpin v-if="loading" />
       <NTree
         v-else
@@ -184,12 +239,22 @@ const hoveredKey = ref<string | null>(null)
         block-line
         @update:expanded-keys="(keys: string[]) => expandedKeys = keys"
         @update:selected-keys="handleSelect"
+        @contextmenu="onContextMenu"
       />
     </div>
-    <div v-if="hoveredKey && connectionStore.connections.some(c => c.id === hoveredKey)" class="tree-actions">
-      <button class="action-btn" @click="handleEdit(hoveredKey!)">Edit</button>
-      <button class="action-btn delete" @click="handleDelete(hoveredKey!)">Del</button>
+
+    <!-- Context actions -->
+    <div v-if="contextMenuKey" class="tree-actions">
+      <template v-if="contextIsConnection">
+        <button class="action-btn" @click="handleEdit(contextMenuKey!)">{{ t('common.edit') }}</button>
+        <button class="action-btn delete" @click="handleDelete(contextMenuKey!)">{{ t('common.delete') }}</button>
+      </template>
+      <template v-if="contextIsGroup">
+        <button class="action-btn" @click="startNewGroup(contextMenuKey!)">{{ t('group.newSubGroup') }}</button>
+        <button class="action-btn delete" @click="handleDeleteGroup(contextMenuKey!)">{{ t('common.delete') }}</button>
+      </template>
     </div>
+
     <ConnectionFormModal v-model:show="showModal" :edit-connection="editConn" />
   </div>
 </template>
@@ -204,7 +269,7 @@ const hoveredKey = ref<string | null>(null)
 }
 
 .tree-header {
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
@@ -213,9 +278,20 @@ const hoveredKey = ref<string | null>(null)
 }
 
 .tree-title {
-  font-size: 13px;
+  font-size: var(--font-size-base);
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.tree-header-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.group-input-row {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .tree-content {
@@ -225,7 +301,7 @@ const hoveredKey = ref<string | null>(null)
 }
 
 .tree-content :deep(.n-tree-node-content) {
-  font-size: 13px;
+  font-size: var(--font-size-base);
 }
 
 .tree-content :deep(.n-tree-node-content__suffix) {
@@ -243,18 +319,18 @@ const hoveredKey = ref<string | null>(null)
 .action-btn {
   background: none;
   border: none;
-  color: #858585;
-  font-size: 11px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
   cursor: pointer;
   padding: 2px 8px;
   border-radius: 3px;
 }
 .action-btn:hover {
-  color: #59a8f5;
-  background: rgba(80, 160, 255, 0.1);
+  color: var(--action-hover-color);
+  background: var(--action-hover-bg);
 }
 .action-btn.delete:hover {
-  color: #e55;
-  background: rgba(255, 80, 80, 0.1);
+  color: var(--delete-hover-color);
+  background: var(--delete-hover-bg);
 }
 </style>

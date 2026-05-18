@@ -31,6 +31,7 @@ type SystemStats struct {
 	NetInterfaces map[string]NetIO `json:"net_interfaces"`
 	LoadAvg       [3]float64       `json:"load_avg"`
 	DiskStats     []DiskStat       `json:"disk_stats"`
+	UptimeSeconds float64          `json:"uptime_seconds"`
 	OS            string           `json:"os"`
 }
 
@@ -110,6 +111,15 @@ func (m *Monitor) sampleCPUMemNet() {
 	out, err = m.manager.ExecOnConnection(m.connectionID, "cat /proc/net/dev")
 	if err == nil {
 		m.parseNet(out, stats)
+	}
+
+	// Uptime
+	out, err = m.manager.ExecOnConnection(m.connectionID, "cat /proc/uptime")
+	if err == nil {
+		fields := strings.Fields(out)
+		if len(fields) >= 1 {
+			stats.UptimeSeconds, _ = strconv.ParseFloat(fields[0], 64)
+		}
 	}
 
 	m.manager.onEvent("monitor:stats", map[string]any{

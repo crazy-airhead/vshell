@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NEmpty } from 'naive-ui'
 import { useTerminalStore } from '../../stores/terminal'
 import { useSFTPStore } from '../../stores/sftp'
 import SFTPPanel from './SFTPPanel.vue'
 
+const { t } = useI18n()
 const terminalStore = useTerminalStore()
 const sftpStore = useSFTPStore()
 
@@ -13,7 +15,6 @@ const activeConnectionID = computed(() => {
   return tab?.connectionID ?? null
 })
 
-// Auto-load directory when active connection changes
 watch(activeConnectionID, (newID) => {
   if (newID) {
     const p = sftpStore.getPanel(newID)
@@ -27,7 +28,7 @@ watch(activeConnectionID, (newID) => {
 <template>
   <div class="sftp-area">
     <div v-if="!activeConnectionID" class="sftp-empty">
-      <NEmpty description="No active session. Connect to a server to browse files." size="small" />
+      <NEmpty :description="t('sftp.noSession')" size="small" />
     </div>
     <SFTPPanel v-else :connectionID="activeConnectionID" />
   </div>

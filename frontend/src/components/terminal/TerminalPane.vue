@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { NTabs, NTabPane, NEmpty } from 'naive-ui'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
 import XTerminal from './XTerminal.vue'
 
+const { t } = useI18n()
 const terminalStore = useTerminalStore()
 const connectionStore = useConnectionStore()
 
@@ -23,10 +25,9 @@ function handleClose(id: string) {
 <template>
   <div class="terminal-pane">
     <div v-if="terminalStore.tabs.length === 0" class="terminal-empty">
-      <NEmpty description="No active terminal sessions. Click a connection to start." />
+      <NEmpty :description="t('terminal.empty')" />
     </div>
     <div v-else class="terminal-tabs">
-      <!-- Tab bar only -->
       <NTabs
         :value="getActiveTab()"
         type="card"
@@ -42,7 +43,6 @@ function handleClose(id: string) {
           :tab="tab.title"
         />
       </NTabs>
-      <!-- Terminals rendered outside NTabPane to stay mounted across tab switches -->
       <div class="terminals-container">
         <div
           v-for="tab in terminalStore.tabs"

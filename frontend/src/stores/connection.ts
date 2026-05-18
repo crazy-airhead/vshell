@@ -8,6 +8,8 @@ import {
   CreateConnection,
   UpdateConnection,
   DeleteConnection,
+  CreateGroup,
+  DeleteGroup,
 } from '../../bindings/vshell/internal/app/appservice'
 import { AuthType, ConnectionForm } from '../../bindings/vshell/internal/models/models'
 import type { Connection, Group } from '../types'
@@ -169,6 +171,17 @@ export const useConnectionStore = defineStore('connection', () => {
     })
   }
 
+  async function createGroup(name: string, parentID: string | null) {
+    await CreateGroup(crypto.randomUUID(), name, parentID, 0)
+    await loadGroups()
+  }
+
+  async function removeGroup(id: string) {
+    await DeleteGroup(id)
+    await loadGroups()
+    await loadConnections()
+  }
+
   return {
     connections,
     groups,
@@ -182,5 +195,7 @@ export const useConnectionStore = defineStore('connection', () => {
     removeConnection,
     updateConnection,
     getConnectionsByGroup,
+    createGroup,
+    removeGroup,
   }
 })

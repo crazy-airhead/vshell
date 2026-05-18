@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   NModal,
   NForm,
@@ -22,6 +23,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ (e: 'update:show', val: boolean): void }>()
 
+const { t } = useI18n()
 const store = useConnectionStore()
 const message = useMessage()
 
@@ -35,12 +37,20 @@ const showModal = computed({
   set: (v) => emit('update:show', v),
 })
 
-const authTypeOptions = [
-  { label: 'Password', value: AuthType.AuthPassword },
-  { label: 'Private Key', value: AuthType.AuthPrivateKey },
-  { label: 'SSH Agent', value: AuthType.AuthAgent },
-  { label: 'Interactive', value: AuthType.AuthInteractive },
-]
+const authTypeOptions = computed(() => [
+  { label: t('connection.authPassword'), value: AuthType.AuthPassword },
+  { label: t('connection.authPrivateKey'), value: AuthType.AuthPrivateKey },
+  { label: t('connection.authAgent'), value: AuthType.AuthAgent },
+  { label: t('connection.authInteractive'), value: AuthType.AuthInteractive },
+])
+
+const groupOptions = computed(() => {
+  const opts = [{ label: '-', value: '' }]
+  for (const g of store.groups) {
+    opts.push({ label: g.name, value: g.id })
+  }
+  return opts
+})
 
 watch(
   () => props.show,
@@ -73,21 +83,21 @@ function handleClose() {
 
 async function handleSave() {
   const f = form.value
-  if (!f.name.trim()) { message.warning('Name is required'); return }
-  if (!f.host.trim()) { message.warning('Host is required'); return }
+  if (!f.name.trim()) { message.warning(t('connection.nameRequired')); return }
+  if (!f.host.trim()) { message.warning(t('connection.hostRequired')); return }
 
   saving.value = true
   try {
     if (isEdit.value) {
       await store.updateConnection(f)
-      message.success('Connection updated')
+      message.success(t('connection.updated'))
     } else {
       await store.createConnection(f)
-      message.success('Connection created')
+      message.success(t('connection.created'))
     }
     showModal.value = false
   } catch (e: any) {
-    message.error(`Failed: ${e}`)
+    message.error(t('connection.failed', { error: e }))
   } finally {
     saving.value = false
   }
@@ -95,45 +105,48 @@ async function handleSave() {
 </script>
 
 <template>
-  <NModal v-model:show="showModal" preset="card" :title="isEdit ? 'Edit Connection' : 'New SSH Connection'" style="width: 480px" :mask-closable="false">
+  <NModal v-model:show="showModal" preset="card" :title="isEdit ? t('connection.editConnection') : t('connection.newConnection')" style="width: 480px" :mask-closable="false">
     <NForm label-placement="left" label-width="90">
-      <NFormItem label="Name">
-        <NInput v-model:value="form.name" placeholder="My Server" />
+      <NFormItem :label="t('common.name')">
+        <NInput v-model:value="form.name" :placeholder="t('connection.namePlaceholder')" />
       </NFormItem>
-      <NFormItem label="Host">
-        <NInput v-model:value="form.host" placeholder="192.168.1.1 or example.com" />
+      <NFormItem :label="t('connection.group')">
+        <NSelect v-model:value="form.groupID" :options="groupOptions" clearable />
       </NFormItem>
-      <NFormItem label="Port">
+      <NFormItem :label="t('common.host')">
+        <NInput v-model:value="form.host" :placeholder="t('connection.hostPlaceholder')" />
+      </NFormItem>
+      <NFormItem :label="t('common.port')">
         <NInputNumber v-model:value="form.port" :min="1" :max="65535" style="width: 100%" />
       </NFormItem>
-      <NFormItem label="Username">
-        <NInput v-model:value="form.username" placeholder="root" />
+      <NFormItem :label="t('common.username')">
+        <NInput v-model:value="form.username" :placeholder="t('connection.usernamePlaceholder')" />
       </NFormItem>
       <NDivider style="margin: 8px 0" />
-      <NFormItem label="Auth Type">
+      <NFormItem :label="t('connection.authType')">
         <NSelect v-model:value="form.authType" :options="authTypeOptions" />
       </NFormItem>
-      <NFormItem v-if="form.authType === 'password' || form.authType === 'interactive'" :label="isEdit ? 'New Password' : 'Password'">
-        <NInput v-model:value="form.password" type="password" show-password-on="click" :placeholder="isEdit ? 'Leave blank to keep current' : 'Password'" />
+      <NFormItem v-if="form.authType === 'password' || form.authType === 'interactive'" :label="isEdit ? t('connection.newPassword') : t('common.password')">
+        <NInput v-model:value="form.password" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passwordEditPlaceholder') : t('connection.passwordPlaceholder')" />
       </NFormItem>
       <template v-if="form.authType === 'private_key'">
-        <NFormItem :label="isEdit ? 'New Private Key' : 'Private Key'">
+        <NFormItem :label="isEdit ? t('connection.newPrivateKey') : t('connection.authPrivateKey')">
           <NInput
             v-model:value="form.privateKey"
             type="textarea"
             :rows="4"
-            :placeholder="isEdit ? 'Leave blank to keep current' : '-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----'"
+            :placeholder="isEdit ? t('connection.keyEditPlaceholder') : t('connection.keyPlaceholder')"
           />
         </NFormItem>
-        <NFormItem :label="isEdit ? 'New Passphrase' : 'Passphrase'">
-          <NInput v-model:value="form.keyPassphrase" type="password" show-password-on="click" :placeholder="isEdit ? 'Leave blank to keep current' : 'Optional'" />
+        <NFormItem :label="isEdit ? t('connection.newPassphrase') : t('connection.passphrase')">
+          <NInput v-model:value="form.keyPassphrase" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passphraseEditPlaceholder') : t('connection.passphrasePlaceholder')" />
         </NFormItem>
       </template>
     </NForm>
     <template #footer>
       <NSpace justify="end">
-        <NButton @click="handleClose">Cancel</NButton>
-        <NButton type="primary" :loading="saving" @click="handleSave">{{ isEdit ? 'Update' : 'Save' }}</NButton>
+        <NButton @click="handleClose">{{ t('common.cancel') }}</NButton>
+        <NButton type="primary" :loading="saving" @click="handleSave">{{ isEdit ? t('common.update') : t('common.save') }}</NButton>
       </NSpace>
     </template>
   </NModal>

@@ -1,5 +1,12 @@
 :root {
   --terminal-bar-height: 36px;
+  --font-size-base: 13px;
+  --font-size-sm: 11px;
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Dark theme (default) */
+[data-theme="dark"] {
   --bg-primary: #1e1e1e;
   --bg-secondary: #252526;
   --bg-tertiary: #2d2d2d;
@@ -7,11 +14,35 @@
   --text-primary: #cccccc;
   --text-secondary: #858585;
   --border-color: #3d3d3d;
-  --accent-color: #0078d4;
-  --accent-hover: #1a8ae8;
   --success-color: #4caf50;
   --warning-color: #ff9800;
   --error-color: #f44336;
+  --stat-bar-bg: #3a3a3a;
+  --hover-overlay: rgba(255, 255, 255, 0.06);
+  --hover-overlay-strong: rgba(255, 255, 255, 0.04);
+  --action-hover-bg: rgba(80, 160, 255, 0.1);
+  --delete-hover-color: #e55;
+  --delete-hover-bg: rgba(255, 80, 80, 0.1);
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e8e8e8;
+  --bg-hover: #e0e0e0;
+  --text-primary: #1e1e1e;
+  --text-secondary: #666666;
+  --border-color: #d9d9d9;
+  --success-color: #4caf50;
+  --warning-color: #ff9800;
+  --error-color: #f44336;
+  --stat-bar-bg: #e0e0e0;
+  --hover-overlay: rgba(0, 0, 0, 0.04);
+  --hover-overlay-strong: rgba(0, 0, 0, 0.03);
+  --action-hover-bg: rgba(0, 120, 212, 0.1);
+  --delete-hover-color: #d32f2f;
+  --delete-hover-bg: rgba(211, 47, 47, 0.1);
 }
 
 *, *::before, *::after {
@@ -24,7 +55,8 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
   background: var(--bg-primary);
   color: var(--text-primary);
 }

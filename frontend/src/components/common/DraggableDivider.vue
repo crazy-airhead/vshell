@@ -26,7 +26,7 @@ function onMouseDown(e: MouseEvent) {
 function onMouseMove(e: MouseEvent) {
   const current = props.direction === 'horizontal' ? e.clientY : e.clientX
   const delta = props.direction === 'horizontal'
-    ? startPos - current
+    ? current - startPos
     : current - startPos
   const s = Math.max(props.min, Math.min(props.max, startSize + delta))
   emit('update:modelValue', s)

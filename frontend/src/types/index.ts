@@ -71,6 +71,7 @@ export interface SystemStats {
   net_interfaces: Record<string, NetIO>
   load_avg: [number, number, number]
   disk_stats: DiskStat[]
+  uptime_seconds: number
   os: string
 }
 

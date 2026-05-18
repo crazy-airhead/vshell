@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NEmpty } from 'naive-ui'
 import { useMonitorStore } from '../../stores/monitor'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
 
+const { t } = useI18n()
 const monitorStore = useMonitorStore()
 const connectionStore = useConnectionStore()
 const terminalStore = useTerminalStore()
@@ -25,17 +27,37 @@ const stats = computed(() => {
   return monitorStore.getStats(activeConnectionID.value)
 })
 
-const uptime = computed(() => {
-  if (!activeConnectionID.value) return ''
-  const since = monitorStore.getUptime(activeConnectionID.value)
-  if (!since) return ''
-  const diff = Date.now() - since
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ${seconds % 60}s`
-  const hours = Math.floor(minutes / 60)
-  return `${hours}h ${minutes % 60}m`
+function formatUptime(seconds: number): string {
+  if (seconds <= 0) return '-'
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
+}
+
+const diskTotal = computed(() => {
+  if (!stats.value || stats.value.disk_stats.length === 0) return null
+  let total = 0, used = 0
+  for (const d of stats.value.disk_stats) {
+    total += d.total
+    used += d.used
+  }
+  const pct = total > 0 ? (used / total) * 100 : 0
+  return { total, used, pct }
+})
+
+const netTotal = computed(() => {
+  if (!stats.value) return null
+  const ifaces = stats.value.net_interfaces
+  if (!ifaces || Object.keys(ifaces).length === 0) return null
+  let rx = 0, tx = 0
+  for (const nio of Object.values(ifaces)) {
+    rx += nio.receive_kbps
+    tx += nio.transmit_kbps
+  }
+  return { rx, tx }
 })
 
 function barColor(pct: number): string {
@@ -60,18 +82,25 @@ function formatKbps(kbps: number): string {
 <template>
   <div class="monitor-panel">
     <div v-if="!activeConnectionID" class="monitor-empty">
-      <NEmpty description="No active connection" size="small" />
+      <NEmpty :description="t('monitor.noConnection')" size="small" />
     </div>
     <template v-else-if="stats">
       <div class="monitor-header">
         <span class="monitor-name">{{ connName }}</span>
-        <span class="monitor-uptime">{{ uptime }}</span>
       </div>
       <div class="monitor-stats">
+        <!-- Uptime -->
+        <div class="stat-row">
+          <div class="stat-label">
+            <span>{{ t('monitor.uptime') }}</span>
+            <span class="stat-value">{{ formatUptime(stats.uptime_seconds) }}</span>
+          </div>
+        </div>
+
         <!-- CPU -->
         <div class="stat-row">
           <div class="stat-label">
-            <span>CPU</span>
+            <span>{{ t('monitor.cpu') }}</span>
             <span class="stat-value">{{ stats.cpu_percent.toFixed(1) }}%</span>
           </div>
           <div class="stat-bar">
@@ -82,7 +111,7 @@ function formatKbps(kbps: number): string {
         <!-- Memory -->
         <div class="stat-row">
           <div class="stat-label">
-            <span>Memory</span>
+            <span>{{ t('monitor.memory') }}</span>
             <span class="stat-value">{{ formatBytes(stats.mem_used * 1024) }} / {{ formatBytes(stats.mem_total * 1024) }}</span>
           </div>
           <div class="stat-bar">
@@ -90,40 +119,28 @@ function formatKbps(kbps: number): string {
           </div>
         </div>
 
-        <!-- Load Average -->
-        <div class="stat-row">
+        <!-- Disk (total) -->
+        <div v-if="diskTotal" class="stat-row">
           <div class="stat-label">
-            <span>Load Avg</span>
-            <span class="stat-value">{{ stats.load_avg[0].toFixed(2) }} {{ stats.load_avg[1].toFixed(2) }} {{ stats.load_avg[2].toFixed(2) }}</span>
+            <span>{{ t('monitor.disk') }}</span>
+            <span class="stat-value">{{ formatBytes(diskTotal.used) }} / {{ formatBytes(diskTotal.total) }}</span>
+          </div>
+          <div class="stat-bar">
+            <div class="stat-bar-fill" :style="{ width: diskTotal.pct + '%', background: barColor(diskTotal.pct) }"></div>
           </div>
         </div>
 
         <!-- Network -->
-        <div v-if="Object.keys(stats.net_interfaces).length > 0" class="stat-row">
-          <div class="stat-label"><span>Network</span></div>
-          <div v-for="(nio, iface) in stats.net_interfaces" :key="iface" class="net-row">
-            <span class="net-iface">{{ iface }}</span>
-            <span class="net-io">&#8595;{{ formatKbps(nio.receive_kbps) }} &#8593;{{ formatKbps(nio.transmit_kbps) }}</span>
-          </div>
-        </div>
-
-        <!-- Disk -->
-        <div v-if="stats.disk_stats.length > 0" class="stat-row">
-          <div class="stat-label"><span>Disk</span></div>
-          <div v-for="disk in stats.disk_stats" :key="disk.mount_point" class="disk-row">
-            <div class="disk-info">
-              <span class="disk-mount">{{ disk.mount_point }}</span>
-              <span class="stat-value">{{ formatBytes(disk.used) }} / {{ formatBytes(disk.total) }}</span>
-            </div>
-            <div class="stat-bar">
-              <div class="stat-bar-fill" :style="{ width: disk.percent + '%', background: barColor(disk.percent) }"></div>
-            </div>
+        <div v-if="netTotal" class="stat-row">
+          <div class="stat-label">
+            <span>{{ t('monitor.network') }}</span>
+            <span class="stat-value">&#8595;{{ formatKbps(netTotal.rx) }} &#8593;{{ formatKbps(netTotal.tx) }}</span>
           </div>
         </div>
       </div>
     </template>
     <div v-else class="monitor-empty">
-      <NEmpty description="Waiting for stats..." size="small" />
+      <NEmpty :description="t('monitor.waitingStats')" size="small" />
     </div>
   </div>
 </template>
@@ -136,7 +153,7 @@ function formatKbps(kbps: number): string {
   overflow-y: auto;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-sm);
 }
 
 .monitor-empty {
@@ -149,33 +166,25 @@ function formatKbps(kbps: number): string {
 .monitor-header {
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   flex-shrink: 0;
 }
 
 .monitor-name {
   font-weight: 600;
-  font-size: 13px;
-}
-
-.monitor-uptime {
-  color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-base);
 }
 
 .monitor-stats {
   padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .stat-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .stat-label {
@@ -183,18 +192,18 @@ function formatKbps(kbps: number): string {
   justify-content: space-between;
   align-items: center;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
 }
 
 .stat-value {
   color: var(--text-primary);
   font-family: monospace;
-  font-size: 11px;
+  font-size: var(--font-size-sm);
 }
 
 .stat-bar {
-  height: 6px;
-  background: #3a3a3a;
+  height: 5px;
+  background: var(--stat-bar-bg);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -205,37 +214,4 @@ function formatKbps(kbps: number): string {
   transition: width 0.5s ease;
 }
 
-.net-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 1px 0;
-  font-size: 11px;
-}
-
-.net-iface {
-  color: var(--text-secondary);
-}
-
-.net-io {
-  color: var(--text-primary);
-  font-family: monospace;
-  font-size: 10px;
-}
-
-.disk-row {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 2px 0;
-}
-
-.disk-info {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-}
-
-.disk-mount {
-  color: var(--text-secondary);
-}
 </style>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NTree, NSpin, NButton } from 'naive-ui'
 import type { TreeOption } from 'naive-ui'
 import { h } from 'vue'
@@ -7,9 +8,9 @@ import { useSFTPStore } from '../../stores/sftp'
 import type { SFTPFile } from '../../stores/sftp'
 
 const props = defineProps<{ connectionID: string }>()
+const { t } = useI18n()
 const sftpStore = useSFTPStore()
 
-// Local reactive state — no computed from raw objects
 const treeData = ref<TreeOption[]>([])
 const expandedKeys = ref<string[]>([])
 
@@ -44,7 +45,6 @@ async function handleTreeExpand(keys: string[]) {
   const oldKeys = new Set(expandedKeys.value)
   const newKeys = new Set(keys)
 
-  // Load data for newly expanded nodes
   const toLoad: string[] = []
   for (const k of keys) {
     if (!oldKeys.has(k)) {
@@ -53,10 +53,7 @@ async function handleTreeExpand(keys: string[]) {
   }
   await Promise.all(toLoad.map(k => sftpStore.loadTreeDir(props.connectionID, k)))
 
-  // Rebuild tree data (now includes loaded children)
   rebuildTree()
-
-  // Update expanded keys
   expandedKeys.value = keys
 }
 
@@ -64,7 +61,6 @@ function handleTreeSelect(keys: string[]) {
   if (keys.length === 0) return
   const path = keys[0]
   sftpStore.navigateToDir(props.connectionID, path)
-  // Refresh tree after navigation (navigateToDir may load new dirs into cache)
   rebuildTree()
 }
 
@@ -105,7 +101,6 @@ function formatTime(ts: number): string {
   return new Date(ts * 1000).toLocaleDateString()
 }
 
-// Rebuild tree when navigateToDir updates the cache (via treeVersion)
 watch(() => sftpStore.treeVersion, () => {
   rebuildTree()
 })
@@ -116,7 +111,7 @@ watch(() => sftpStore.treeVersion, () => {
     <div class="sftp-toolbar">
       <span class="sftp-path">{{ sftpStore.getPanel(props.connectionID).currentPath }}</span>
       <NButton size="tiny" quaternary @click="handleParentDir" :disabled="sftpStore.getPanel(props.connectionID).currentPath === '/'">..</NButton>
-      <NButton size="tiny" quaternary @click="handleRefresh">Refresh</NButton>
+      <NButton size="tiny" quaternary @click="handleRefresh">{{ t('common.refresh') }}</NButton>
     </div>
     <div class="sftp-content">
       <div class="sftp-tree">
@@ -135,9 +130,9 @@ watch(() => sftpStore.treeVersion, () => {
         <table v-else class="sftp-table">
           <thead>
             <tr>
-              <th class="col-name">Name</th>
-              <th class="col-size">Size</th>
-              <th class="col-time">Modified</th>
+              <th class="col-name">{{ t('sftp.name') }}</th>
+              <th class="col-size">{{ t('sftp.size') }}</th>
+              <th class="col-time">{{ t('sftp.modified') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -156,7 +151,7 @@ watch(() => sftpStore.treeVersion, () => {
               <td class="col-time">{{ formatTime(f.mod_time) }}</td>
             </tr>
             <tr v-if="sftpStore.getPanel(props.connectionID).files.length === 0">
-              <td colspan="3" class="sftp-empty">Empty directory</td>
+              <td colspan="3" class="sftp-empty-msg">{{ t('sftp.emptyDir') }}</td>
             </tr>
           </tbody>
         </table>
@@ -171,15 +166,15 @@ watch(() => sftpStore.treeVersion, () => {
   flex-direction: column;
   height: 100%;
   background: var(--bg-secondary);
-  color: #ccc;
-  font-size: 12px;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
 }
 
 .sftp-toolbar {
   display: flex;
   align-items: center;
   padding: 4px 8px;
-  border-bottom: 1px solid #3a3a3a;
+  border-bottom: 1px solid var(--border-color);
   gap: 4px;
   flex-shrink: 0;
 }
@@ -187,7 +182,7 @@ watch(() => sftpStore.treeVersion, () => {
 .sftp-path {
   flex: 1;
   font-family: monospace;
-  color: #858585;
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -203,7 +198,7 @@ watch(() => sftpStore.treeVersion, () => {
 .sftp-tree {
   width: 200px;
   min-width: 150px;
-  border-right: 1px solid #3a3a3a;
+  border-right: 1px solid var(--border-color);
   overflow-y: auto;
   padding: 4px;
   flex-shrink: 0;
@@ -217,7 +212,7 @@ watch(() => sftpStore.treeVersion, () => {
 
 .sftp-error {
   padding: 8px;
-  color: #e55;
+  color: var(--error-color, #e55);
 }
 
 .sftp-table {
@@ -228,15 +223,15 @@ watch(() => sftpStore.treeVersion, () => {
 .sftp-table th {
   text-align: left;
   padding: 4px 8px;
-  border-bottom: 1px solid #3a3a3a;
-  color: #858585;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
   font-weight: 500;
-  font-size: 11px;
+  font-size: var(--font-size-sm);
 }
 
 .sftp-table td {
   padding: 3px 8px;
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid var(--border-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -251,11 +246,11 @@ watch(() => sftpStore.treeVersion, () => {
 }
 
 .sftp-row:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--hover-overlay-strong);
 }
 
 .sftp-dir:hover {
-  background: rgba(89, 168, 245, 0.08);
+  background: var(--action-hover-bg);
 }
 
 .col-name {
@@ -275,9 +270,9 @@ watch(() => sftpStore.treeVersion, () => {
   margin-right: 4px;
 }
 
-.sftp-empty {
+.sftp-empty-msg {
   text-align: center;
-  color: #666;
+  color: var(--text-secondary);
   padding: 16px;
 }
 </style>

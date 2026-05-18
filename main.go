@@ -16,7 +16,7 @@ func main() {
 	svc := app.New()
 
 	wailsApp := application.New(application.Options{
-		Name:        "vshell",
+		Name:        "vShell",
 		Description: "SSH Client Management Tool",
 		Services: []application.Service{
 			application.NewService(svc),
@@ -31,8 +31,40 @@ func main() {
 
 	svc.SetApp(wailsApp)
 
+	// Set application menu: vShell (with Settings) + Edit + Window
+	menu := application.NewMenu()
+
+	appMenu := menu.AddSubmenu("vShell")
+	appMenu.AddRole(application.About)
+	appMenu.AddSeparator()
+	appMenu.Add("Settings...").
+		SetAccelerator("CommandOrControl+,").
+		OnClick(func(ctx *application.Context) {
+			wailsApp.Event.Emit("menu:settings", nil)
+		})
+	appMenu.AddSeparator()
+	appMenu.AddRole(application.ServicesMenu)
+	appMenu.AddSeparator()
+	appMenu.AddRole(application.Hide)
+	appMenu.AddRole(application.HideOthers)
+	appMenu.AddRole(application.UnHide)
+	appMenu.AddSeparator()
+	appMenu.AddRole(application.Quit)
+
+	editMenu := menu.AddSubmenu("Edit")
+	editMenu.AddRole(application.Undo)
+	editMenu.AddRole(application.Redo)
+	editMenu.AddSeparator()
+	editMenu.AddRole(application.Cut)
+	editMenu.AddRole(application.Copy)
+	editMenu.AddRole(application.Paste)
+	editMenu.AddRole(application.SelectAll)
+
+	menu.AddRole(application.WindowMenu)
+	wailsApp.Menu.Set(menu)
+
 	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "vshell",
+		Title: "vShell",
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 30,
 			TitleBar:                application.MacTitleBarHidden,

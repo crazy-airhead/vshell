@@ -13,6 +13,7 @@ function newEmptyStats(): SystemStats {
     net_interfaces: {},
     load_avg: [0, 0, 0],
     disk_stats: [],
+    uptime_seconds: 0,
     os: '',
   }
 }
@@ -38,6 +39,7 @@ export const useMonitorStore = defineStore('monitor', () => {
         s.mem_total = incoming.mem_total ?? s.mem_total
         s.mem_used = incoming.mem_used ?? s.mem_used
         s.net_interfaces = incoming.net_interfaces ?? s.net_interfaces
+        s.uptime_seconds = incoming.uptime_seconds ?? s.uptime_seconds
         s.os = incoming.os ?? s.os
       }
     })

@@ -5,11 +5,11 @@ version: '3'
 
 # This information is used to generate the build assets.
 info:
-  companyName: "My Company" # The name of the company
-  productName: "My Product" # The name of the application
-  productIdentifier: "com.mycompany.myproduct" # The unique product identifier
-  description: "A program that does X" # The application description
-  copyright: "(c) 2025, My Company" # Copyright text
+  companyName: "vShell" # The name of the company
+  productName: "vShell" # The name of the application
+  productIdentifier: "dev.vshell.app" # The unique product identifier
+  description: "SSH Client Management Tool" # The application description
+  copyright: "(c) 2025, vShell" # Copyright text
   comments: "Some Product Comments" # Comments
   version: "0.0.1" # The application version
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
