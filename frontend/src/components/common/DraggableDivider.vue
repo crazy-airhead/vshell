@@ -4,10 +4,12 @@ const props = withDefaults(defineProps<{
   min?: number
   max?: number
   direction?: 'horizontal' | 'vertical'
+  invert?: boolean
 }>(), {
   min: 100,
   max: 600,
   direction: 'horizontal',
+  invert: false,
 })
 
 const emit = defineEmits<{ (e: 'update:modelValue', val: number): void }>()
@@ -25,9 +27,7 @@ function onMouseDown(e: MouseEvent) {
 
 function onMouseMove(e: MouseEvent) {
   const current = props.direction === 'horizontal' ? e.clientY : e.clientX
-  const delta = props.direction === 'horizontal'
-    ? current - startPos
-    : current - startPos
+  const delta = (current - startPos) * (props.invert ? -1 : 1)
   const s = Math.max(props.min, Math.min(props.max, startSize + delta))
   emit('update:modelValue', s)
 }

@@ -63,6 +63,22 @@ func (m *Manager) ReadDir(connectionID, path string) ([]FileInfo, error) {
 	return client.ReadDir(path)
 }
 
+func (m *Manager) UploadFile(connectionID, localPath, remotePath string) error {
+	client, err := m.GetOrCreateClient(connectionID)
+	if err != nil {
+		return err
+	}
+	return client.UploadFile(localPath, remotePath)
+}
+
+func (m *Manager) DownloadFile(connectionID, remotePath, localPath string) error {
+	client, err := m.GetOrCreateClient(connectionID)
+	if err != nil {
+		return err
+	}
+	return client.DownloadFile(remotePath, localPath)
+}
+
 func (m *Manager) CloseClient(connectionID string) {
 	m.mu.Lock()
 	c, ok := m.clients[connectionID]

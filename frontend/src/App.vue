@@ -3,22 +3,23 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NConfigProvider, darkTheme, NMessageProvider, NDialogProvider } from 'naive-ui'
 import { Events } from '@wailsio/runtime'
+import ActivityBar from './components/activity/ActivityBar.vue'
 import ConnectionTree from './components/sidebar/ConnectionTree.vue'
-import MonitorPanel from './components/monitor/MonitorPanel.vue'
+import KeyManagementPanel from './components/keys/KeyManagementPanel.vue'
+import SSHConfigPanel from './components/config/SSHConfigPanel.vue'
 import TerminalPane from './components/terminal/TerminalPane.vue'
-import SFTPArea from './components/sftp/SFTPArea.vue'
+import BottomPanel from './components/panels/BottomPanel.vue'
 import DraggableDivider from './components/common/DraggableDivider.vue'
 import SettingsModal from './components/settings/SettingsModal.vue'
 import { useSettingsStore } from './stores/settings'
-import type { LocaleCode } from './stores/settings'
+import { useLayoutStore } from './stores/layout'
 import { useShortcuts } from './composables/useShortcuts'
+import type { LocaleCode } from './stores/settings'
 
 const { locale, t } = useI18n()
 const settings = useSettingsStore()
+const layout = useLayoutStore()
 
-const sidebarWidth = ref(280)
-const sidebarTreeHeight = ref(560)
-const sftpPanelHeight = ref(220)
 const sidebarVisible = ref(true)
 const showSettings = ref(false)
 
@@ -31,7 +32,6 @@ function handleLocaleSelect(key: string) {
   locale.value = key
 }
 
-// Sync CSS variables from settings store to document root
 function syncCSSVars() {
   const root = document.documentElement
   root.setAttribute('data-theme', settings.themeMode)
@@ -56,7 +56,6 @@ useShortcuts({
   toggleSidebar: () => { sidebarVisible.value = !sidebarVisible.value },
 })
 
-// Listen for menu events from native menu bar
 onMounted(() => {
   Events.On('menu:settings', () => {
     showSettings.value = true
@@ -69,7 +68,7 @@ onMounted(() => {
     <NMessageProvider>
       <NDialogProvider>
         <div class="app-layout">
-          <!-- Title bar (overlaps with macOS traffic lights) -->
+          <!-- Title bar -->
           <div class="title-bar">
             <span class="app-title">vShell</span>
             <div class="title-bar-right">
@@ -80,51 +79,52 @@ onMounted(() => {
           </div>
 
           <div class="app-body">
-            <!-- Left Column: Connection Tree + Monitor -->
-            <template v-if="sidebarVisible">
-              <div class="left-column" :style="{ width: sidebarWidth + 'px' }">
-                <div class="tree-zone" :style="{ height: sidebarTreeHeight + 'px', flexShrink: 0 }">
-                  <ConnectionTree />
+            <!-- Activity Bar -->
+            <ActivityBar @open-settings="showSettings = true" />
+
+            <!-- Main Area: Sidebar + Terminal + Bottom Panel -->
+            <div class="main-area">
+              <div class="content-row">
+                <!-- Sidebar -->
+                <template v-if="sidebarVisible">
+                  <div class="sidebar" :style="{ width: layout.sidebarWidth + 'px' }">
+                    <ConnectionTree v-if="layout.activeSidebar === 'connections'" />
+                    <KeyManagementPanel v-else-if="layout.activeSidebar === 'keys'" />
+                    <SSHConfigPanel v-else-if="layout.activeSidebar === 'ssh-config'" />
+                  </div>
+                  <DraggableDivider
+                    direction="vertical"
+                    :modelValue="layout.sidebarWidth"
+                    @update:modelValue="(v: number) => layout.setSidebarWidth(v)"
+                    :min="200"
+                    :max="500"
+                  />
+                </template>
+
+                <!-- Terminal -->
+                <div class="terminal-zone">
+                  <TerminalPane />
                 </div>
+              </div>
+
+              <!-- Bottom Panel -->
+              <template v-if="layout.bottomAnyVisible">
                 <DraggableDivider
                   direction="horizontal"
-                  :modelValue="sidebarTreeHeight"
-                  @update:modelValue="(v: number) => sidebarTreeHeight = v"
-                  :min="100"
-                  :max="800"
+                  :modelValue="layout.bottomPanelHeight"
+                  @update:modelValue="(v: number) => layout.setBottomPanelHeight(v)"
+                  :min="80"
+                  :max="600"
+                  :invert="true"
                 />
-                <div class="monitor-zone">
-                  <MonitorPanel />
+                <div class="bottom-zone" :style="{ height: layout.bottomPanelHeight + 'px', flexShrink: 0, minHeight: 0 }">
+                  <BottomPanel />
                 </div>
-              </div>
-
-              <DraggableDivider
-                direction="vertical"
-                :modelValue="sidebarWidth"
-                @update:modelValue="(v: number) => sidebarWidth = v"
-                :min="200"
-                :max="500"
-              />
-            </template>
-
-            <!-- Right Column: Terminal + SFTP -->
-            <div class="right-column">
-              <div class="terminal-zone">
-                <TerminalPane />
-              </div>
-              <DraggableDivider
-                direction="horizontal"
-                :modelValue="sftpPanelHeight"
-                @update:modelValue="(v: number) => sftpPanelHeight = v"
-                :min="80"
-                :max="600"
-              />
-              <div class="sftp-zone" :style="{ height: sftpPanelHeight + 'px', flexShrink: 0 }">
-                <SFTPArea />
-              </div>
+              </template>
             </div>
           </div>
         </div>
+
         <SettingsModal v-model:show="showSettings" />
       </NDialogProvider>
     </NMessageProvider>
@@ -194,51 +194,41 @@ onMounted(() => {
   display: flex;
   flex: 1;
   min-height: 0;
+}
+
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   padding: 6px;
   gap: 0;
 }
 
-.left-column {
+.content-row {
   display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.tree-zone {
-  overflow: hidden;
-  border-radius: 8px;
-  background: var(--bg-secondary);
-}
-
-.monitor-zone {
   flex: 1;
   min-height: 0;
+}
+
+.sidebar {
+  flex-shrink: 0;
   overflow: hidden;
   border-radius: 8px;
   background: var(--bg-secondary);
-}
-
-.right-column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
 }
 
 .terminal-zone {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   border-radius: 8px;
   background: var(--bg-secondary);
 }
 
-.sftp-zone {
+.bottom-zone {
   overflow: hidden;
   border-radius: 8px;
-  background: var(--bg-secondary);
 }
 </style>

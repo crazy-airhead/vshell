@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -61,6 +63,65 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 		}
 		if msg.SessionID != "" && msg.Data != "" {
 			a.sshManager.WriteStdin(msg.SessionID, []byte(msg.Data))
+		}
+	})
+
+	// Listen for local filesystem events
+	a.wailsApp.Event.On("localfs:homedir", func(e *application.CustomEvent) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			emit("localfs:homedir:error", err.Error())
+			return
+		}
+		emit("localfs:homedir:result", home)
+	})
+
+	a.wailsApp.Event.On("localfs:listdir", func(e *application.CustomEvent) {
+		payload, _ := json.Marshal(e.Data)
+		var msg struct {
+			Path string `json:"path"`
+		}
+		if err := json.Unmarshal(payload, &msg); err != nil {
+			emit("localfs:listdir:error", err.Error())
+			return
+		}
+		result, err := a.listLocalDir(msg.Path)
+		if err != nil {
+			emit("localfs:listdir:error", err.Error())
+			return
+		}
+		emit("localfs:listdir:result", result)
+	})
+
+	a.wailsApp.Event.On("sftp:upload", func(e *application.CustomEvent) {
+		payload, _ := json.Marshal(e.Data)
+		var msg struct {
+			ConnectionID string `json:"connectionID"`
+			LocalPath    string `json:"localPath"`
+			RemotePath   string `json:"remotePath"`
+		}
+		if err := json.Unmarshal(payload, &msg); err != nil {
+			emit("sftp:upload:error", err.Error())
+			return
+		}
+		if err := a.sftpManager.UploadFile(msg.ConnectionID, msg.LocalPath, msg.RemotePath); err != nil {
+			emit("sftp:upload:error", err.Error())
+		}
+	})
+
+	a.wailsApp.Event.On("sftp:download", func(e *application.CustomEvent) {
+		payload, _ := json.Marshal(e.Data)
+		var msg struct {
+			ConnectionID string `json:"connectionID"`
+			RemotePath   string `json:"remotePath"`
+			LocalPath    string `json:"localPath"`
+		}
+		if err := json.Unmarshal(payload, &msg); err != nil {
+			emit("sftp:download:error", err.Error())
+			return
+		}
+		if err := a.sftpManager.DownloadFile(msg.ConnectionID, msg.RemotePath, msg.LocalPath); err != nil {
+			emit("sftp:download:error", err.Error())
 		}
 	})
 
@@ -347,4 +408,64 @@ func (a *AppService) ListPortForwards(connectionID string) ([]models.PortForward
 
 func (a *AppService) SFTPReadDir(connectionID string, path string) ([]sftp.FileInfo, error) {
 	return a.sftpManager.ReadDir(connectionID, path)
+}
+
+func (a *AppService) SFTPUpload(connectionID, localPath, remotePath string) error {
+	return a.sftpManager.UploadFile(connectionID, localPath, remotePath)
+}
+
+func (a *AppService) SFTPDownload(connectionID, remotePath, localPath string) error {
+	return a.sftpManager.DownloadFile(connectionID, remotePath, localPath)
+}
+
+// --- Local File System ---
+
+type LocalFileInfo struct {
+	Name    string `json:"name"`
+	Path    string `json:"path"`
+	Size    int64  `json:"size"`
+	Mode    uint32 `json:"mode"`
+	ModTime int64  `json:"mod_time"`
+	IsDir   bool   `json:"is_dir"`
+}
+
+func (a *AppService) GetHomeDir() (string, error) {
+	return os.UserHomeDir()
+}
+
+func (a *AppService) ListLocalDir(dirPath string) ([]LocalFileInfo, error) {
+	return a.listLocalDir(dirPath)
+}
+
+func (a *AppService) listLocalDir(dirPath string) ([]LocalFileInfo, error) {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]LocalFileInfo, 0, len(entries))
+	var dirs, files []LocalFileInfo
+
+	for _, e := range entries {
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		fi := LocalFileInfo{
+			Name:    e.Name(),
+			Path:    filepath.Join(dirPath, e.Name()),
+			Size:    info.Size(),
+			Mode:    uint32(info.Mode()),
+			ModTime: info.ModTime().Unix(),
+			IsDir:   e.IsDir(),
+		}
+		if e.IsDir() {
+			dirs = append(dirs, fi)
+		} else {
+			files = append(files, fi)
+		}
+	}
+
+	result = append(dirs, files...)
+	return result, nil
 }

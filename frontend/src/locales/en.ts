@@ -77,6 +77,14 @@ export default {
     modified: 'Modified',
     emptyDir: 'Empty directory',
   },
+  keys: {
+    title: 'SSH Keys',
+    comingSoon: 'SSH key management coming soon',
+  },
+  sshConfig: {
+    title: 'SSH Config',
+    comingSoon: 'SSH config management coming soon',
+  },
   settings: {
     title: 'Settings',
     theme: 'Theme',

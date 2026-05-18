@@ -77,6 +77,14 @@ export default {
     modified: '修改时间',
     emptyDir: '空目录',
   },
+  keys: {
+    title: '密钥管理',
+    comingSoon: '密钥管理功能即将上线',
+  },
+  sshConfig: {
+    title: 'SSH 配置',
+    comingSoon: 'SSH 配置管理功能即将上线',
+  },
   settings: {
     title: '设置',
     theme: '主题',

@@ -5,3 +5,7 @@ import * as AppService from "./appservice.js";
 export {
     AppService
 };
+
+export {
+    LocalFileInfo
+} from "./models.js";

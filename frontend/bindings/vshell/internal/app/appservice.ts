@@ -15,6 +15,10 @@ import * as models$0 from "../models/models.js";
 // @ts-ignore: Unused imports
 import * as sftp$0 from "../sftp/models.js";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
 export function ConnectSSH(connectionID: string): $CancellablePromise<void> {
     return $Call.ByID(3171932001, connectionID);
 }
@@ -47,6 +51,10 @@ export function DisconnectSSH(connectionID: string): $CancellablePromise<void> {
     return $Call.ByID(1796353151, connectionID);
 }
 
+export function GetHomeDir(): $CancellablePromise<string> {
+    return $Call.ByID(2930168599);
+}
+
 export function ListConnections(): $CancellablePromise<models$0.Connection[]> {
     return $Call.ByID(2436681430).then(($result: any) => {
         return $$createType1($result);
@@ -59,22 +67,36 @@ export function ListGroups(): $CancellablePromise<models$0.Group[]> {
     });
 }
 
+export function ListLocalDir(dirPath: string): $CancellablePromise<$models.LocalFileInfo[]> {
+    return $Call.ByID(1378612327, dirPath).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
 export function ListPortForwards(connectionID: string): $CancellablePromise<models$0.PortForward[]> {
     return $Call.ByID(3400329328, connectionID).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType7($result);
     });
 }
 
 export function ListQuickCommands(connectionID: string | null): $CancellablePromise<models$0.QuickCommand[]> {
     return $Call.ByID(3567644202, connectionID).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType9($result);
     });
+}
+
+export function SFTPDownload(connectionID: string, remotePath: string, localPath: string): $CancellablePromise<void> {
+    return $Call.ByID(3634276412, connectionID, remotePath, localPath);
 }
 
 export function SFTPReadDir(connectionID: string, path: string): $CancellablePromise<sftp$0.FileInfo[]> {
     return $Call.ByID(3242100799, connectionID, path).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType11($result);
     });
+}
+
+export function SFTPUpload(connectionID: string, localPath: string, remotePath: string): $CancellablePromise<void> {
+    return $Call.ByID(1896528085, connectionID, localPath, remotePath);
 }
 
 /**
@@ -101,9 +123,11 @@ const $$createType0 = models$0.Connection.createFrom;
 const $$createType1 = $Create.Array($$createType0);
 const $$createType2 = models$0.Group.createFrom;
 const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = models$0.PortForward.createFrom;
+const $$createType4 = $models.LocalFileInfo.createFrom;
 const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = models$0.QuickCommand.createFrom;
+const $$createType6 = models$0.PortForward.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = sftp$0.FileInfo.createFrom;
+const $$createType8 = models$0.QuickCommand.createFrom;
 const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = sftp$0.FileInfo.createFrom;
+const $$createType11 = $Create.Array($$createType10);

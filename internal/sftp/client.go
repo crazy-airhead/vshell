@@ -3,8 +3,12 @@ package sftp
 import (
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"sync"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 
@@ -12,15 +16,23 @@ import (
 	"vshell/internal/models"
 )
 
+type Direction string
+
+const (
+	DirUpload   Direction = "upload"
+	DirDownload Direction = "download"
+)
+
 type TransferProgress struct {
-	ID          string  `json:"id"`
-	FileName    string  `json:"file_name"`
-	TotalBytes  int64   `json:"total_bytes"`
-	Transferred int64   `json:"transferred"`
-	Percent     float64 `json:"percent"`
-	SpeedKBps   float64 `json:"speed_kbps"`
-	Done        bool    `json:"done"`
-	Error       string  `json:"error,omitempty"`
+	ID          string    `json:"id"`
+	FileName    string    `json:"file_name"`
+	TotalBytes  int64     `json:"total_bytes"`
+	Transferred int64     `json:"transferred"`
+	Percent     float64   `json:"percent"`
+	SpeedKBps   float64   `json:"speed_kbps"`
+	Done        bool      `json:"done"`
+	Error       string    `json:"error,omitempty"`
+	Direction   Direction `json:"direction"`
 }
 
 type Client struct {
@@ -45,6 +57,110 @@ func NewClient(sshClient *ssh.Client, cryptoSvc *crypto.CryptoService, onEvent f
 
 func (c *Client) Close() error {
 	return c.sftpClient.Close()
+}
+
+func (c *Client) UploadFile(localPath, remotePath string) error {
+	f, err := os.Open(localPath)
+	if err != nil {
+		return fmt.Errorf("open local file: %w", err)
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("stat local file: %w", err)
+	}
+
+	remoteFile, err := c.sftpClient.Create(remotePath)
+	if err != nil {
+		return fmt.Errorf("create remote file: %w", err)
+	}
+	defer remoteFile.Close()
+
+	id := uuid.New().String()
+	pr := &progressReader{
+		reader:     f,
+		total:      stat.Size(),
+		transferID: id,
+		fileName:   filepath.Base(localPath),
+		direction:  DirUpload,
+		onEvent:    c.onEvent,
+		startTime:  time.Now(),
+	}
+
+	_, err = io.Copy(remoteFile, pr)
+
+	c.onEvent("sftp:progress", TransferProgress{
+		ID:          id,
+		FileName:    filepath.Base(localPath),
+		TotalBytes:  stat.Size(),
+		Transferred: pr.read,
+		Percent:     100,
+		Done:        true,
+		Error: func() string {
+			if err != nil {
+				return err.Error()
+			}
+			return ""
+		}(),
+		Direction: DirUpload,
+	})
+
+	return err
+}
+
+func (c *Client) DownloadFile(remotePath, localPath string) error {
+	remoteFile, err := c.sftpClient.Open(remotePath)
+	if err != nil {
+		return fmt.Errorf("open remote file: %w", err)
+	}
+	defer remoteFile.Close()
+
+	stat, err := remoteFile.Stat()
+	if err != nil {
+		return fmt.Errorf("stat remote file: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil {
+		return fmt.Errorf("create local dir: %w", err)
+	}
+
+	localFile, err := os.Create(localPath)
+	if err != nil {
+		return fmt.Errorf("create local file: %w", err)
+	}
+	defer localFile.Close()
+
+	id := uuid.New().String()
+	pw := &progressWriter{
+		writer:     localFile,
+		total:      stat.Size(),
+		transferID: id,
+		fileName:   filepath.Base(remotePath),
+		direction:  DirDownload,
+		onEvent:    c.onEvent,
+		startTime:  time.Now(),
+	}
+
+	_, err = io.Copy(pw, remoteFile)
+
+	c.onEvent("sftp:progress", TransferProgress{
+		ID:          id,
+		FileName:    filepath.Base(remotePath),
+		TotalBytes:  stat.Size(),
+		Transferred: pw.written,
+		Percent:     100,
+		Done:        true,
+		Error: func() string {
+			if err != nil {
+				return err.Error()
+			}
+			return ""
+		}(),
+		Direction: DirDownload,
+	})
+
+	return err
 }
 
 func (c *Client) ReadDir(path string) ([]FileInfo, error) {
@@ -81,15 +197,19 @@ type progressReader struct {
 	read       int64
 	transferID string
 	fileName   string
+	direction  Direction
 	onEvent    func(string, any)
-	startTime  int64 // unix milliseconds
+	startTime  time.Time
 }
 
 func (r *progressReader) Read(p []byte) (int, error) {
 	n, err := r.reader.Read(p)
 	r.read += int64(n)
 
-	elapsed := float64(1) // avoid division by zero
+	elapsed := time.Since(r.startTime).Seconds()
+	if elapsed < 0.1 {
+		elapsed = 0.1
+	}
 	percent := float64(r.read) / float64(r.total) * 100
 
 	r.onEvent("sftp:progress", TransferProgress{
@@ -100,6 +220,7 @@ func (r *progressReader) Read(p []byte) (int, error) {
 		Percent:     percent,
 		SpeedKBps:   float64(r.read) / 1024 / elapsed,
 		Done:        err == io.EOF,
+		Direction:   r.direction,
 	})
 
 	return n, err
@@ -112,13 +233,19 @@ type progressWriter struct {
 	written    int64
 	transferID string
 	fileName   string
+	direction  Direction
 	onEvent    func(string, any)
+	startTime  time.Time
 }
 
 func (w *progressWriter) Write(p []byte) (int, error) {
 	n, err := w.writer.Write(p)
 	w.written += int64(n)
 
+	elapsed := time.Since(w.startTime).Seconds()
+	if elapsed < 0.1 {
+		elapsed = 0.1
+	}
 	percent := float64(w.written) / float64(w.total) * 100
 
 	w.onEvent("sftp:progress", TransferProgress{
@@ -127,6 +254,9 @@ func (w *progressWriter) Write(p []byte) (int, error) {
 		TotalBytes:  w.total,
 		Transferred: w.written,
 		Percent:     percent,
+		SpeedKBps:   float64(w.written) / 1024 / elapsed,
+		Done:        false,
+		Direction:   w.direction,
 	})
 
 	return n, err
