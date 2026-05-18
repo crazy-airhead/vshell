@@ -3,7 +3,6 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NTree, NSpin, NButton } from 'naive-ui'
 import type { TreeOption } from 'naive-ui'
-import { h } from 'vue'
 import { useSFTPStore } from '../../stores/sftp'
 import type { SFTPFile } from '../../stores/sftp'
 
@@ -25,11 +24,11 @@ function buildTreeNodes(
     .filter((f) => f.is_dir)
     .map((f) => {
       const fullPath = parentPath === '/' ? `/${f.name}` : `${parentPath}/${f.name}`
+      const hasChildren = fullPath in cache
       return {
         key: fullPath,
         label: f.name,
-        prefix: () => h('span', { style: 'margin-right: 4px; font-size: 13px' }, expandedKeys.value.includes(fullPath) ? '\u{1F4C2}' : '\u{1F4C1}'),
-        children: (fullPath in cache) ? buildTreeNodes(fullPath, cache) : undefined,
+        children: hasChildren ? buildTreeNodes(fullPath, cache) : undefined,
         isLeaf: false,
       }
     })
@@ -40,21 +39,11 @@ function rebuildTree() {
   treeData.value = buildTreeNodes('/', p.treeCache)
 }
 
-async function handleTreeExpand(keys: string[]) {
+async function handleLoad(node: TreeOption) {
+  const path = node.key as string
+  await sftpStore.loadTreeDir(props.connectionID, path)
   const p = sftpStore.getPanel(props.connectionID)
-  const oldKeys = new Set(expandedKeys.value)
-  const newKeys = new Set(keys)
-
-  const toLoad: string[] = []
-  for (const k of keys) {
-    if (!oldKeys.has(k)) {
-      toLoad.push(k)
-    }
-  }
-  await Promise.all(toLoad.map(k => sftpStore.loadTreeDir(props.connectionID, k)))
-
-  rebuildTree()
-  expandedKeys.value = keys
+  node.children = buildTreeNodes(path, p.treeCache)
 }
 
 function handleTreeSelect(keys: string[]) {
@@ -68,6 +57,9 @@ function handleFileClick(file: SFTPFile) {
   if (!file.is_dir) return
   const p = sftpStore.getPanel(props.connectionID)
   const newPath = p.currentPath === '/' ? `/${file.name}` : `${p.currentPath}/${file.name}`
+  if (!expandedKeys.value.includes(p.currentPath)) {
+    expandedKeys.value = [...expandedKeys.value, p.currentPath]
+  }
   sftpStore.navigateToDir(props.connectionID, newPath)
 }
 
@@ -118,9 +110,10 @@ watch(() => sftpStore.treeVersion, () => {
         <NTree
           :data="treeData"
           :expanded-keys="expandedKeys"
+          :on-load="handleLoad"
           selectable
           block-line
-          @update:expanded-keys="handleTreeExpand"
+          @update:expanded-keys="(keys: string[]) => expandedKeys = keys"
           @update:selected-keys="handleTreeSelect"
         />
       </div>
