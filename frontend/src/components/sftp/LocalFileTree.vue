@@ -24,10 +24,27 @@ const loadingDir = ref(false)
 const editing = ref(false)
 const editPath = ref('')
 const selected = ref(new Set<string>())
+const sortKey = ref<'name' | 'size' | 'time'>('name')
+const sortAsc = ref(true)
 
-const files = computed(() =>
-  showHidden.value ? allFiles.value : allFiles.value.filter(f => !f.name.startsWith('.'))
-)
+const files = computed(() => {
+  const raw = showHidden.value ? allFiles.value : allFiles.value.filter(f => !f.name.startsWith('.'))
+  const key = sortKey.value
+  const asc = sortAsc.value
+  return [...raw].sort((a, b) => {
+    if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1
+    let cmp = 0
+    if (key === 'name') cmp = a.name.localeCompare(b.name)
+    else if (key === 'size') cmp = a.size - b.size
+    else cmp = a.mod_time - b.mod_time
+    return asc ? cmp : -cmp
+  })
+})
+
+function toggleSort(key: 'name' | 'size' | 'time') {
+  if (sortKey.value === key) sortAsc.value = !sortAsc.value
+  else { sortKey.value = key; sortAsc.value = true }
+}
 
 const dirCache = ref<Record<string, LocalEntry[]>>({})
 
@@ -164,9 +181,9 @@ onMounted(async () => {
       <table v-else class="local-table">
         <thead>
           <tr>
-            <th class="col-name">Name</th>
-            <th class="col-size">Size</th>
-            <th class="col-time">Modified</th>
+            <th class="col-name sortable" @click="toggleSort('name')">Name <span class="sort-arrow" v-if="sortKey === 'name'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+            <th class="col-size sortable" @click="toggleSort('size')">Size <span class="sort-arrow" v-if="sortKey === 'size'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+            <th class="col-time sortable" @click="toggleSort('time')">Modified <span class="sort-arrow" v-if="sortKey === 'time'">{{ sortAsc ? '↑' : '↓' }}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -175,9 +192,11 @@ onMounted(async () => {
             :class="{ 'dir-row': f.is_dir, selected: selected.has(f.path) }"
             @click="handleRowClick(f, $event)"
           >
-            <td class="col-name dir-name" @click.stop="handleNameClick(f, $event)">
-              <span class="file-icon">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>
-              {{ f.name }}
+            <td class="col-name">
+              <span class="dir-name" @click.stop="handleNameClick(f, $event)">
+                <span class="file-icon">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>
+                {{ f.name }}
+              </span>
             </td>
             <td class="col-size">{{ f.is_dir ? '-' : formatSize(f.size) }}</td>
             <td class="col-time">{{ formatTime(f.mod_time) }}</td>
@@ -242,7 +261,11 @@ onMounted(async () => {
   text-align: left; padding: 4px 8px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-secondary); font-weight: 500; font-size: var(--font-size-sm);
+  user-select: none;
 }
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--text-primary); }
+.sort-arrow { margin-left: 2px; font-size: 10px; }
 .local-table td {
   padding: 3px 8px;
   border-bottom: 1px solid var(--border-color);
@@ -252,7 +275,7 @@ onMounted(async () => {
 .local-row { cursor: default; }
 .local-row.dir-row .dir-name { cursor: pointer; }
 .local-row:hover { background: var(--hover-overlay-strong); }
-.dir-row:hover .dir-name:hover { color: var(--accent-color, #0078d4); }
+.dir-row:hover .dir-name:hover { color: #5dade2; }
 .local-row.selected { background: var(--action-hover-bg); }
 
 .col-name { max-width: 160px; }

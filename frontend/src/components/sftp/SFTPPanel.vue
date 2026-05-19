@@ -25,6 +25,29 @@ const editingRemotePath = ref(false)
 const editRemotePath = ref('')
 const localDir = ref('')
 const selectedRemote = ref(new Set<string>())
+const sortKey = ref<'name' | 'size' | 'time'>('name')
+const sortAsc = ref(true)
+
+const sortedRemoteFiles = computed(() => {
+  const p = sftpStore.getPanel(props.connectionID)
+  const files = [...p.files]
+  const key = sortKey.value
+  const asc = sortAsc.value
+  files.sort((a: SFTPFile, b: SFTPFile) => {
+    if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1
+    let cmp = 0
+    if (key === 'name') cmp = a.name.localeCompare(b.name)
+    else if (key === 'size') cmp = a.size - b.size
+    else cmp = a.mod_time - b.mod_time
+    return asc ? cmp : -cmp
+  })
+  return files
+})
+
+function toggleSort(key: 'name' | 'size' | 'time') {
+  if (sortKey.value === key) sortAsc.value = !sortAsc.value
+  else { sortKey.value = key; sortAsc.value = true }
+}
 
 // --- Remote path ---
 const remotePathParts = computed(() => {
@@ -257,19 +280,21 @@ watch(() => sftpStore.treeVersion, rebuildTree)
             <table v-else class="sftp-table">
               <thead>
                 <tr>
-                  <th class="col-name">{{ t('sftp.name') }}</th>
-                  <th class="col-size">{{ t('sftp.size') }}</th>
-                  <th class="col-time">{{ t('sftp.modified') }}</th>
+                  <th class="col-name sortable" @click="toggleSort('name')">{{ t('sftp.name') }} <span class="sort-arrow" v-if="sortKey === 'name'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+                  <th class="col-size sortable" @click="toggleSort('size')">{{ t('sftp.size') }} <span class="sort-arrow" v-if="sortKey === 'size'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+                  <th class="col-time sortable" @click="toggleSort('time')">{{ t('sftp.modified') }} <span class="sort-arrow" v-if="sortKey === 'time'">{{ sortAsc ? '↑' : '↓' }}</span></th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="f in sftpStore.getPanel(props.connectionID).files" :key="f.name"
+                <tr v-for="f in sortedRemoteFiles" :key="f.name"
                   class="sftp-row"
                   :class="{ 'sftp-dir': f.is_dir, selected: selectedRemote.has(remoteFilePath(f.name)) }"
                   @click="handleRemoteRowClick(f, $event)"
                 >
-                  <td class="col-name dir-name" @click.stop="handleRemoteNameClick(f, $event)">
-                    <span class="file-icon">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>{{ f.name }}
+                  <td class="col-name">
+                    <span class="dir-name" @click.stop="handleRemoteNameClick(f, $event)">
+                      <span class="file-icon">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>{{ f.name }}
+                    </span>
                   </td>
                   <td class="col-size">{{ f.is_dir ? '-' : formatSize(f.size) }}</td>
                   <td class="col-time">{{ formatTime(f.mod_time) }}</td>
@@ -376,7 +401,11 @@ watch(() => sftpStore.treeVersion, rebuildTree)
   text-align: left; padding: 4px 8px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-secondary); font-weight: 500; font-size: var(--font-size-sm);
+  user-select: none;
 }
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--text-primary); }
+.sort-arrow { margin-left: 2px; font-size: 10px; }
 .sftp-table td {
   padding: 3px 8px;
   border-bottom: 1px solid var(--border-color);
@@ -386,7 +415,7 @@ watch(() => sftpStore.treeVersion, rebuildTree)
 .sftp-row { cursor: default; }
 .sftp-row.sftp-dir .dir-name { cursor: pointer; }
 .sftp-row:hover { background: var(--hover-overlay-strong); }
-.sftp-dir:hover .dir-name:hover { color: var(--accent-color, #0078d4); }
+.sftp-dir:hover .dir-name:hover { color: #5dade2; }
 .sftp-row.selected { background: var(--action-hover-bg); }
 
 .col-name { max-width: 300px; }
