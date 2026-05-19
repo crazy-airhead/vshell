@@ -7,5 +7,8 @@ export {
 };
 
 export {
-    LocalFileInfo
+    LocalFileInfo,
+    SSHConfigDirective,
+    SSHConfigEntry,
+    SSHKeyInfo
 } from "./models.js";

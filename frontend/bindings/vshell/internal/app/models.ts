@@ -45,3 +45,112 @@ export class LocalFileInfo {
         return new LocalFileInfo($$parsedSource as Partial<LocalFileInfo>);
     }
 }
+
+/**
+ * SSHConfigDirective represents a single key-value directive within an SSH config block.
+ */
+export class SSHConfigDirective {
+    "key": string;
+    "value": string;
+
+    /** Creates a new SSHConfigDirective instance. */
+    constructor($$source: Partial<SSHConfigDirective> = {}) {
+        if (!("key" in $$source)) {
+            this["key"] = "";
+        }
+        if (!("value" in $$source)) {
+            this["value"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SSHConfigDirective instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SSHConfigDirective {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SSHConfigDirective($$parsedSource as Partial<SSHConfigDirective>);
+    }
+}
+
+/**
+ * SSHConfigEntry represents a single Host or Match block from ~/.ssh/config.
+ */
+export class SSHConfigEntry {
+    "type": string;
+    "pattern": string;
+    "directives": SSHConfigDirective[];
+
+    /** Creates a new SSHConfigEntry instance. */
+    constructor($$source: Partial<SSHConfigEntry> = {}) {
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("pattern" in $$source)) {
+            this["pattern"] = "";
+        }
+        if (!("directives" in $$source)) {
+            this["directives"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SSHConfigEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SSHConfigEntry {
+        const $$createField2_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("directives" in $$parsedSource) {
+            $$parsedSource["directives"] = $$createField2_0($$parsedSource["directives"]);
+        }
+        return new SSHConfigEntry($$parsedSource as Partial<SSHConfigEntry>);
+    }
+}
+
+export class SSHKeyInfo {
+    "name": string;
+    "type": string;
+    "fingerprint": string;
+    "public_key": string;
+    "comment": string;
+    "has_passphrase": boolean;
+
+    /** Creates a new SSHKeyInfo instance. */
+    constructor($$source: Partial<SSHKeyInfo> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("fingerprint" in $$source)) {
+            this["fingerprint"] = "";
+        }
+        if (!("public_key" in $$source)) {
+            this["public_key"] = "";
+        }
+        if (!("comment" in $$source)) {
+            this["comment"] = "";
+        }
+        if (!("has_passphrase" in $$source)) {
+            this["has_passphrase"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SSHKeyInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SSHKeyInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SSHKeyInfo($$parsedSource as Partial<SSHKeyInfo>);
+    }
+}
+
+// Private type creation functions
+const $$createType0 = SSHConfigDirective.createFrom;
+const $$createType1 = $Create.Array($$createType0);

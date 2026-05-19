@@ -4,6 +4,7 @@ import { NTabs, NTabPane, NEmpty } from 'naive-ui'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
 import XTerminal from './XTerminal.vue'
+import EditorTab from './EditorTab.vue'
 
 const { t } = useI18n()
 const terminalStore = useTerminalStore()
@@ -13,10 +14,17 @@ function getActiveTab(): string | undefined {
   return terminalStore.activeTabID ?? undefined
 }
 
+function getTabTitle(tab: { title: string; type?: string; dirty?: boolean }): string {
+  if (tab.type === 'editor' && tab.dirty) {
+    return tab.title + ' •'
+  }
+  return tab.title
+}
+
 function handleClose(id: string) {
-  const connID = terminalStore.tabs.find((t) => t.id === id)?.connectionID
-  if (connID) {
-    connectionStore.disconnect(connID)
+  const tab = terminalStore.tabs.find((t) => t.id === id)
+  if (tab && tab.type !== 'editor' && tab.connectionID) {
+    connectionStore.disconnect(tab.connectionID)
   }
   terminalStore.removeTab(id)
 }
@@ -40,7 +48,7 @@ function handleClose(id: string) {
           v-for="tab in terminalStore.tabs"
           :key="tab.id"
           :name="tab.id"
-          :tab="tab.title"
+          :tab="getTabTitle(tab)"
         />
       </NTabs>
       <div class="terminals-container">
@@ -50,7 +58,8 @@ function handleClose(id: string) {
           class="terminal-instance"
           :class="{ active: tab.id === terminalStore.activeTabID }"
         >
-          <XTerminal :sessionID="tab.id" />
+          <XTerminal v-if="tab.type !== 'editor'" :sessionID="tab.id" />
+          <EditorTab v-else :tab="tab" />
         </div>
       </div>
     </div>

@@ -124,3 +124,23 @@ export interface LeafNode {
 }
 
 export type TreeNode = SplitNode | LeafNode
+
+export interface SSHKeyInfo {
+  name: string
+  type: string
+  fingerprint: string
+  public_key: string
+  comment: string
+  has_passphrase: boolean
+}
+
+export interface SSHConfigDirective {
+  key: string
+  value: string
+}
+
+export interface SSHConfigEntry {
+  type: string
+  pattern: string
+  directives: SSHConfigDirective[]
+}

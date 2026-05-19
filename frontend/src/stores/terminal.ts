@@ -2,10 +2,16 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TreeNode } from '../types'
 
+export type TabType = 'terminal' | 'editor'
+
 export interface TerminalTab {
   id: string
   connectionID: string
   title: string
+  type?: TabType
+  editorContent?: string
+  filePath?: string
+  dirty?: boolean
 }
 
 export const useTerminalStore = defineStore('terminal', () => {
@@ -20,6 +26,28 @@ export const useTerminalStore = defineStore('terminal', () => {
     activeTabID.value = tab.id
     if (!splitTree.value) {
       splitTree.value = { type: 'leaf', sessionID: tab.id }
+    }
+  }
+
+  function addEditorTab(id: string, title: string, content: string, filePath: string) {
+    if (tabs.value.find((t) => t.id === id)) {
+      activeTabID.value = id
+      return
+    }
+    addTab({ id, connectionID: '', title, type: 'editor', editorContent: content, filePath, dirty: false })
+  }
+
+  function updateTabContent(id: string, content: string) {
+    const tab = tabs.value.find((t) => t.id === id)
+    if (tab) {
+      tab.editorContent = content
+    }
+  }
+
+  function markTabDirty(id: string, dirty: boolean) {
+    const tab = tabs.value.find((t) => t.id === id)
+    if (tab) {
+      tab.dirty = dirty
     }
   }
 
@@ -43,6 +71,9 @@ export const useTerminalStore = defineStore('terminal', () => {
     activeTabID,
     splitTree,
     addTab,
+    addEditorTab,
+    updateTabContent,
+    markTabDirty,
     removeTab,
   }
 })

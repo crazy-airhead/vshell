@@ -51,8 +51,22 @@ export function DeleteQuickCommand(id: string): $CancellablePromise<void> {
     return $Call.ByID(1688177718, id);
 }
 
+/**
+ * DeleteSSHKey removes a key file and its .pub companion from ~/.ssh.
+ */
+export function DeleteSSHKey(name: string): $CancellablePromise<void> {
+    return $Call.ByID(2358421539, name);
+}
+
 export function DisconnectSSH(connectionID: string): $CancellablePromise<void> {
     return $Call.ByID(1796353151, connectionID);
+}
+
+/**
+ * GenerateSSHKey generates a new SSH key pair and writes it to ~/.ssh/<name>.
+ */
+export function GenerateSSHKey(name: string, keyType: string, bits: number, comment: string, passphrase: string): $CancellablePromise<void> {
+    return $Call.ByID(1376428699, name, keyType, bits, comment, passphrase);
 }
 
 export function GetHomeDir(): $CancellablePromise<string> {
@@ -89,6 +103,46 @@ export function ListQuickCommands(connectionID: string | null): $CancellableProm
     });
 }
 
+/**
+ * ListSSHKeys scans ~/.ssh for private key files and returns their metadata.
+ */
+export function ListSSHKeys(): $CancellablePromise<$models.SSHKeyInfo[]> {
+    return $Call.ByID(3301404409).then(($result: any) => {
+        return $$createType11($result);
+    });
+}
+
+/**
+ * ReadSSHConfig parses ~/.ssh/config and returns structured entries.
+ */
+export function ReadSSHConfig(): $CancellablePromise<$models.SSHConfigEntry[]> {
+    return $Call.ByID(3639124279).then(($result: any) => {
+        return $$createType13($result);
+    });
+}
+
+/**
+ * ReadSSHConfigRaw returns the raw content of ~/.ssh/config.
+ */
+export function ReadSSHConfigRaw(): $CancellablePromise<string> {
+    return $Call.ByID(1473160119);
+}
+
+/**
+ * ReadSSHKeyContent returns the public key or private key content.
+ * kind = "pub" returns the .pub file, kind = "private" returns the private key.
+ */
+export function ReadSSHKeyContent(name: string, kind: string): $CancellablePromise<string> {
+    return $Call.ByID(1669966985, name, kind);
+}
+
+/**
+ * RenameSSHKey renames a key file and its .pub companion in ~/.ssh.
+ */
+export function RenameSSHKey(oldName: string, newName: string): $CancellablePromise<void> {
+    return $Call.ByID(867475454, oldName, newName);
+}
+
 export function SFTPDelete(connectionID: string, remotePath: string): $CancellablePromise<void> {
     return $Call.ByID(1494492831, connectionID, remotePath);
 }
@@ -99,12 +153,19 @@ export function SFTPDownload(connectionID: string, remotePath: string, localPath
 
 export function SFTPReadDir(connectionID: string, path: string): $CancellablePromise<sftp$0.FileInfo[]> {
     return $Call.ByID(3242100799, connectionID, path).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType15($result);
     });
 }
 
 export function SFTPUpload(connectionID: string, localPath: string, remotePath: string): $CancellablePromise<void> {
     return $Call.ByID(1896528085, connectionID, localPath, remotePath);
+}
+
+/**
+ * SaveSSHKey writes a private key (and optional .pub) to ~/.ssh/<name>.
+ */
+export function SaveSSHKey(name: string, privateKey: string, publicKey: string): $CancellablePromise<void> {
+    return $Call.ByID(3774081477, name, privateKey, publicKey);
 }
 
 /**
@@ -126,6 +187,20 @@ export function UpdateConnection(form: models$0.ConnectionForm): $CancellablePro
     return $Call.ByID(3356068760, form);
 }
 
+/**
+ * WriteSSHConfig serializes entries back to ~/.ssh/config.
+ */
+export function WriteSSHConfig(entries: $models.SSHConfigEntry[]): $CancellablePromise<void> {
+    return $Call.ByID(1250750292, entries);
+}
+
+/**
+ * WriteSSHConfigRaw writes raw content to ~/.ssh/config.
+ */
+export function WriteSSHConfigRaw(content: string): $CancellablePromise<void> {
+    return $Call.ByID(803427770, content);
+}
+
 // Private type creation functions
 const $$createType0 = models$0.Connection.createFrom;
 const $$createType1 = $Create.Array($$createType0);
@@ -137,5 +212,9 @@ const $$createType6 = models$0.PortForward.createFrom;
 const $$createType7 = $Create.Array($$createType6);
 const $$createType8 = models$0.QuickCommand.createFrom;
 const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = sftp$0.FileInfo.createFrom;
+const $$createType10 = $models.SSHKeyInfo.createFrom;
 const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = $models.SSHConfigEntry.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = sftp$0.FileInfo.createFrom;
+const $$createType15 = $Create.Array($$createType14);

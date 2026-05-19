@@ -2,27 +2,35 @@ package app
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"golang.org/x/crypto/ssh"
 
 	"vshell/internal/db"
 	"vshell/internal/models"
 	"vshell/internal/portforward"
 	"vshell/internal/sftp"
-	"vshell/internal/ssh"
+	vshellssh "vshell/internal/ssh"
 )
 
 type AppService struct {
 	wailsApp    *application.App
 	db          *db.DB
-	sshManager  *ssh.Manager
+	sshManager  *vshellssh.Manager
 	sftpManager *sftp.Manager
 	fwdManager  *portforward.Manager
-	monitors    map[string]*ssh.Monitor
+	monitors    map[string]*vshellssh.Monitor
 }
 
 func New() *AppService {
@@ -46,10 +54,10 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 		a.wailsApp.Event.Emit(event, data)
 	}
 
-	a.sshManager = ssh.NewManager(a.db.Crypto(), emit)
+	a.sshManager = vshellssh.NewManager(a.db.Crypto(), emit)
 	a.sftpManager = sftp.NewManager(a.sshManager, a.db.Crypto(), emit)
 	a.fwdManager = portforward.NewManager()
-	a.monitors = make(map[string]*ssh.Monitor)
+	a.monitors = make(map[string]*vshellssh.Monitor)
 
 	// Listen for terminal stdin events from frontend
 	a.wailsApp.Event.On("terminal:stdin", func(e *application.CustomEvent) {
@@ -290,7 +298,7 @@ func (a *AppService) StartMonitor(connectionID string) error {
 	if _, ok := a.monitors[connectionID]; ok {
 		return nil
 	}
-	mon := ssh.NewMonitor(a.sshManager, connectionID)
+	mon := vshellssh.NewMonitor(a.sshManager, connectionID)
 	mon.Start()
 	a.monitors[connectionID] = mon
 	return nil
@@ -498,4 +506,312 @@ func (a *AppService) listLocalDir(dirPath string) ([]LocalFileInfo, error) {
 
 	result = append(dirs, files...)
 	return result, nil
+}
+
+// --- SSH Keys (direct ~/.ssh management) ---
+
+type SSHKeyInfo struct {
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	Fingerprint   string `json:"fingerprint"`
+	PublicKey     string `json:"public_key"`
+	Comment       string `json:"comment"`
+	HasPassphrase bool   `json:"has_passphrase"`
+}
+
+func sshDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("get home dir: %w", err)
+	}
+	return filepath.Join(home, ".ssh"), nil
+}
+
+// parsePubComment extracts the comment from a public key line like "ssh-ed25519 AAAA... user@host"
+func parsePubComment(pubLine string) string {
+	parts := strings.SplitN(strings.TrimSpace(pubLine), " ", 3)
+	if len(parts) == 3 {
+		return parts[2]
+	}
+	return ""
+}
+
+func parseKeyFile(keyPath string) (SSHKeyInfo, error) {
+	data, err := os.ReadFile(keyPath)
+	if err != nil {
+		return SSHKeyInfo{}, err
+	}
+
+	info := SSHKeyInfo{Name: filepath.Base(keyPath)}
+
+	// Read .pub companion for public key, type, and fingerprint
+	if pubData, err := os.ReadFile(keyPath + ".pub"); err == nil {
+		pubStr := strings.TrimSpace(string(pubData))
+		info.PublicKey = pubStr
+		info.Comment = parsePubComment(pubStr)
+		if pubKey, _, _, _, err := ssh.ParseAuthorizedKey(pubData); err == nil {
+			info.Type = pubKey.Type()
+			info.Fingerprint = ssh.FingerprintSHA256(pubKey)
+		}
+	}
+
+	content := strings.TrimSpace(string(data))
+	signer, err := ssh.ParsePrivateKey(data)
+	if err != nil {
+		if strings.Contains(err.Error(), "password") || strings.Contains(err.Error(), "passphrase") || strings.Contains(err.Error(), "decrypt") {
+			info.HasPassphrase = true
+			if info.Type == "" {
+				info.Type = guessKeyTypeFromContent(content)
+			}
+			return info, nil
+		}
+		return SSHKeyInfo{}, err
+	}
+
+	// Prefer private key for type/fingerprint when available
+	pubKey := signer.PublicKey()
+	info.Type = pubKey.Type()
+	info.Fingerprint = ssh.FingerprintSHA256(pubKey)
+	return info, nil
+}
+
+func guessKeyTypeFromContent(content string) string {
+	if strings.Contains(content, "BEGIN RSA PRIVATE KEY") {
+		return "ssh-rsa"
+	}
+	if strings.Contains(content, "BEGIN EC PRIVATE KEY") {
+		return "ecdsa-sha2-nistp256"
+	}
+	if strings.Contains(content, "BEGIN DSA PRIVATE KEY") {
+		return "ssh-dss"
+	}
+	return "ssh-ed25519"
+}
+
+// ListSSHKeys scans ~/.ssh for private key files and returns their metadata.
+func (a *AppService) ListSSHKeys() ([]SSHKeyInfo, error) {
+	dir, err := sshDir()
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("read ~/.ssh: %w", err)
+	}
+
+	skipSuffixes := []string{".pub", "-cert.pub", ".known_hosts", ".known_hosts_old", ".authorized_keys", ".config", ".rfc"}
+
+	var results []SSHKeyInfo
+	for _, e := range entries {
+		if e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+
+		skip := false
+		for _, s := range skipSuffixes {
+			if strings.HasSuffix(e.Name(), s) {
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+
+		keyPath := filepath.Join(dir, e.Name())
+		raw, err := os.ReadFile(keyPath)
+		if err != nil {
+			continue
+		}
+		if !strings.Contains(string(raw), "PRIVATE KEY") {
+			continue
+		}
+
+		info, err := parseKeyFile(keyPath)
+		if err != nil {
+			continue
+		}
+		results = append(results, info)
+	}
+
+	return results, nil
+}
+
+// SaveSSHKey writes a private key (and optional .pub) to ~/.ssh/<name>.
+func (a *AppService) SaveSSHKey(name string, privateKey string, publicKey string) error {
+	dir, err := sshDir()
+	if err != nil {
+		return err
+	}
+	os.MkdirAll(dir, 0700)
+
+	keyPath := filepath.Join(dir, name)
+	if err := os.WriteFile(keyPath, []byte(privateKey), 0600); err != nil {
+		return fmt.Errorf("write key: %w", err)
+	}
+
+	if publicKey != "" {
+		pubPath := keyPath + ".pub"
+		if err := os.WriteFile(pubPath, []byte(strings.TrimSpace(publicKey)+"\n"), 0644); err != nil {
+			return fmt.Errorf("write pub: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// RenameSSHKey renames a key file and its .pub companion in ~/.ssh.
+func (a *AppService) RenameSSHKey(oldName string, newName string) error {
+	dir, err := sshDir()
+	if err != nil {
+		return err
+	}
+
+	oldPath := filepath.Join(dir, oldName)
+	newPath := filepath.Join(dir, newName)
+
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return fmt.Errorf("rename key: %w", err)
+	}
+
+	oldPub := oldPath + ".pub"
+	if _, err := os.Stat(oldPub); err == nil {
+		newPub := newPath + ".pub"
+		if err := os.Rename(oldPub, newPub); err != nil {
+			return fmt.Errorf("rename pub: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// DeleteSSHKey removes a key file and its .pub companion from ~/.ssh.
+func (a *AppService) DeleteSSHKey(name string) error {
+	dir, err := sshDir()
+	if err != nil {
+		return err
+	}
+
+	keyPath := filepath.Join(dir, name)
+	if err := os.Remove(keyPath); err != nil {
+		return fmt.Errorf("delete key: %w", err)
+	}
+
+	os.Remove(keyPath + ".pub")
+	return nil
+}
+
+// ReadSSHKeyContent returns the public key or private key content.
+// kind = "pub" returns the .pub file, kind = "private" returns the private key.
+func (a *AppService) ReadSSHKeyContent(name string, kind string) (string, error) {
+	dir, err := sshDir()
+	if err != nil {
+		return "", err
+	}
+
+	var path string
+	if kind == "pub" {
+		path = filepath.Join(dir, name+".pub")
+	} else {
+		path = filepath.Join(dir, name)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read key: %w", err)
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+// GenerateSSHKey generates a new SSH key pair and writes it to ~/.ssh/<name>.
+func (a *AppService) GenerateSSHKey(name string, keyType string, bits int, comment string, passphrase string) error {
+	dir, err := sshDir()
+	if err != nil {
+		return err
+	}
+	os.MkdirAll(dir, 0700)
+
+	var pubKey ssh.PublicKey
+	var rawPriv any
+
+	switch keyType {
+	case "ed25519":
+		pub, priv, err := ed25519.GenerateKey(nil)
+		if err != nil {
+			return fmt.Errorf("generate ed25519: %w", err)
+		}
+		rawPriv = priv
+		pubKey, err = ssh.NewPublicKey(pub)
+		if err != nil {
+			return fmt.Errorf("create public key: %w", err)
+		}
+
+	case "rsa":
+		if bits < 2048 {
+			bits = 4096
+		}
+		priv, err := rsa.GenerateKey(rand.Reader, bits)
+		if err != nil {
+			return fmt.Errorf("generate rsa: %w", err)
+		}
+		rawPriv = priv
+		pubKey, err = ssh.NewPublicKey(&priv.PublicKey)
+		if err != nil {
+			return fmt.Errorf("create public key: %w", err)
+		}
+
+	case "ecdsa":
+		var curve elliptic.Curve
+		switch bits {
+		case 384:
+			curve = elliptic.P384()
+		case 521:
+			curve = elliptic.P521()
+		default:
+			curve = elliptic.P256()
+		}
+		priv, err := ecdsa.GenerateKey(curve, rand.Reader)
+		if err != nil {
+			return fmt.Errorf("generate ecdsa: %w", err)
+		}
+		rawPriv = priv
+		pubKey, err = ssh.NewPublicKey(&priv.PublicKey)
+		if err != nil {
+			return fmt.Errorf("create public key: %w", err)
+		}
+
+	default:
+		return fmt.Errorf("unsupported key type: %s", keyType)
+	}
+
+	var block *pem.Block
+	if passphrase != "" {
+		block, err = ssh.MarshalPrivateKeyWithPassphrase(rawPriv, comment, []byte(passphrase))
+	} else {
+		block, err = ssh.MarshalPrivateKey(rawPriv, comment)
+	}
+	if err != nil {
+		return fmt.Errorf("marshal private key: %w", err)
+	}
+	privateKeyPEM := pem.EncodeToMemory(block)
+
+	// Write private key
+	keyPath := filepath.Join(dir, name)
+	if err := os.WriteFile(keyPath, privateKeyPEM, 0600); err != nil {
+		return fmt.Errorf("write private key: %w", err)
+	}
+
+	// Write .pub
+	pubLine := string(ssh.MarshalAuthorizedKey(pubKey))
+	pubLine = strings.TrimSpace(pubLine)
+	if comment != "" {
+		pubLine += " " + comment
+	}
+	pubPath := keyPath + ".pub"
+	if err := os.WriteFile(pubPath, []byte(pubLine+"\n"), 0644); err != nil {
+		return fmt.Errorf("write public key: %w", err)
+	}
+
+	return nil
 }
