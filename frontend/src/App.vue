@@ -3,6 +3,9 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NConfigProvider, darkTheme, NMessageProvider, NDialogProvider } from 'naive-ui'
 import { Events } from '@wailsio/runtime'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Window is exported at runtime
+import { Window } from '@wailsio/runtime'
 import ActivityBar from './components/activity/ActivityBar.vue'
 import ConnectionTree from './components/sidebar/ConnectionTree.vue'
 import KeyManagementPanel from './components/keys/KeyManagementPanel.vue'
@@ -69,12 +72,11 @@ onMounted(() => {
       <NDialogProvider>
         <div class="app-layout">
           <!-- Title bar -->
-          <div class="title-bar">
+          <div class="title-bar" @dblclick="Window.ToggleMaximise()">
             <span class="app-title">vShell</span>
             <div class="title-bar-right">
               <button class="title-bar-btn theme-btn" :title="settings.isDark ? t('settings.light') : t('settings.dark')" @click="settings.toggleTheme()">{{ themeIcon }}</button>
               <button class="title-bar-btn" :title="t('settings.language')" @click="handleLocaleSelect(settings.localeCode === 'zh-CN' ? 'en' : 'zh-CN')">{{ localeLabel }}</button>
-              <button class="title-bar-btn" :title="t('settings.title')" @click="showSettings = true">&#9881;</button>
             </div>
           </div>
 
