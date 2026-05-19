@@ -30,7 +30,6 @@ const layout = useLayoutStore()
   height: 100%;
   overflow: hidden;
   background: var(--bg-secondary);
-  border-radius: 6px;
 }
 
 .pane-header {
@@ -39,7 +38,7 @@ const layout = useLayoutStore()
   justify-content: space-between;
   padding: 4px 10px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
 }
 
 .pane-label {

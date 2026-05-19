@@ -15,13 +15,18 @@ interface LocalEntry {
   mod_time: number
 }
 
+const showHidden = ref(false)
 const currentPath = ref('')
-const files = ref<LocalEntry[]>([])
+const allFiles = ref<LocalEntry[]>([])
 const loading = ref(true)
 const loadingDir = ref(false)
 const dragOver = ref(false)
 const editing = ref(false)
 const editPath = ref('')
+
+const files = computed(() =>
+  showHidden.value ? allFiles.value : allFiles.value.filter(f => !f.name.startsWith('.'))
+)
 
 const dirCache = ref<Record<string, LocalEntry[]>>({})
 
@@ -47,7 +52,7 @@ async function loadDir(dirPath: string): Promise<LocalEntry[]> {
 async function navigateTo(dirPath: string) {
   loadingDir.value = true
   try {
-    files.value = await loadDir(dirPath)
+    allFiles.value = await loadDir(dirPath)
     currentPath.value = dirPath
   } finally {
     loadingDir.value = false
@@ -168,6 +173,7 @@ onMounted(async () => {
         @blur="commitEdit"
       />
       <NButton size="tiny" quaternary @click="handleRefresh">&#x21bb;</NButton>
+      <NButton size="tiny" quaternary :type="showHidden ? 'primary' : 'default'" @click="showHidden = !showHidden" title="Toggle hidden files">.*</NButton>
     </div>
 
     <!-- File list -->

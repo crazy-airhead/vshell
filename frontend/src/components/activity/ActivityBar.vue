@@ -90,8 +90,7 @@ const layout = useLayoutStore()
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
   padding: 4px 0;
 }
 

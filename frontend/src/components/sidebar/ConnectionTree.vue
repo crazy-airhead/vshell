@@ -270,7 +270,7 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
 
 .tree-header {
   padding: 10px 12px;
-  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
   display: flex;
   align-items: center;
   justify-content: space-between;

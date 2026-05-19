@@ -150,7 +150,6 @@ onMounted(() => {
   justify-content: center;
   padding: 0 8px;
   background: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
   position: relative;
   -webkit-app-region: drag;
@@ -231,6 +230,7 @@ onMounted(() => {
 
 .bottom-zone {
   overflow: hidden;
-  border-radius: 8px;
+  background: var(--bg-secondary);
+  border-radius: 8px 8px 0 0;
 }
 </style>
