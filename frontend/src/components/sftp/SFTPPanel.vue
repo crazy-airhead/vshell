@@ -163,11 +163,6 @@ function toggleRemoteSelect(file: SFTPFile, e: MouseEvent) {
   }
 }
 
-function handleRefresh() {
-  const p = sftpStore.getPanel(props.connectionID)
-  navigateRemoteTo(p.currentPath)
-}
-
 // --- Transfer ---
 function handleDownload() {
   if (selectedRemote.value.size === 0) return
@@ -210,10 +205,13 @@ function handleDeleteRemote() {
 }
 
 // --- Progress & Refresh ---
-function refreshRemote() {
+async function refreshRemote() {
   const p = sftpStore.getPanel(props.connectionID)
+  p.treeCache = {}
   selectedRemote.value = new Set()
-  sftpStore.navigateToDir(props.connectionID, p.currentPath)
+  await sftpStore.navigateToDir(props.connectionID, p.currentPath)
+  // Reload root so the tree has data
+  await sftpStore.loadTreeDir(props.connectionID, '/')
   rebuildTree()
 }
 
@@ -305,7 +303,7 @@ watch(() => sftpStore.treeVersion, rebuildTree)
           </template>
           <input v-else v-model="editRemotePath" class="remote-path-input"
             @keyup.enter="commitRemoteEdit" @keyup.escape="editingRemotePath = false" @blur="commitRemoteEdit" />
-          <NButton size="tiny" quaternary @click="handleRefresh">{{ t('common.refresh') }}</NButton>
+          <NButton size="tiny" quaternary @click="refreshRemote" title="Refresh">&#x21bb;</NButton>
           <NButton size="tiny" quaternary class="download-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDownload" title="Download selected">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v9M4 9l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
           </NButton>
