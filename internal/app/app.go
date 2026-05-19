@@ -434,6 +434,16 @@ func (a *AppService) SFTPDownload(connectionID, remotePath, localPath string) er
 	return nil
 }
 
+func (a *AppService) SFTPDelete(connectionID, remotePath string) error {
+	go func() {
+		if err := a.sftpManager.RemoveFile(connectionID, remotePath); err != nil {
+			a.wailsApp.Event.Emit("sftp:delete:error", err.Error())
+		}
+		a.wailsApp.Event.Emit("sftp:transfer-done", map[string]string{"direction": "delete", "connectionID": connectionID})
+	}()
+	return nil
+}
+
 // --- Local File System ---
 
 type LocalFileInfo struct {
@@ -451,6 +461,10 @@ func (a *AppService) GetHomeDir() (string, error) {
 
 func (a *AppService) ListLocalDir(dirPath string) ([]LocalFileInfo, error) {
 	return a.listLocalDir(dirPath)
+}
+
+func (a *AppService) DeleteLocalFile(localPath string) error {
+	return os.RemoveAll(localPath)
 }
 
 func (a *AppService) listLocalDir(dirPath string) ([]LocalFileInfo, error) {

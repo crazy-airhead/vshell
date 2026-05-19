@@ -85,6 +85,16 @@ func (m *Manager) DownloadFile(connectionID, remotePath, localPath string) error
 	return client.Download(remotePath, localPath)
 }
 
+func (m *Manager) RemoveFile(connectionID, remotePath string) error {
+	m.sem <- struct{}{}
+	defer func() { <-m.sem }()
+	client, err := m.GetOrCreateClient(connectionID)
+	if err != nil {
+		return err
+	}
+	return client.Remove(remotePath)
+}
+
 func (m *Manager) CloseClient(connectionID string) {
 	m.mu.Lock()
 	c, ok := m.clients[connectionID]

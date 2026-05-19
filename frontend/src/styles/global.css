@@ -83,3 +83,31 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
+
+/* Drag ghost */
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-tertiary, #2d2d2d);
+  border: 1px solid var(--accent-color, #50a0ff);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-primary, #ccc);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  white-space: nowrap;
+  opacity: 0.92;
+}
+.drag-ghost-icon { font-size: 14px; }
+.drag-ghost-label { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.drag-ghost-count {
+  font-size: 10px;
+  background: var(--accent-color, #50a0ff);
+  color: #fff;
+  border-radius: 8px;
+  padding: 1px 5px;
+}

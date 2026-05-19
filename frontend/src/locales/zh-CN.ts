@@ -80,6 +80,11 @@ export default {
     download: '下载',
     noUpload: '暂无上传任务',
     noDownload: '暂无下载任务',
+    delete: '删除',
+    deleteTitle: '删除文件',
+    deleteContent: '确定要删除 "{name}" 吗？',
+    deleted: '已删除 "{name}"',
+    deleteFailed: '删除失败: {error}',
   },
   keys: {
     title: '密钥管理',

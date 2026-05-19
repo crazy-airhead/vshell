@@ -80,6 +80,11 @@ export default {
     download: 'Download',
     noUpload: 'No uploads',
     noDownload: 'No downloads',
+    delete: 'Delete',
+    deleteTitle: 'Delete File',
+    deleteContent: 'Are you sure you want to delete "{name}"?',
+    deleted: 'Deleted "{name}"',
+    deleteFailed: 'Delete failed: {error}',
   },
   keys: {
     title: 'SSH Keys',

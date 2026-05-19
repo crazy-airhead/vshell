@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NTree, NSpin, NButton } from 'naive-ui'
+import { NTree, NSpin, NButton, useDialog, useMessage } from 'naive-ui'
 import type { TreeOption } from 'naive-ui'
 import { Events } from '@wailsio/runtime'
 import { useSFTPStore } from '../../stores/sftp'
@@ -9,7 +9,8 @@ import { useTransferStore } from '../../stores/transfers'
 import type { SFTPFile } from '../../stores/sftp'
 import type { TransferProgress } from '../../stores/transfers'
 import LocalFileTree from './LocalFileTree.vue'
-import { SFTPUpload, SFTPDownload } from '../../../bindings/vshell/internal/app/appservice'
+import { SFTPUpload, SFTPDownload, SFTPDelete } from '../../../bindings/vshell/internal/app/appservice'
+import { useDragSource, useDropTarget } from '../../composables/useDragTransfer'
 
 const localTreeRef = ref<InstanceType<typeof LocalFileTree> | null>(null)
 
@@ -17,6 +18,8 @@ const props = defineProps<{ connectionID: string }>()
 const { t } = useI18n()
 const sftpStore = useSFTPStore()
 const transferStore = useTransferStore()
+const dialog = useDialog()
+const message = useMessage()
 
 const treeData = ref<TreeOption[]>([])
 const expandedKeys = ref<string[]>([])
@@ -47,6 +50,27 @@ const sortedRemoteFiles = computed(() => {
 function toggleSort(key: 'name' | 'size' | 'time') {
   if (sortKey.value === key) sortAsc.value = !sortAsc.value
   else { sortKey.value = key; sortAsc.value = true }
+}
+
+// --- Drag & Drop ---
+const { onRowMouseDown: onRemoteRowMouseDown, cleanup: cleanupRemoteDrag } = useDragSource({
+  source: 'remote',
+  getSelectedPaths: () => selectedRemote.value,
+  getFilePath: (file: SFTPFile) => remoteFilePath(file.name),
+  getFileLabel: (file: SFTPFile) => file.name,
+})
+
+const { targetRef: remoteDropRef, isDragOver: remoteIsDragOver, register: registerRemoteDrop, unregister: unregisterRemoteDrop } = useDropTarget({
+  acceptedSource: 'local',
+  onDrop: (paths: string[]) => handleUpload(paths),
+})
+
+function handleLocalDrop(paths: string[]) {
+  for (const remotePath of paths) {
+    const fileName = remotePath.split('/').pop() || remotePath
+    const localPath = localDir.value ? `${localDir.value}/${fileName}` : fileName
+    SFTPDownload(props.connectionID, remotePath, localPath).catch(console.error)
+  }
 }
 
 // --- Remote path ---
@@ -167,6 +191,24 @@ function handleLocalPathChange(path: string) {
   localDir.value = path
 }
 
+function handleDeleteRemote() {
+  if (selectedRemote.value.size === 0) return
+  const names = Array.from(selectedRemote.value).map(p => p.split('/').pop() || p)
+  dialog.warning({
+    title: t('sftp.deleteTitle'),
+    content: t('sftp.deleteContent', { name: names.length === 1 ? names[0] : `${names.length} items` }),
+    positiveText: t('common.delete'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      for (const remotePath of selectedRemote.value) {
+        try { await SFTPDelete(props.connectionID, remotePath) }
+        catch { /* handled via event */ }
+      }
+      setTimeout(refreshRemote, 300)
+    },
+  })
+}
+
 // --- Progress & Refresh ---
 function refreshRemote() {
   const p = sftpStore.getPanel(props.connectionID)
@@ -180,13 +222,14 @@ function refreshLocal() {
 }
 
 onMounted(() => {
+  registerRemoteDrop()
   Events.On('sftp:progress', (ev: any) => {
     const d = ev?.data
     if (d) transferStore.addOrUpdateTransfer(d as TransferProgress)
   })
   Events.On('sftp:transfer-done', (ev: any) => {
     const d = ev?.data
-    if (d?.direction === 'upload') {
+    if (d?.direction === 'upload' || d?.direction === 'delete') {
       refreshRemote()
     } else {
       refreshLocal()
@@ -198,6 +241,8 @@ onMounted(() => {
 onUnmounted(() => {
   Events.Off('sftp:progress')
   Events.Off('sftp:transfer-done')
+  cleanupRemoteDrag()
+  unregisterRemoteDrop()
 })
 
 function formatSize(bytes: number): string {
@@ -264,6 +309,9 @@ watch(() => sftpStore.treeVersion, rebuildTree)
           <NButton size="tiny" quaternary class="download-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDownload" title="Download selected">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v9M4 9l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
           </NButton>
+          <NButton size="tiny" quaternary class="delete-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDeleteRemote" title="Delete selected">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/></svg>
+          </NButton>
         </div>
 
         <div class="remote-content">
@@ -274,7 +322,7 @@ watch(() => sftpStore.treeVersion, rebuildTree)
               @update:selected-keys="handleTreeSelect" />
           </div>
 
-          <div class="remote-list">
+          <div class="remote-list" ref="remoteDropRef" :class="{ 'drag-over': remoteIsDragOver }">
             <NSpin v-if="sftpStore.getPanel(props.connectionID).loading" size="small" />
             <div v-else-if="sftpStore.getPanel(props.connectionID).error" class="sftp-error">{{ sftpStore.getPanel(props.connectionID).error }}</div>
             <table v-else class="sftp-table">
@@ -289,6 +337,7 @@ watch(() => sftpStore.treeVersion, rebuildTree)
                 <tr v-for="f in sortedRemoteFiles" :key="f.name"
                   class="sftp-row"
                   :class="{ 'sftp-dir': f.is_dir, selected: selectedRemote.has(remoteFilePath(f.name)) }"
+                  @mousedown="onRemoteRowMouseDown($event, f)"
                   @click="handleRemoteRowClick(f, $event)"
                 >
                   <td class="col-name">
@@ -316,7 +365,7 @@ watch(() => sftpStore.treeVersion, rebuildTree)
 
       <!-- Local side -->
       <div class="local-side" :style="{ flex: 4 }">
-        <LocalFileTree ref="localTreeRef" @upload="handleUpload" @path-change="handleLocalPathChange" />
+        <LocalFileTree ref="localTreeRef" @upload="handleUpload" @path-change="handleLocalPathChange" @drop-files="handleLocalDrop" />
         <!-- Upload status bar -->
         <div class="status-bar">
           <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(uploadTransfers).percent + '%' }"></div></div>
@@ -389,6 +438,8 @@ watch(() => sftpStore.treeVersion, rebuildTree)
 
 .download-btn { color: var(--text-secondary); }
 .download-btn.active { color: var(--accent-color, #0078d4); }
+.delete-btn { color: var(--text-secondary); }
+.delete-btn.active { color: var(--delete-hover-color, #e55); }
 
 .remote-content { flex: 1; display: flex; overflow: hidden; min-height: 0; }
 .remote-tree { overflow-y: auto; border-right: 1px solid var(--border-color); }
@@ -426,6 +477,14 @@ th.sortable:hover { color: var(--text-primary); }
 
 /* ---- Local side ---- */
 .local-side { min-width: 0; display: flex; flex-direction: column; }
+
+/* ---- Drag over ---- */
+.drag-over {
+  outline: 2px dashed rgba(56, 132, 244, 0.5);
+  outline-offset: -2px;
+  background: rgba(56, 132, 244, 0.06) !important;
+  transition: outline 0.15s, background 0.15s;
+}
 
 /* ---- Status bar ---- */
 .status-bar {

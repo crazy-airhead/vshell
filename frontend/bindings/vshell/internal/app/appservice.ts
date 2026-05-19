@@ -43,6 +43,10 @@ export function DeleteGroup(id: string): $CancellablePromise<void> {
     return $Call.ByID(585039529, id);
 }
 
+export function DeleteLocalFile(localPath: string): $CancellablePromise<void> {
+    return $Call.ByID(2441201403, localPath);
+}
+
 export function DeleteQuickCommand(id: string): $CancellablePromise<void> {
     return $Call.ByID(1688177718, id);
 }
@@ -83,6 +87,10 @@ export function ListQuickCommands(connectionID: string | null): $CancellableProm
     return $Call.ByID(3567644202, connectionID).then(($result: any) => {
         return $$createType9($result);
     });
+}
+
+export function SFTPDelete(connectionID: string, remotePath: string): $CancellablePromise<void> {
+    return $Call.ByID(1494492831, connectionID, remotePath);
 }
 
 export function SFTPDownload(connectionID: string, remotePath: string, localPath: string): $CancellablePromise<void> {

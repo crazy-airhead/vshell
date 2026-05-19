@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { NSpin, NButton } from 'naive-ui'
-import { GetHomeDir, ListLocalDir } from '../../../bindings/vshell/internal/app/appservice'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { NSpin, NButton, useDialog, useMessage } from 'naive-ui'
+import { GetHomeDir, ListLocalDir, DeleteLocalFile } from '../../../bindings/vshell/internal/app/appservice'
+import { useDragSource, useDropTarget } from '../../composables/useDragTransfer'
 
 const emit = defineEmits<{
   (e: 'upload', paths: string[], targetDir: string): void
   (e: 'pathChange', path: string): void
+  (e: 'drop-files', paths: string[]): void
 }>()
 
 interface LocalEntry {
@@ -15,6 +18,10 @@ interface LocalEntry {
   is_dir: boolean
   mod_time: number
 }
+
+const { t } = useI18n()
+const dialog = useDialog()
+const message = useMessage()
 
 const showHidden = ref(false)
 const currentPath = ref('')
@@ -45,6 +52,20 @@ function toggleSort(key: 'name' | 'size' | 'time') {
   if (sortKey.value === key) sortAsc.value = !sortAsc.value
   else { sortKey.value = key; sortAsc.value = true }
 }
+
+// --- Drag source ---
+const { onRowMouseDown: onLocalRowMouseDown, cleanup: cleanupLocalDrag } = useDragSource({
+  source: 'local',
+  getSelectedPaths: () => selected.value,
+  getFilePath: (entry: LocalEntry) => entry.path,
+  getFileLabel: (entry: LocalEntry) => entry.name,
+})
+
+// --- Drop target ---
+const { targetRef: localBodyRef, isDragOver: localIsDragOver, register: registerLocalDrop, unregister: unregisterLocalDrop } = useDropTarget({
+  acceptedSource: 'remote',
+  onDrop: (paths: string[]) => emit('drop-files', paths),
+})
 
 const dirCache = ref<Record<string, LocalEntry[]>>({})
 
@@ -100,6 +121,24 @@ function toggleSelect(entry: LocalEntry, e: MouseEvent) {
   }
 }
 
+function handleDeleteLocal() {
+  if (selected.value.size === 0) return
+  const names = Array.from(selected.value).map(p => p.split('/').pop() || p)
+  dialog.warning({
+    title: t('sftp.deleteTitle'),
+    content: t('sftp.deleteContent', { name: names.length === 1 ? names[0] : `${names.length} items` }),
+    positiveText: t('common.delete'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      for (const p of selected.value) {
+        try { await DeleteLocalFile(p) } catch { /* ignore */ }
+      }
+      selected.value = new Set()
+      handleRefresh()
+    },
+  })
+}
+
 function handleRefresh() {
   dirCache.value = {}
   navigateTo(currentPath.value)
@@ -152,6 +191,12 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  registerLocalDrop()
+})
+
+onUnmounted(() => {
+  cleanupLocalDrag()
+  unregisterLocalDrop()
 })
 </script>
 
@@ -174,9 +219,12 @@ onMounted(async () => {
       <NButton size="tiny" quaternary class="upload-btn" :class="{ active: selected.size > 0 }" @click="handleUpload" title="Upload selected">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 12V3M4 6l4-4 4 4"/><path d="M2 12v2h12v-2"/></svg>
       </NButton>
+      <NButton size="tiny" quaternary class="delete-btn" :class="{ active: selected.size > 0 }" @click="handleDeleteLocal" title="Delete selected">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/></svg>
+      </NButton>
     </div>
 
-    <div class="local-body">
+    <div class="local-body" ref="localBodyRef" :class="{ 'drag-over': localIsDragOver }">
       <NSpin v-if="loading || loadingDir" size="small" />
       <table v-else class="local-table">
         <thead>
@@ -190,6 +238,7 @@ onMounted(async () => {
           <tr v-for="f in files" :key="f.name"
             class="local-row"
             :class="{ 'dir-row': f.is_dir, selected: selected.has(f.path) }"
+            @mousedown="onLocalRowMouseDown($event, f)"
             @click="handleRowClick(f, $event)"
           >
             <td class="col-name">
@@ -253,8 +302,17 @@ onMounted(async () => {
 
 .upload-btn { color: var(--text-secondary); }
 .upload-btn.active { color: var(--accent-color, #0078d4); }
+.delete-btn { color: var(--text-secondary); }
+.delete-btn.active { color: var(--delete-hover-color, #e55); }
 
 .local-body { flex: 1; overflow-y: auto; min-height: 0; }
+
+.drag-over {
+  outline: 2px dashed rgba(56, 132, 244, 0.5);
+  outline-offset: -2px;
+  background: rgba(56, 132, 244, 0.06) !important;
+  transition: outline 0.15s, background 0.15s;
+}
 
 .local-table { width: 100%; border-collapse: collapse; }
 .local-table th {

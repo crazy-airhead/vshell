@@ -450,6 +450,37 @@ func (c *Client) ReadDir(path string) ([]FileInfo, error) {
 	return result, nil
 }
 
+func (c *Client) Remove(path string) error {
+	stat, err := c.sftpClient.Stat(path)
+	if err != nil {
+		return fmt.Errorf("stat %s: %w", path, err)
+	}
+	if stat.IsDir() {
+		return c.removeDirRecursive(path)
+	}
+	return c.sftpClient.Remove(path)
+}
+
+func (c *Client) removeDirRecursive(dir string) error {
+	entries, err := c.sftpClient.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		path := dir + "/" + e.Name()
+		if e.IsDir() {
+			if err := c.removeDirRecursive(path); err != nil {
+				return err
+			}
+		} else {
+			if err := c.sftpClient.Remove(path); err != nil {
+				return err
+			}
+		}
+	}
+	return c.sftpClient.RemoveDirectory(dir)
+}
+
 type FileInfo struct {
 	Name    string `json:"name"`
 	Size    int64  `json:"size"`
