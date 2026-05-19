@@ -14,6 +14,7 @@ type Manager struct {
 	sshMgr  *vshellssh.Manager
 	crypto  *crypto.CryptoService
 	onEvent func(string, any)
+	sem     chan struct{}
 }
 
 func NewManager(sshMgr *vshellssh.Manager, cryptoSvc *crypto.CryptoService, onEvent func(string, any)) *Manager {
@@ -22,6 +23,7 @@ func NewManager(sshMgr *vshellssh.Manager, cryptoSvc *crypto.CryptoService, onEv
 		sshMgr:  sshMgr,
 		crypto:  cryptoSvc,
 		onEvent: onEvent,
+		sem:     make(chan struct{}, 3),
 	}
 }
 
@@ -64,19 +66,23 @@ func (m *Manager) ReadDir(connectionID, path string) ([]FileInfo, error) {
 }
 
 func (m *Manager) UploadFile(connectionID, localPath, remotePath string) error {
+	m.sem <- struct{}{}
+	defer func() { <-m.sem }()
 	client, err := m.GetOrCreateClient(connectionID)
 	if err != nil {
 		return err
 	}
-	return client.UploadFile(localPath, remotePath)
+	return client.Upload(localPath, remotePath)
 }
 
 func (m *Manager) DownloadFile(connectionID, remotePath, localPath string) error {
+	m.sem <- struct{}{}
+	defer func() { <-m.sem }()
 	client, err := m.GetOrCreateClient(connectionID)
 	if err != nil {
 		return err
 	}
-	return client.DownloadFile(remotePath, localPath)
+	return client.Download(remotePath, localPath)
 }
 
 func (m *Manager) CloseClient(connectionID string) {

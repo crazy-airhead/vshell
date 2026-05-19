@@ -104,9 +104,11 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 			emit("sftp:upload:error", err.Error())
 			return
 		}
-		if err := a.sftpManager.UploadFile(msg.ConnectionID, msg.LocalPath, msg.RemotePath); err != nil {
-			emit("sftp:upload:error", err.Error())
-		}
+		go func() {
+			if err := a.sftpManager.UploadFile(msg.ConnectionID, msg.LocalPath, msg.RemotePath); err != nil {
+				emit("sftp:upload:error", err.Error())
+			}
+		}()
 	})
 
 	a.wailsApp.Event.On("sftp:download", func(e *application.CustomEvent) {
@@ -120,9 +122,11 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 			emit("sftp:download:error", err.Error())
 			return
 		}
-		if err := a.sftpManager.DownloadFile(msg.ConnectionID, msg.RemotePath, msg.LocalPath); err != nil {
-			emit("sftp:download:error", err.Error())
-		}
+		go func() {
+			if err := a.sftpManager.DownloadFile(msg.ConnectionID, msg.RemotePath, msg.LocalPath); err != nil {
+				emit("sftp:download:error", err.Error())
+			}
+		}()
 	})
 
 	// Listen for terminal resize events from frontend
@@ -411,11 +415,23 @@ func (a *AppService) SFTPReadDir(connectionID string, path string) ([]sftp.FileI
 }
 
 func (a *AppService) SFTPUpload(connectionID, localPath, remotePath string) error {
-	return a.sftpManager.UploadFile(connectionID, localPath, remotePath)
+	go func() {
+		if err := a.sftpManager.UploadFile(connectionID, localPath, remotePath); err != nil {
+			a.wailsApp.Event.Emit("sftp:upload:error", err.Error())
+		}
+		a.wailsApp.Event.Emit("sftp:transfer-done", map[string]string{"direction": "upload", "connectionID": connectionID})
+	}()
+	return nil
 }
 
 func (a *AppService) SFTPDownload(connectionID, remotePath, localPath string) error {
-	return a.sftpManager.DownloadFile(connectionID, remotePath, localPath)
+	go func() {
+		if err := a.sftpManager.DownloadFile(connectionID, remotePath, localPath); err != nil {
+			a.wailsApp.Event.Emit("sftp:download:error", err.Error())
+		}
+		a.wailsApp.Event.Emit("sftp:transfer-done", map[string]string{"direction": "download"})
+	}()
+	return nil
 }
 
 // --- Local File System ---

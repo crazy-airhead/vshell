@@ -23,21 +23,20 @@ export const useTransferStore = defineStore('transfers', () => {
     } else {
       transfers.value.push(t)
     }
-    // Auto-remove completed transfers after 5 seconds
-    if (t.done) {
-      setTimeout(() => {
-        transfers.value = transfers.value.filter(x => x.id !== t.id)
-      }, 5000)
-    }
   }
 
   function removeTransfer(id: string) {
     transfers.value = transfers.value.filter(x => x.id !== id)
   }
 
+  function clearDone() {
+    transfers.value = transfers.value.filter(x => !x.done)
+  }
+
   return {
     transfers,
     addOrUpdateTransfer,
     removeTransfer,
+    clearDone,
   }
 })

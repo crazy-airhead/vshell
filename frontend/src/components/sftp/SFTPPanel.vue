@@ -11,6 +11,8 @@ import type { TransferProgress } from '../../stores/transfers'
 import LocalFileTree from './LocalFileTree.vue'
 import { SFTPUpload, SFTPDownload } from '../../../bindings/vshell/internal/app/appservice'
 
+const localTreeRef = ref<InstanceType<typeof LocalFileTree> | null>(null)
+
 const props = defineProps<{ connectionID: string }>()
 const { t } = useI18n()
 const sftpStore = useSFTPStore()
@@ -19,10 +21,12 @@ const transferStore = useTransferStore()
 const treeData = ref<TreeOption[]>([])
 const expandedKeys = ref<string[]>([])
 const treeWidth = ref(170)
-const dropOver = ref(false)
 const editingRemotePath = ref(false)
 const editRemotePath = ref('')
+const localDir = ref('')
+const selectedRemote = ref(new Set<string>())
 
+// --- Remote path ---
 const remotePathParts = computed(() => {
   const p = sftpStore.getPanel(props.connectionID)
   const parts = p.currentPath.split('/').filter(Boolean)
@@ -33,6 +37,7 @@ const remotePathParts = computed(() => {
 })
 
 function navigateRemoteTo(dirPath: string) {
+  selectedRemote.value = new Set()
   sftpStore.navigateToDir(props.connectionID, dirPath)
   rebuildTree()
 }
@@ -47,24 +52,19 @@ function commitRemoteEdit() {
   navigateRemoteTo(editRemotePath.value)
 }
 
-function buildTreeNodes(
-  parentPath: string,
-  cache: Record<string, SFTPFile[]>,
-): TreeOption[] {
+// --- Tree ---
+function buildTreeNodes(parentPath: string, cache: Record<string, SFTPFile[]>): TreeOption[] {
   const items = cache[parentPath]
   if (!items) return []
-  return items
-    .filter((f) => f.is_dir)
-    .map((f) => {
-      const fullPath = parentPath === '/' ? `/${f.name}` : `${parentPath}/${f.name}`
-      const hasChildren = fullPath in cache
-      return {
-        key: fullPath,
-        label: f.name,
-        children: hasChildren ? buildTreeNodes(fullPath, cache) : undefined,
-        isLeaf: false,
-      }
-    })
+  return items.filter((f) => f.is_dir).map((f) => {
+    const fullPath = parentPath === '/' ? `/${f.name}` : `${parentPath}/${f.name}`
+    return {
+      key: fullPath,
+      label: f.name,
+      children: fullPath in cache ? buildTreeNodes(fullPath, cache) : undefined,
+      isLeaf: false,
+    }
+  })
 }
 
 function rebuildTree() {
@@ -81,86 +81,100 @@ async function handleLoad(node: TreeOption) {
 
 function handleTreeSelect(keys: string[]) {
   if (keys.length === 0) return
-  const path = keys[0]
-  sftpStore.navigateToDir(props.connectionID, path)
-  rebuildTree()
+  navigateRemoteTo(keys[0])
 }
 
-function handleFileClick(file: SFTPFile) {
-  if (!file.is_dir) return
+// --- Remote file list ---
+function remoteFilePath(name: string): string {
   const p = sftpStore.getPanel(props.connectionID)
-  const newPath = p.currentPath === '/' ? `/${file.name}` : `${p.currentPath}/${file.name}`
-  if (!expandedKeys.value.includes(p.currentPath)) {
-    expandedKeys.value = [...expandedKeys.value, p.currentPath]
+  return p.currentPath === '/' ? `/${name}` : `${p.currentPath}/${name}`
+}
+
+function handleRemoteNameClick(file: SFTPFile, e: MouseEvent) {
+  if (file.is_dir && !e.ctrlKey && !e.metaKey) {
+    const newPath = remoteFilePath(file.name)
+    if (!expandedKeys.value.includes(sftpStore.getPanel(props.connectionID).currentPath)) {
+      expandedKeys.value = [...expandedKeys.value, sftpStore.getPanel(props.connectionID).currentPath]
+    }
+    sftpStore.navigateToDir(props.connectionID, newPath)
+    return
   }
-  sftpStore.navigateToDir(props.connectionID, newPath)
+  toggleRemoteSelect(file, e)
+}
+
+function handleRemoteRowClick(file: SFTPFile, e: MouseEvent) {
+  toggleRemoteSelect(file, e)
+}
+
+function toggleRemoteSelect(file: SFTPFile, e: MouseEvent) {
+  const fp = remoteFilePath(file.name)
+  if (e.ctrlKey || e.metaKey) {
+    if (selectedRemote.value.has(fp)) selectedRemote.value.delete(fp)
+    else selectedRemote.value.add(fp)
+  } else {
+    selectedRemote.value = new Set([fp])
+  }
 }
 
 function handleRefresh() {
   const p = sftpStore.getPanel(props.connectionID)
+  navigateRemoteTo(p.currentPath)
+}
+
+// --- Transfer ---
+function handleDownload() {
+  if (selectedRemote.value.size === 0) return
+  for (const remotePath of selectedRemote.value) {
+    const fileName = remotePath.split('/').pop() || remotePath
+    const localPath = localDir.value ? `${localDir.value}/${fileName}` : fileName
+    SFTPDownload(props.connectionID, remotePath, localPath).catch(console.error)
+  }
+}
+
+function handleUpload(localPaths: string[]) {
+  const p = sftpStore.getPanel(props.connectionID)
+  for (const localPath of localPaths) {
+    const fileName = localPath.split('/').pop() || localPath
+    const remotePath = p.currentPath === '/' ? `/${fileName}` : `${p.currentPath}/${fileName}`
+    SFTPUpload(props.connectionID, localPath, remotePath).catch(console.error)
+  }
+}
+
+function handleLocalPathChange(path: string) {
+  localDir.value = path
+}
+
+// --- Progress & Refresh ---
+function refreshRemote() {
+  const p = sftpStore.getPanel(props.connectionID)
+  selectedRemote.value = new Set()
   sftpStore.navigateToDir(props.connectionID, p.currentPath)
   rebuildTree()
 }
 
-// --- Drag & Drop: Remote → Local (Download) ---
-function onFileDragStart(e: DragEvent, file: SFTPFile) {
-  if (file.is_dir) {
-    e.preventDefault()
-    return
-  }
-  const p = sftpStore.getPanel(props.connectionID)
-  const remotePath = p.currentPath === '/' ? `/${file.name}` : `${p.currentPath}/${file.name}`
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'copy'
-    e.dataTransfer.setData('text/plain', remotePath)
-  }
+function refreshLocal() {
+  localTreeRef.value?.refresh()
 }
 
-// --- Drag & Drop: Local → Remote (Upload) ---
-function onListDragOver(e: DragEvent) {
-  e.preventDefault()
-  dropOver.value = true
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = 'copy'
-  }
-}
-
-function onListDragLeave() {
-  dropOver.value = false
-}
-
-function onListDrop(e: DragEvent) {
-  e.preventDefault()
-  dropOver.value = false
-  if (!e.dataTransfer) return
-  const data = e.dataTransfer.getData('text/plain')
-  if (!data) return
-  const paths = data.split('\n').filter(Boolean)
-  const p = sftpStore.getPanel(props.connectionID)
-  for (const localPath of paths) {
-    const fileName = localPath.split('/').pop() || localPath
-    const remotePath = p.currentPath === '/' ? `/${fileName}` : `${p.currentPath}/${fileName}`
-    SFTPUpload(props.connectionID, localPath, remotePath).catch(() => {})
-  }
-}
-
-function onLocalDropFiles(paths: string[], targetDir: string) {
-  for (const remotePath of paths) {
-    const fileName = remotePath.split('/').pop() || remotePath
-    const localPath = targetDir.endsWith('/') ? `${targetDir}${fileName}` : `${targetDir}/${fileName}`
-    SFTPDownload(props.connectionID, remotePath, localPath).catch(() => {})
-  }
-}
-
-// --- Progress Events ---
 onMounted(() => {
-  Events.On('sftp:progress', (e: any) => {
-    transferStore.addOrUpdateTransfer(e as TransferProgress)
+  Events.On('sftp:progress', (ev: any) => {
+    const d = ev?.data
+    if (d) transferStore.addOrUpdateTransfer(d as TransferProgress)
+  })
+  Events.On('sftp:transfer-done', (ev: any) => {
+    const d = ev?.data
+    if (d?.direction === 'upload') {
+      refreshRemote()
+    } else {
+      refreshLocal()
+    }
+    setTimeout(() => transferStore.clearDone(), 2000)
   })
 })
 
 onUnmounted(() => {
   Events.Off('sftp:progress')
+  Events.Off('sftp:transfer-done')
 })
 
 function formatSize(bytes: number): string {
@@ -181,18 +195,36 @@ function formatSpeed(kbps: number): string {
   return (kbps / 1024).toFixed(1) + ' MB/s'
 }
 
-watch(() => sftpStore.treeVersion, () => {
-  rebuildTree()
-})
+const downloadTransfers = computed(() => transferStore.transfers.filter(t => t.direction === 'download'))
+const uploadTransfers = computed(() => transferStore.transfers.filter(t => t.direction === 'upload'))
+
+function transferSummary(transfers: TransferProgress[]) {
+  if (transfers.length === 0) return { path: '', percent: 0, speed: 0 }
+  let totalBytes = 0
+  let transferred = 0
+  let speed = 0
+  let currentPath = ''
+  for (const t of transfers) {
+    totalBytes += t.total_bytes
+    transferred += t.transferred
+    if (!t.done) {
+      speed += t.speed_kbps
+      currentPath = t.file_name
+    }
+  }
+  if (!currentPath) currentPath = transfers[transfers.length - 1].file_name
+  const percent = totalBytes > 0 ? (transferred / totalBytes) * 100 : 0
+  return { path: currentPath, percent: Math.min(100, percent), speed }
+}
+
+watch(() => sftpStore.treeVersion, rebuildTree)
 </script>
 
 <template>
   <div class="sftp-panel">
-    <!-- Body: Remote (70%) | Local (30%) -->
     <div class="sftp-body">
       <!-- Remote side -->
       <div class="remote-side" :style="{ flex: 6 }">
-        <!-- Remote path bar -->
         <div class="remote-toolbar">
           <template v-if="!editingRemotePath">
             <span class="remote-breadcrumb" @dblclick="startRemoteEdit">
@@ -203,38 +235,23 @@ watch(() => sftpStore.treeVersion, () => {
               </template>
             </span>
           </template>
-          <input
-            v-else
-            v-model="editRemotePath"
-            class="remote-path-input"
-            @keyup.enter="commitRemoteEdit"
-            @keyup.escape="editingRemotePath = false"
-            @blur="commitRemoteEdit"
-          />
+          <input v-else v-model="editRemotePath" class="remote-path-input"
+            @keyup.enter="commitRemoteEdit" @keyup.escape="editingRemotePath = false" @blur="commitRemoteEdit" />
           <NButton size="tiny" quaternary @click="handleRefresh">{{ t('common.refresh') }}</NButton>
+          <NButton size="tiny" quaternary class="download-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDownload" title="Download selected">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v9M4 9l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
+          </NButton>
         </div>
 
-        <!-- Remote: tree + file list -->
         <div class="remote-content">
           <div class="remote-tree" :style="{ width: treeWidth + 'px', flexShrink: 0 }">
-            <NTree
-              :data="treeData"
-              :expanded-keys="expandedKeys"
-              :on-load="handleLoad"
-              selectable
-              block-line
+            <NTree :data="treeData" :expanded-keys="expandedKeys" :on-load="handleLoad"
+              selectable block-line
               @update:expanded-keys="(keys: string[]) => expandedKeys = keys"
-              @update:selected-keys="handleTreeSelect"
-            />
+              @update:selected-keys="handleTreeSelect" />
           </div>
 
-          <div
-            class="remote-list"
-            :class="{ 'drop-active': dropOver }"
-            @dragover="onListDragOver"
-            @dragleave="onListDragLeave"
-            @drop="onListDrop"
-          >
+          <div class="remote-list">
             <NSpin v-if="sftpStore.getPanel(props.connectionID).loading" size="small" />
             <div v-else-if="sftpStore.getPanel(props.connectionID).error" class="sftp-error">{{ sftpStore.getPanel(props.connectionID).error }}</div>
             <table v-else class="sftp-table">
@@ -246,16 +263,14 @@ watch(() => sftpStore.treeVersion, () => {
                 </tr>
               </thead>
               <tbody>
-                <tr
-                  v-for="f in sftpStore.getPanel(props.connectionID).files"
-                  :key="f.name"
+                <tr v-for="f in sftpStore.getPanel(props.connectionID).files" :key="f.name"
                   class="sftp-row"
-                  :class="{ 'sftp-dir': f.is_dir }"
-                  :draggable="!f.is_dir"
-                  @click="handleFileClick(f)"
-                  @dragstart="onFileDragStart($event, f)"
+                  :class="{ 'sftp-dir': f.is_dir, selected: selectedRemote.has(remoteFilePath(f.name)) }"
+                  @click="handleRemoteRowClick(f, $event)"
                 >
-                  <td class="col-name"><span class="file-icon">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>{{ f.name }}</td>
+                  <td class="col-name dir-name" @click.stop="handleRemoteNameClick(f, $event)">
+                    <span class="file-icon">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>{{ f.name }}
+                  </td>
                   <td class="col-size">{{ f.is_dir ? '-' : formatSize(f.size) }}</td>
                   <td class="col-time">{{ formatTime(f.mod_time) }}</td>
                 </tr>
@@ -266,25 +281,23 @@ watch(() => sftpStore.treeVersion, () => {
             </table>
           </div>
         </div>
+        <!-- Download status bar -->
+        <div class="status-bar">
+          <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(downloadTransfers).percent + '%' }"></div></div>
+          <span class="status-path">{{ transferSummary(downloadTransfers).path }}</span>
+          <span class="status-speed">{{ transferSummary(downloadTransfers).speed > 0 ? formatSpeed(transferSummary(downloadTransfers).speed) : '' }}</span>
+        </div>
       </div>
 
       <!-- Local side -->
       <div class="local-side" :style="{ flex: 4 }">
-        <LocalFileTree @drop-files="onLocalDropFiles" />
-      </div>
-    </div>
-
-    <!-- Progress area -->
-    <div v-if="transferStore.transfers.length > 0" class="sftp-progress">
-      <div v-for="t in transferStore.transfers" :key="t.id" class="transfer-item">
-        <span class="transfer-dir">{{ t.direction === 'upload' ? '⬆' : '⬇' }}</span>
-        <span class="transfer-name">{{ t.file_name }}</span>
-        <div class="transfer-bar">
-          <div class="transfer-bar-fill" :class="{ error: t.error }" :style="{ width: Math.min(100, t.percent) + '%' }"></div>
+        <LocalFileTree ref="localTreeRef" @upload="handleUpload" @path-change="handleLocalPathChange" />
+        <!-- Upload status bar -->
+        <div class="status-bar">
+          <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(uploadTransfers).percent + '%' }"></div></div>
+          <span class="status-path">{{ transferSummary(uploadTransfers).path }}</span>
+          <span class="status-speed">{{ transferSummary(uploadTransfers).speed > 0 ? formatSpeed(transferSummary(uploadTransfers).speed) : '' }}</span>
         </div>
-        <span class="transfer-pct">{{ t.percent.toFixed(0) }}%</span>
-        <span class="transfer-speed">{{ formatSpeed(t.speed_kbps) }}</span>
-        <button v-if="t.done" class="transfer-dismiss" @click="transferStore.removeTransfer(t.id)">&#10005;</button>
       </div>
     </div>
   </div>
@@ -333,19 +346,9 @@ watch(() => sftpStore.treeVersion, () => {
   user-select: none;
 }
 
-.breadcrumb-part {
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.breadcrumb-part:hover {
-  color: var(--text-primary);
-  text-decoration: underline;
-}
-
-.breadcrumb-sep {
-  color: var(--text-secondary);
-}
+.breadcrumb-part { color: var(--text-secondary); cursor: pointer; }
+.breadcrumb-part:hover { color: var(--text-primary); text-decoration: underline; }
+.breadcrumb-sep { color: var(--text-secondary); }
 
 .remote-path-input {
   flex: 1;
@@ -359,165 +362,84 @@ watch(() => sftpStore.treeVersion, () => {
   outline: none;
 }
 
-.remote-content {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  min-height: 0;
-}
+.download-btn { color: var(--text-secondary); }
+.download-btn.active { color: var(--accent-color, #0078d4); }
 
-.remote-tree {
-  overflow-y: auto;
-  border-right: 1px solid var(--border-color);
-}
+.remote-content { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+.remote-tree { overflow-y: auto; border-right: 1px solid var(--border-color); }
+.remote-list { flex: 1; overflow-y: auto; }
 
-.remote-list {
-  flex: 1;
-  overflow-y: auto;
-}
+.sftp-error { padding: 8px; color: var(--error-color, #e55); }
 
-.remote-list.drop-active {
-  background: var(--action-hover-bg);
-}
-
-.sftp-error {
-  padding: 8px;
-  color: var(--error-color, #e55);
-}
-
-.sftp-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
+.sftp-table { width: 100%; border-collapse: collapse; }
 .sftp-table th {
-  text-align: left;
-  padding: 4px 8px;
+  text-align: left; padding: 4px 8px;
   border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-weight: 500;
-  font-size: var(--font-size-sm);
+  color: var(--text-secondary); font-weight: 500; font-size: var(--font-size-sm);
 }
-
 .sftp-table td {
   padding: 3px 8px;
   border-bottom: 1px solid var(--border-color);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.sftp-row {
-  cursor: default;
-}
-
-.sftp-row.sftp-dir {
-  cursor: pointer;
-}
-
-.sftp-row:hover {
-  background: var(--hover-overlay-strong);
-}
-
-.sftp-dir:hover {
-  background: var(--action-hover-bg);
-}
+.sftp-row { cursor: default; }
+.sftp-row.sftp-dir .dir-name { cursor: pointer; }
+.sftp-row:hover { background: var(--hover-overlay-strong); }
+.sftp-dir:hover .dir-name:hover { color: var(--accent-color, #0078d4); }
+.sftp-row.selected { background: var(--action-hover-bg); }
 
 .col-name { max-width: 300px; }
 .col-size { width: 70px; text-align: right; }
 .col-time { width: 100px; }
 .file-icon { margin-right: 4px; }
-
-.sftp-empty-msg {
-  text-align: center;
-  color: var(--text-secondary);
-  padding: 16px;
-}
+.sftp-empty-msg { text-align: center; color: var(--text-secondary); padding: 16px; }
 
 /* ---- Local side ---- */
-.local-side {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
+.local-side { min-width: 0; display: flex; flex-direction: column; }
 
-/* ---- Progress ---- */
-.sftp-progress {
-  border-top: 1px solid var(--border-color);
-  padding: 4px 8px;
+/* ---- Status bar ---- */
+.status-bar {
+  position: relative;
+  height: 22px;
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  max-height: 120px;
-  overflow-y: auto;
-}
-
-.transfer-item {
-  display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: var(--font-size-sm);
+  justify-content: space-between;
+  border-top: 1px solid var(--border-color);
+  padding: 0 8px;
+  font-size: 11px;
 }
 
-.transfer-dir {
-  font-size: 12px;
-  width: 16px;
-  text-align: center;
+.status-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--stat-bar-bg);
+  overflow: hidden;
 }
 
-.transfer-name {
-  width: 140px;
+.status-fill {
+  height: 100%;
+  background: rgba(56, 132, 244, 0.35);
+  transition: width 0.15s ease;
+}
+
+.status-path {
+  position: relative;
+  z-index: 1;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-primary);
-  font-size: var(--font-size-sm);
 }
 
-.transfer-bar {
-  flex: 1;
-  height: 4px;
-  background: var(--stat-bar-bg);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.transfer-bar-fill {
-  height: 100%;
-  background: var(--accent-color);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.transfer-bar-fill.error {
-  background: var(--error-color, #e55);
-}
-
-.transfer-pct {
-  width: 32px;
-  text-align: right;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.transfer-speed {
-  width: 64px;
-  text-align: right;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.transfer-dismiss {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 10px;
-  padding: 0 2px;
-}
-
-.transfer-dismiss:hover {
+.status-speed {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  margin-left: 8px;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 </style>

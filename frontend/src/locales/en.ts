@@ -76,6 +76,10 @@ export default {
     size: 'Size',
     modified: 'Modified',
     emptyDir: 'Empty directory',
+    upload: 'Upload',
+    download: 'Download',
+    noUpload: 'No uploads',
+    noDownload: 'No downloads',
   },
   keys: {
     title: 'SSH Keys',

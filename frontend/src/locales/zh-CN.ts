@@ -76,6 +76,10 @@ export default {
     size: '大小',
     modified: '修改时间',
     emptyDir: '空目录',
+    upload: '上传',
+    download: '下载',
+    noUpload: '暂无上传任务',
+    noDownload: '暂无下载任务',
   },
   keys: {
     title: '密钥管理',

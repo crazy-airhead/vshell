@@ -4,7 +4,8 @@ import { NSpin, NButton } from 'naive-ui'
 import { GetHomeDir, ListLocalDir } from '../../../bindings/vshell/internal/app/appservice'
 
 const emit = defineEmits<{
-  (e: 'dropFiles', paths: string[], targetDir: string): void
+  (e: 'upload', paths: string[], targetDir: string): void
+  (e: 'pathChange', path: string): void
 }>()
 
 interface LocalEntry {
@@ -20,9 +21,9 @@ const currentPath = ref('')
 const allFiles = ref<LocalEntry[]>([])
 const loading = ref(true)
 const loadingDir = ref(false)
-const dragOver = ref(false)
 const editing = ref(false)
 const editPath = ref('')
+const selected = ref(new Set<string>())
 
 const files = computed(() =>
   showHidden.value ? allFiles.value : allFiles.value.filter(f => !f.name.startsWith('.'))
@@ -51,16 +52,35 @@ async function loadDir(dirPath: string): Promise<LocalEntry[]> {
 
 async function navigateTo(dirPath: string) {
   loadingDir.value = true
+  selected.value = new Set()
   try {
     allFiles.value = await loadDir(dirPath)
     currentPath.value = dirPath
+    emit('pathChange', dirPath)
   } finally {
     loadingDir.value = false
   }
 }
 
-function handleFileClick(entry: LocalEntry) {
-  if (entry.is_dir) navigateTo(entry.path)
+function handleNameClick(entry: LocalEntry, e: MouseEvent) {
+  if (entry.is_dir && !e.ctrlKey && !e.metaKey) {
+    navigateTo(entry.path)
+    return
+  }
+  toggleSelect(entry, e)
+}
+
+function handleRowClick(entry: LocalEntry, e: MouseEvent) {
+  toggleSelect(entry, e)
+}
+
+function toggleSelect(entry: LocalEntry, e: MouseEvent) {
+  if (e.ctrlKey || e.metaKey) {
+    if (selected.value.has(entry.path)) selected.value.delete(entry.path)
+    else selected.value.add(entry.path)
+  } else {
+    selected.value = new Set([entry.path])
+  }
 }
 
 function handleRefresh() {
@@ -68,7 +88,13 @@ function handleRefresh() {
   navigateTo(currentPath.value)
 }
 
-// Breadcrumb
+defineExpose({ refresh: handleRefresh })
+
+function handleUpload() {
+  if (selected.value.size === 0) return
+  emit('upload', Array.from(selected.value), currentPath.value)
+}
+
 const pathParts = computed(() => {
   const parts = currentPath.value.split('/').filter(Boolean)
   return parts.map((name, i) => ({
@@ -85,39 +111,6 @@ function startEdit() {
 function commitEdit() {
   editing.value = false
   navigateTo(editPath.value)
-}
-
-// Drag & Drop
-function onFileDragStart(e: DragEvent, entry: LocalEntry) {
-  if (entry.is_dir) {
-    e.preventDefault()
-    return
-  }
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'copy'
-    e.dataTransfer.setData('text/plain', entry.path)
-  }
-}
-
-function onDragOver(e: DragEvent) {
-  e.preventDefault()
-  dragOver.value = true
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = 'copy'
-  }
-}
-
-function onDragLeave() {
-  dragOver.value = false
-}
-
-function onDrop(e: DragEvent) {
-  e.preventDefault()
-  dragOver.value = false
-  if (!e.dataTransfer) return
-  const data = e.dataTransfer.getData('text/plain')
-  if (!data) return
-  emit('dropFiles', data.split('\n').filter(Boolean), currentPath.value)
 }
 
 function formatSize(bytes: number): string {
@@ -146,14 +139,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div
-    class="local-panel"
-    :class="{ 'drop-active': dragOver }"
-    @dragover="onDragOver"
-    @dragleave="onDragLeave"
-    @drop="onDrop"
-  >
-    <!-- Breadcrumb toolbar -->
+  <div class="local-panel">
     <div class="local-toolbar">
       <template v-if="!editing">
         <span class="local-breadcrumb" @dblclick="startEdit">
@@ -164,19 +150,15 @@ onMounted(async () => {
           </template>
         </span>
       </template>
-      <input
-        v-else
-        v-model="editPath"
-        class="local-path-input"
-        @keyup.enter="commitEdit"
-        @keyup.escape="editing = false"
-        @blur="commitEdit"
-      />
-      <NButton size="tiny" quaternary @click="handleRefresh">&#x21bb;</NButton>
-      <NButton size="tiny" quaternary :type="showHidden ? 'primary' : 'default'" @click="showHidden = !showHidden" title="Toggle hidden files">.*</NButton>
+      <input v-else v-model="editPath" class="local-path-input"
+        @keyup.enter="commitEdit" @keyup.escape="editing = false" @blur="commitEdit" />
+      <NButton size="tiny" quaternary @click="handleRefresh" title="Refresh">&#x21bb;</NButton>
+      <NButton size="tiny" quaternary :type="showHidden ? 'primary' : 'default'" @click="showHidden = !showHidden">.*</NButton>
+      <NButton size="tiny" quaternary class="upload-btn" :class="{ active: selected.size > 0 }" @click="handleUpload" title="Upload selected">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 12V3M4 6l4-4 4 4"/><path d="M2 12v2h12v-2"/></svg>
+      </NButton>
     </div>
 
-    <!-- File list -->
     <div class="local-body">
       <NSpin v-if="loading || loadingDir" size="small" />
       <table v-else class="local-table">
@@ -188,16 +170,12 @@ onMounted(async () => {
           </tr>
         </thead>
         <tbody>
-          <tr
-            v-for="f in files"
-            :key="f.name"
+          <tr v-for="f in files" :key="f.name"
             class="local-row"
-            :class="{ 'dir-row': f.is_dir }"
-            :draggable="!f.is_dir"
-            @click="handleFileClick(f)"
-            @dragstart="onFileDragStart($event, f)"
+            :class="{ 'dir-row': f.is_dir, selected: selected.has(f.path) }"
+            @click="handleRowClick(f, $event)"
           >
-            <td class="col-name">
+            <td class="col-name dir-name" @click.stop="handleNameClick(f, $event)">
               <span class="file-icon">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>
               {{ f.name }}
             </td>
@@ -221,10 +199,6 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-.local-panel.drop-active {
-  background: var(--action-hover-bg);
-}
-
 .local-toolbar {
   display: flex;
   align-items: center;
@@ -242,19 +216,9 @@ onMounted(async () => {
   user-select: none;
 }
 
-.crumb-part {
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.crumb-part:hover {
-  color: var(--text-primary);
-  text-decoration: underline;
-}
-
-.crumb-sep {
-  color: var(--text-secondary);
-}
+.crumb-part { color: var(--text-secondary); cursor: pointer; }
+.crumb-part:hover { color: var(--text-primary); text-decoration: underline; }
+.crumb-sep { color: var(--text-secondary); }
 
 .local-path-input {
   flex: 1;
@@ -268,47 +232,32 @@ onMounted(async () => {
   outline: none;
 }
 
-.local-body {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-}
+.upload-btn { color: var(--text-secondary); }
+.upload-btn.active { color: var(--accent-color, #0078d4); }
 
-.local-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+.local-body { flex: 1; overflow-y: auto; min-height: 0; }
 
+.local-table { width: 100%; border-collapse: collapse; }
 .local-table th {
-  text-align: left;
-  padding: 4px 8px;
+  text-align: left; padding: 4px 8px;
   border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-weight: 500;
-  font-size: var(--font-size-sm);
+  color: var(--text-secondary); font-weight: 500; font-size: var(--font-size-sm);
 }
-
 .local-table td {
   padding: 3px 8px;
   border-bottom: 1px solid var(--border-color);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .local-row { cursor: default; }
-.local-row.dir-row { cursor: pointer; }
+.local-row.dir-row .dir-name { cursor: pointer; }
 .local-row:hover { background: var(--hover-overlay-strong); }
-.dir-row:hover { background: var(--action-hover-bg); }
+.dir-row:hover .dir-name:hover { color: var(--accent-color, #0078d4); }
+.local-row.selected { background: var(--action-hover-bg); }
 
 .col-name { max-width: 160px; }
 .col-size { width: 60px; text-align: right; }
 .col-time { width: 85px; font-size: 11px; }
 .file-icon { margin-right: 4px; }
-
-.local-empty {
-  text-align: center;
-  color: var(--text-secondary);
-  padding: 16px;
-}
+.local-empty { text-align: center; color: var(--text-secondary); padding: 16px; }
 </style>
