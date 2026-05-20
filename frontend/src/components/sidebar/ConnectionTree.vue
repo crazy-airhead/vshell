@@ -160,10 +160,8 @@ async function handleConnect(connID: string) {
     dialog.error({
       title: t('connection.connectFailed'),
       content: () => h('div', { style: 'line-height:1.6' }, [
-        h('div', { style: 'margin-bottom:8px' }, t('connection.connectFailedDetail', { host: conn.host })),
-        h('div', {
-          style: 'margin-top:8px;padding:8px 12px;background:var(--bg-tertiary);border-radius:4px;font-family:monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto'
-        }, extractErrorMessage(e)),
+        h('div', { style: 'color:var(--text-secondary);font-size:13px;margin-bottom:8px' }, extractErrorMessage(e)),
+        h('div', { style: 'font-size:13px' }, t('connection.connectFailedDetail', { host: conn.host })),
       ]),
       positiveText: t('common.close'),
     })
@@ -172,24 +170,33 @@ async function handleConnect(connID: string) {
 
 function extractErrorMessage(e: any): string {
   if (!e) return 'Unknown error'
-  if (typeof e === 'string') {
-    // Wails may pass errors as JSON strings; parse and recurse
+
+  // If it's an Error, unwrap it first
+  let raw: any = e
+  if (raw instanceof Error) raw = raw.message
+
+  // If it's a string, try parsing as JSON to unwrap nested Wails error
+  if (typeof raw === 'string') {
     try {
-      const parsed = JSON.parse(e)
+      const parsed = JSON.parse(raw)
       if (typeof parsed === 'object' && parsed !== null) {
         return extractErrorMessage(parsed)
       }
-    } catch { /* not JSON, treat as plain string */ }
-    return e
+    } catch { /* not JSON */ }
+    return raw
   }
-  if (e instanceof Error) return e.message
-  // Common Wails error wrappers — prefer 'message' last since it may be generic
-  if (e.err) return extractErrorMessage(e.err)
-  if (e.error) return extractErrorMessage(e.error)
-  if (e.msg) return extractErrorMessage(e.msg)
-  if (e.message && typeof e.message === 'string') return e.message
+
+  // Object: check known wrapper keys
+  if (typeof raw === 'object') {
+    // Prefer specific error fields over generic 'message'
+    if (raw.err) return extractErrorMessage(raw.err)
+    if (raw.error) return extractErrorMessage(raw.error)
+    if (raw.msg) return extractErrorMessage(raw.msg)
+    if (raw.message) return extractErrorMessage(raw.message)
+  }
+
   // Last resort
-  try { return JSON.stringify(e) } catch { return String(e) }
+  try { return JSON.stringify(raw) } catch { return String(raw) }
 }
 
 function handleEdit(connID: string) {
