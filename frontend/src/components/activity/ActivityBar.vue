@@ -48,19 +48,19 @@ const layout = useLayoutStore()
     <div class="flex flex-col items-center gap-[2px]">
       <button
         class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
-        :class="{ '!text-[var(--color-primary)]': layout.activeBottomTool === 'monitor' }"
-        @click="layout.toggleBottomTool('monitor')"
-        title="Monitor"
-      >
-        <IconActivity :width="20" :height="20" />
-      </button>
-      <button
-        class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
         :class="{ '!text-[var(--color-primary)]': layout.activeBottomTool === 'sftp' }"
         @click="layout.toggleBottomTool('sftp')"
         title="SFTP"
       >
         <IconFolder :width="20" :height="20" />
+      </button>
+      <button
+        class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
+        :class="{ '!text-[var(--color-primary)]': layout.activeBottomTool === 'monitor' }"
+        @click="layout.toggleBottomTool('monitor')"
+        title="Monitor"
+      >
+        <IconActivity :width="20" :height="20" />
       </button>
       <button
         class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"

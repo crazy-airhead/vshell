@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NSpin, NButton, useDialog, useMessage } from 'naive-ui'
+import { NButton, useDialog, useMessage } from 'naive-ui'
 import IconRefreshCw from '~icons/lucide/refresh-cw'
 import IconUpload from '~icons/lucide/upload'
 import IconTrash2 from '~icons/lucide/trash-2'
@@ -258,7 +258,7 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <div class="flex items-center px-2 py-1 thin-border-b gap-1 shrink-0">
+    <div class="flex items-center px-2 py-1 gap-1 shrink-0 toolbar-wrapper">
       <template v-if="!editing">
         <span class="flex-1 overflow-hidden whitespace-nowrap text-[var(--font-size-sm)] select-none cursor-default" @dblclick="startEdit">
           <span class="text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] hover:underline" @click="navigateTo('/')">/</span>
@@ -278,11 +278,11 @@ onUnmounted(() => {
       <NButton size="tiny" quaternary class="delete-btn" :class="{ active: selected.size > 0 }" @click="handleDeleteLocal" title="Delete selected">
         <IconTrash2 :width="14" :height="14" />
       </NButton>
+      <div v-if="loading || loadingDir" class="loading-bar"></div>
     </div>
 
     <div class="flex-1 overflow-y-auto min-h-0" ref="localBodyRef" :class="{ 'drag-over': localIsDragOver }">
-      <NSpin v-if="loading || loadingDir" size="small" />
-      <table v-else class="w-full border-collapse local-table">
+      <table v-if="!loading && !loadingDir" class="w-full border-collapse local-table">
         <thead>
           <tr>
             <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] max-w-[160px]" @click="toggleSort('name')">Name <span class="ml-[2px] text-[10px]" v-if="sortKey === 'name'">{{ sortAsc ? '↑' : '↓' }}</span></th>
@@ -316,7 +316,35 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.thin-border-b { border-bottom: 1px solid rgba(128, 128, 128, 0.12); }
+.toolbar-wrapper {
+  position: relative;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+}
+
+.loading-bar {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  animation: loading-slide 0.8s ease-in-out infinite;
+}
+.loading-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  animation: loading-slide 1.6s ease-in-out 0.4s infinite;
+}
+
+@keyframes loading-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
 
 .local-row { cursor: default; }
 .local-row:nth-child(even) { background: var(--hover-overlay-strong); }

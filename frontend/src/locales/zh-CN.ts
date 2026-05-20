@@ -93,6 +93,7 @@ export default {
     size: '大小',
     modified: '修改时间',
     emptyDir: '空目录',
+    treeEmpty: '暂无目录数据，请点击刷新。',
     upload: '上传',
     download: '下载',
     noUpload: '暂无上传任务',

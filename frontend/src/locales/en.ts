@@ -93,6 +93,7 @@ export default {
     size: 'Size',
     modified: 'Modified',
     emptyDir: 'Empty directory',
+    treeEmpty: 'No directory data. Click refresh to reload.',
     upload: 'Upload',
     download: 'Download',
     noUpload: 'No uploads',
