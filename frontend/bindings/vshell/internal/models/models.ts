@@ -239,7 +239,10 @@ export class Group {
 
 export class PortForward {
     "id": string;
+    "name": string;
     "connection_id": string;
+    "connection_name": string;
+    "connection_host": string;
     "type": ForwardType;
     "local_host": string;
     "local_port": number;
@@ -252,8 +255,17 @@ export class PortForward {
         if (!("id" in $$source)) {
             this["id"] = "";
         }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
         if (!("connection_id" in $$source)) {
             this["connection_id"] = "";
+        }
+        if (!("connection_name" in $$source)) {
+            this["connection_name"] = "";
+        }
+        if (!("connection_host" in $$source)) {
+            this["connection_host"] = "";
         }
         if (!("type" in $$source)) {
             this["type"] = ForwardType.$zero;

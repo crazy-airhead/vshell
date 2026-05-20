@@ -1,0 +1,1746 @@
+# vShell 源程序文档（后30页）
+
+软件名称: vShell SSH客户端管理软件
+版本: V1.0
+
+---
+
+    bitsPlaceholder: 'Bits',
+    comment: 'Comment',
+    commentPlaceholder: "user{'@'}host",
+    passphraseProtected: 'Passphrase Protected',
+    noPassphrase: 'No Passphrase',
+  },
+  sshConfig: {
+    title: 'SSH Config',
+    editRaw: 'Edit Raw',
+    addHost: 'Add Host',
+    hostPattern: 'Host',
+    hostPatternPlaceholder: 'server-alias',
+    hostName: 'HostName',
+    hostNamePlaceholder: 'example.com',
+    user: 'User',
+    userPlaceholder: 'root',
+    port: 'Port',
+    identityFile: 'IdentityFile',
+    identityFilePlaceholder: '~/.ssh/id_rsa',
+    addDirective: 'Add Directive',
+    directiveKey: 'Key',
+    directiveValue: 'Value',
+    noEntries: 'No SSH config entries found',
+    deleteConfirm: 'Delete host "{name}"?',
+    unsavedChanges: 'Unsaved changes',
+    importHosts: 'Import as Connections',
+    importHostsDesc: 'Select Host entries to import as vShell connections. They will appear in the sidebar.',
+    importSelectAll: 'Select All',
+    importDeselectAll: 'Deselect All',
+    imported: 'Imported {count} connection(s)',
+    importNothingSelected: 'Please select hosts to import',
+  },
+  settings: {
+    title: 'Settings',
+    theme: 'Theme',
+    light: 'Light',
+    dark: 'Dark',
+    language: 'Language',
+    interface: 'Interface',
+    terminal: 'Terminal',
+    shortcuts: 'Shortcuts',
+    uiFontFamily: 'Font',
+    uiFontSize: 'Font Size',
+    accentColor: 'Accent Color',
+    terminalFontFamily: 'Font',
+    terminalFontSize: 'Font Size',
+    colorScheme: 'Color Scheme',
+    schemeDefault: 'Default',
+    schemeSolarizedDark: 'Solarized Dark',
+    schemeSolarizedLight: 'Solarized Light',
+    schemeDracula: 'Dracula',
+    schemeMonokai: 'Monokai',
+    schemeOneDark: 'One Dark',
+    shortcutNewConnection: 'New Connection',
+    shortcutCloseTab: 'Close Tab',
+
+--- 第 1 页 ---
+
+    shortcutToggleTheme: 'Toggle Theme',
+    shortcutToggleSidebar: 'Toggle Sidebar',
+    shortcutFocusTerminal: 'Focus Terminal',
+    shortcutCaptureHint: 'Click to capture, then press keys',
+    resetShortcuts: 'Reset',
+  },
+}
+
+===[FE] frontend/src/locales/index.ts===
+import { createI18n } from 'vue-i18n'
+import en from './en'
+import zhCN from './zh-CN'
+
+export type MessageSchema = typeof en
+
+const savedLocale = localStorage.getItem('locale') || 'zh-CN'
+
+const i18n = createI18n<[MessageSchema], 'en' | 'zh-CN'>({
+  legacy: false,
+  locale: savedLocale,
+  fallbackLocale: 'en',
+  messages: {
+    en,
+    'zh-CN': zhCN,
+  },
+})
+
+export default i18n
+
+===[FE] frontend/src/locales/zh-CN.ts===
+export default {
+  common: {
+    cancel: '取消',
+    save: '保存',
+    update: '更新',
+    delete: '删除',
+    edit: '编辑',
+    refresh: '刷新',
+    name: '名称',
+    host: '主机',
+    port: '端口',
+    username: '用户名',
+    password: '密码',
+    close: '关闭',
+  },
+  connection: {
+    title: '连接',
+    newConnection: '新建 SSH 连接',
+    editConnection: '编辑连接',
+    newBtn: '+',
+    authType: '认证方式',
+    authPassword: '密码',
+    authPrivateKey: '私钥',
+    authAgent: 'SSH Agent',
+    authInteractive: '交互式',
+
+--- 第 2 页 ---
+
+    newPassword: '新密码',
+    newPrivateKey: '新私钥',
+    newPassphrase: '新密钥口令',
+    passphrase: '密钥口令',
+    group: '分组',
+    namePlaceholder: '我的服务器',
+    hostPlaceholder: '192.168.1.1 或 example.com',
+    usernamePlaceholder: 'root',
+    passwordPlaceholder: '密码',
+    passwordEditPlaceholder: '留空保持不变',
+    keyPlaceholder: '-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----',
+    keyEditPlaceholder: '留空保持不变',
+    passphrasePlaceholder: '可选',
+    passphraseEditPlaceholder: '留空保持不变',
+    nameRequired: '名称不能为空',
+    hostRequired: '主机地址不能为空',
+    created: '连接已创建',
+    updated: '连接已更新',
+    failed: '操作失败: {error}',
+    deleteTitle: '删除连接',
+    deleteContent: '确定要删除 "{name}" 吗？',
+    deleted: '已删除 "{name}"',
+    deleteFailed: '删除失败: {error}',
+    connectFailed: '连接失败',
+    connectFailedDetail: '无法连接到 {host}，请检查主机地址、端口和认证信息。',
+    loadFailed: '加载数据失败',
+    keySource: '密钥来源',
+    keyFromManaged: '从密钥管理选择',
+    keyManual: '手动粘贴',
+    selectKey: '选择密钥',
+    selectKeyPlaceholder: '选择已管理的 SSH 密钥',
+    keyHasPassphrase: '该密钥有密码保护，请输入密钥口令',
+    keyRequired: '私钥不能为空',
+    keyReadFailed: '读取密钥失败: {error}',
+  },
+  group: {
+    newGroup: '新建分组',
+    newSubGroup: '新建子分组',
+    deleteGroup: '删除分组',
+    deleteContent: '确定删除分组 "{name}" 吗？分组内的连接将变为未分组。',
+    namePlaceholder: '分组名称',
+    nameRequired: '分组名称不能为空',
+  },
+  terminal: {
+    empty: '暂无终端会话，点击左侧连接开始。',
+  },
+  tab: {
+    reconnect: '重新连接',
+    disconnect: '断开连接',
+    duplicate: '复制会话',
+    close: '关闭',
+    closeOthers: '关闭其他',
+    closeAll: '关闭所有',
+
+--- 第 3 页 ---
+
+  },
+  monitor: {
+    noConnection: '无活动连接',
+    waitingStats: '等待状态数据...',
+    uptime: '在线',
+    cpu: 'CPU',
+    memory: '内存',
+    loadAvg: '负载',
+    network: '网络',
+    disk: '磁盘',
+  },
+  sftp: {
+    noSession: '暂无活动会话，请先连接服务器以浏览文件。',
+    name: '名称',
+    size: '大小',
+    modified: '修改时间',
+    emptyDir: '空目录',
+    treeEmpty: '暂无目录数据，请点击刷新。',
+    upload: '上传',
+    download: '下载',
+    noUpload: '暂无上传任务',
+    noDownload: '暂无下载任务',
+    delete: '删除',
+    deleteTitle: '删除文件',
+    deleteContent: '确定要删除 "{name}" 吗？',
+    deleted: '已删除 "{name}"',
+    deleteFailed: '删除失败: {error}',
+    remotePrefix: '远端',
+    localPrefix: '本地',
+    fileNotEditable: '该文件类型不支持编辑',
+  },
+  keys: {
+    title: '密钥管理',
+    newKey: '新建密钥',
+    generateKey: '生成密钥',
+    deleteContent: '确定要删除 "{name}" 吗？',
+    deleted: '已删除 "{name}"',
+    deleteFailed: '删除失败: {error}',
+    fileName: '文件名',
+    fileNamePlaceholder: 'id_ed25519',
+    nameRequired: '文件名不能为空',
+    keyRequired: '私钥内容不能为空',
+    privateKey: '私钥',
+    keyPlaceholder: '-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----',
+    passphrase: '密钥口令',
+    passphrasePlaceholder: '可选',
+    publicKey: '公钥',
+    created: '密钥已创建',
+    generated: '密钥已生成',
+    renamed: '密钥已重命名',
+    failed: '操作失败: {error}',
+    fingerprint: '指纹',
+    type: '类型',
+
+--- 第 4 页 ---
+
+    rename: '重命名',
+    noKeys: '未在 ~/.ssh 中找到 SSH 密钥',
+    copyPub: '复制公钥',
+    copyPrivate: '复制私钥',
+    copied: '已复制到剪贴板',
+    copyFailed: '复制失败',
+    keyType: '密钥类型',
+    keyTypeEd25519: 'Ed25519',
+    keyTypeRsa: 'RSA',
+    keyTypeEcdsa: 'ECDSA',
+    bits: '强度',
+    bitsPlaceholder: '位长',
+    comment: '注释',
+    commentPlaceholder: "user{'@'}host",
+    passphraseProtected: '有密码保护',
+    noPassphrase: '无密码保护',
+  },
+  sshConfig: {
+    title: 'SSH 配置',
+    editRaw: '编辑源文件',
+    addHost: '添加主机',
+    hostPattern: '主机别名',
+    hostPatternPlaceholder: 'server-alias',
+    hostName: '主机名',
+    hostNamePlaceholder: 'example.com',
+    user: '用户名',
+    userPlaceholder: 'root',
+    port: '端口',
+    identityFile: '密钥文件',
+    identityFilePlaceholder: '~/.ssh/id_rsa',
+    addDirective: '添加配置项',
+    directiveKey: '键',
+    directiveValue: '值',
+    noEntries: '未找到 SSH 配置项',
+    deleteConfirm: '确定删除主机 "{name}" 吗？',
+    unsavedChanges: '有未保存的更改',
+    importHosts: '导入为连接',
+    importHostsDesc: '选择要导入的 Host 条目，将作为 vShell 连接添加到左侧列表。',
+    importSelectAll: '全选',
+    importDeselectAll: '取消全选',
+    imported: '已导入 {count} 个连接',
+    importNothingSelected: '请选择要导入的主机',
+  },
+  settings: {
+    title: '设置',
+    theme: '主题',
+    light: '浅色',
+    dark: '深色',
+    language: '语言',
+    interface: '界面',
+    terminal: '终端',
+    shortcuts: '快捷键',
+    uiFontFamily: '字体',
+    uiFontSize: '字体大小',
+    accentColor: '主题色',
+
+--- 第 5 页 ---
+
+    terminalFontFamily: '字体',
+    terminalFontSize: '字体大小',
+    colorScheme: '配色方案',
+    schemeDefault: '默认',
+    schemeSolarizedDark: 'Solarized 暗色',
+    schemeSolarizedLight: 'Solarized 浅色',
+    schemeDracula: 'Dracula',
+    schemeMonokai: 'Monokai',
+    schemeOneDark: 'One Dark',
+    shortcutNewConnection: '新建连接',
+    shortcutCloseTab: '关闭标签',
+    shortcutToggleTheme: '切换主题',
+    shortcutToggleSidebar: '切换侧栏',
+    shortcutFocusTerminal: '聚焦终端',
+    shortcutCaptureHint: '点击后按键组合',
+    resetShortcuts: '重置',
+  },
+}
+
+===[FE] frontend/src/main.ts===
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import App from './App.vue'
+import i18n from './locales'
+import 'virtual:uno.css'
+import './styles/global.css'
+
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
+import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
+import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
+import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
+
+self.MonacoEnvironment = {
+  getWorker(_: unknown, label: string) {
+    if (label === 'json') return new jsonWorker()
+    if (label === 'css' || label === 'scss' || label === 'less') return new cssWorker()
+    if (label === 'html' || label === 'handlebars' || label === 'razor') return new htmlWorker()
+    if (label === 'typescript' || label === 'javascript') return new tsWorker()
+    return new editorWorker()
+  },
+}
+
+const app = createApp(App)
+app.use(createPinia())
+app.use(i18n)
+app.mount('#app')
+
+===[FE] frontend/src/stores/connection.ts===
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import {
+  ListConnections,
+  ListGroups,
+  ConnectSSH,
+
+--- 第 6 页 ---
+
+  DisconnectSSH,
+  DisconnectSession,
+  CreateConnection,
+  UpdateConnection,
+  DeleteConnection,
+  MoveConnection,
+  CreateGroup,
+  DeleteGroup,
+} from '../../bindings/vshell/internal/app/appservice'
+import { AuthType, ConnectionForm } from '../../bindings/vshell/internal/models/models'
+import type { Connection, Group } from '../types'
+import { useMonitorStore } from './monitor'
+
+export { AuthType }
+
+export interface ConnectionFormData {
+  id: string
+  name: string
+  host: string
+  port: number
+  username: string
+  authType: string
+  password: string
+  privateKey: string
+  keyPassphrase: string
+  groupID: string | null
+}
+
+export function newFormData(): ConnectionFormData {
+  return {
+    id: crypto.randomUUID(),
+    name: '',
+    host: '',
+    port: 22,
+    username: 'root',
+    authType: AuthType.AuthPassword,
+    password: '',
+    privateKey: '',
+    keyPassphrase: '',
+    groupID: null,
+  }
+}
+
+export const useConnectionStore = defineStore('connection', () => {
+  const connections = ref<Connection[]>([])
+  const groups = ref<Group[]>([])
+  const activeConnectionID = ref<string | null>(null)
+  const connectedIDs = ref<Set<string>>(new Set())
+
+  async function loadConnections() {
+    try {
+      const result = await ListConnections()
+      console.log('[DEBUG] ListConnections raw result:', result, 'type:', typeof result, Array.isArray(result))
+      // Convert Wails class instances to plain objects for Vue reactivity
+      const items = (result || []).map((c: any) => ({
+
+--- 第 7 页 ---
+
+        id: c.id || '',
+        group_id: c.group_id || null,
+        name: c.name || '',
+        host: c.host || '',
+        port: c.port || 22,
+        username: c.username || '',
+        auth_type: c.auth_type || '',
+        upload_path: c.upload_path || '/',
+        default_cmd: c.default_cmd || null,
+        sort_order: c.sort_order || 0,
+        color: c.color || null,
+        last_used_at: c.last_used_at || null,
+      }))
+      connections.value = items as Connection[]
+      console.log('[DEBUG] connections.value set:', connections.value.length, 'items', connections.value.map(c => c.name))
+    } catch (e) {
+      console.error('Failed to load connections:', e)
+    }
+  }
+
+  async function loadGroups() {
+    try {
+      const result = await ListGroups()
+      const items = (result || []).map((g: any) => ({
+        id: g.id || '',
+        name: g.name || '',
+        parent_id: g.parent_id || null,
+        sort_order: g.sort_order || 0,
+      }))
+      groups.value = items as Group[]
+    } catch (e) {
+      console.error('Failed to load groups:', e)
+    }
+  }
+
+  async function connect(id: string): Promise<string> {
+    try {
+      const sessionID = await ConnectSSH(id) as unknown as string
+      connectedIDs.value.add(id)
+      activeConnectionID.value = id
+      const monitorStore = useMonitorStore()
+      await monitorStore.startMonitoring(id)
+      return sessionID
+    } catch (e) {
+      console.error('Failed to connect:', e)
+      throw e
+    }
+  }
+
+  async function disconnect(id: string) {
+    try {
+      const monitorStore = useMonitorStore()
+      await monitorStore.stopMonitoring(id)
+      await DisconnectSSH(id)
+      connectedIDs.value.delete(id)
+
+--- 第 8 页 ---
+
+      if (activeConnectionID.value === id) {
+        activeConnectionID.value = null
+      }
+    } catch (e) {
+      console.error('Failed to disconnect:', e)
+    }
+  }
+
+  async function disconnectSession(sessionID: string, connectionID: string) {
+    try {
+      await DisconnectSession(sessionID, connectionID)
+    } catch (e) {
+      console.error('Failed to disconnect session:', e)
+    }
+  }
+
+  async function createConnection(data: ConnectionFormData) {
+    const form = new ConnectionForm({
+      id: data.id,
+      name: data.name,
+      host: data.host,
+      port: data.port,
+      username: data.username,
+      auth_type: data.authType as AuthType,
+      password: data.password,
+      private_key: data.privateKey,
+      key_passphrase: data.keyPassphrase,
+      group_id: data.groupID || null,
+      upload_path: '/',
+      sort_order: 0,
+    })
+    console.log('[DEBUG] Creating connection with form:', JSON.stringify(form))
+    await CreateConnection(form)
+    console.log('[DEBUG] CreateConnection succeeded, loading connections...')
+    await loadConnections()
+  }
+
+  async function removeConnection(id: string) {
+    await DeleteConnection(id)
+    await loadConnections()
+  }
+
+  async function moveConnection(id: string, groupID: string | null) {
+    await MoveConnection(id, groupID)
+    await loadConnections()
+  }
+
+  async function updateConnection(data: ConnectionFormData) {
+    const form = new ConnectionForm({
+      id: data.id,
+      name: data.name,
+      host: data.host,
+      port: data.port,
+      username: data.username,
+      auth_type: data.authType as AuthType,
+
+--- 第 9 页 ---
+
+      password: data.password,
+      private_key: data.privateKey,
+      key_passphrase: data.keyPassphrase,
+      group_id: data.groupID || null,
+      upload_path: '/',
+      sort_order: 0,
+    })
+    await UpdateConnection(form)
+    await loadConnections()
+  }
+
+  function getConnectionsByGroup(groupID: string | null): Connection[] {
+    return connections.value.filter((c) => {
+      const gid = c.group_id || null
+      return gid === groupID
+    })
+  }
+
+  async function createGroup(name: string, parentID: string | null) {
+    await CreateGroup(crypto.randomUUID(), name, parentID, 0)
+    await loadGroups()
+  }
+
+  async function removeGroup(id: string) {
+    await DeleteGroup(id)
+    await loadGroups()
+    await loadConnections()
+  }
+
+  return {
+    connections,
+    groups,
+    activeConnectionID,
+    connectedIDs,
+    loadConnections,
+    loadGroups,
+    connect,
+    disconnect,
+    disconnectSession,
+    createConnection,
+    removeConnection,
+    moveConnection,
+    updateConnection,
+    getConnectionsByGroup,
+    createGroup,
+    removeGroup,
+  }
+})
+
+===[FE] frontend/src/stores/layout.ts===
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export type SidebarView = 'connections' | 'keys' | 'ssh-config'
+export type BottomTool = 'monitor' | 'sftp'
+
+--- 第 10 页 ---
+
+
+export const useLayoutStore = defineStore('layout', () => {
+  const activeSidebar = ref<SidebarView>('connections')
+  const sidebarWidth = ref(280)
+
+  const activeBottomTool = ref<BottomTool | null>(null)
+  const bottomPanelHeight = ref(220)
+
+  const bottomAnyVisible = computed(() => activeBottomTool.value !== null)
+
+  function setSidebar(view: SidebarView) {
+    activeSidebar.value = view
+  }
+
+  function setSidebarWidth(w: number) {
+    sidebarWidth.value = w
+  }
+
+  function toggleBottomTool(tool: BottomTool) {
+    if (activeBottomTool.value === tool) {
+      activeBottomTool.value = null
+    } else {
+      activeBottomTool.value = tool
+    }
+  }
+
+  function setBottomPanelHeight(h: number) {
+    bottomPanelHeight.value = h
+  }
+
+  return {
+    activeSidebar,
+    sidebarWidth,
+    activeBottomTool,
+    bottomPanelHeight,
+    bottomAnyVisible,
+    setSidebar,
+    setSidebarWidth,
+    toggleBottomTool,
+    setBottomPanelHeight,
+  }
+})
+
+===[FE] frontend/src/stores/monitor.ts===
+import { defineStore } from 'pinia'
+import { reactive } from 'vue'
+import { Events } from '@wailsio/runtime'
+import { StartMonitor, StopMonitor } from '../../bindings/vshell/internal/app/appservice'
+import type { SystemStats } from '../types'
+
+function newEmptyStats(): SystemStats {
+  return {
+    cpu_percent: 0,
+    mem_percent: 0,
+    mem_total: 0,
+
+--- 第 11 页 ---
+
+    mem_used: 0,
+    net_interfaces: {},
+    load_avg: [0, 0, 0],
+    disk_stats: [],
+    uptime_seconds: 0,
+    os: '',
+  }
+}
+
+export const useMonitorStore = defineStore('monitor', () => {
+  const stats = reactive<Map<string, SystemStats>>(new Map())
+  const connectedSince = reactive<Map<string, number>>(new Map())
+  let listenersRegistered = false
+
+  function registerListeners() {
+    if (listenersRegistered) return
+    listenersRegistered = true
+
+    Events.On('monitor:stats', (ev: any) => {
+      const d = ev?.data
+      if (!d?.connectionID) return
+      const s = stats.get(d.connectionID)
+      if (!s) return
+      const incoming = d.stats
+      if (incoming) {
+        s.cpu_percent = incoming.cpu_percent ?? s.cpu_percent
+        s.mem_percent = incoming.mem_percent ?? s.mem_percent
+        s.mem_total = incoming.mem_total ?? s.mem_total
+        s.mem_used = incoming.mem_used ?? s.mem_used
+        s.net_interfaces = incoming.net_interfaces ?? s.net_interfaces
+        s.uptime_seconds = incoming.uptime_seconds ?? s.uptime_seconds
+        s.os = incoming.os ?? s.os
+      }
+    })
+
+    Events.On('monitor:disk', (ev: any) => {
+      const d = ev?.data
+      if (!d?.connectionID) return
+      const s = stats.get(d.connectionID)
+      if (!s) return
+      if (d.disks) s.disk_stats = d.disks
+    })
+
+    Events.On('monitor:load', (ev: any) => {
+      const d = ev?.data
+      if (!d?.connectionID) return
+      const s = stats.get(d.connectionID)
+      if (!s) return
+      if (d.load) s.load_avg = d.load
+    })
+  }
+
+  async function startMonitoring(connectionID: string) {
+    if (stats.has(connectionID)) return
+
+
+--- 第 12 页 ---
+
+    registerListeners()
+    stats.set(connectionID, newEmptyStats())
+    connectedSince.set(connectionID, Date.now())
+
+    await StartMonitor(connectionID)
+  }
+
+  async function stopMonitoring(connectionID: string) {
+    stats.delete(connectionID)
+    connectedSince.delete(connectionID)
+
+    try {
+      await StopMonitor(connectionID)
+    } catch {
+      // connection may already be closed
+    }
+  }
+
+  function getStats(connectionID: string): SystemStats | undefined {
+    return stats.get(connectionID)
+  }
+
+  function getUptime(connectionID: string): number | undefined {
+    return connectedSince.get(connectionID)
+  }
+
+  return {
+    stats,
+    connectedSince,
+    startMonitoring,
+    stopMonitoring,
+    getStats,
+    getUptime,
+  }
+})
+
+===[FE] frontend/src/stores/settings.ts===
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export type ThemeMode = 'light' | 'dark'
+export type LocaleCode = 'en' | 'zh-CN'
+
+export interface ShortcutMap {
+  newConnection: string
+  closeTab: string
+  toggleTheme: string
+  toggleSidebar: string
+  focusTerminal: string
+}
+
+function loadJSON<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw) return JSON.parse(raw) as T
+
+--- 第 13 页 ---
+
+  } catch {}
+  return fallback
+}
+
+const defaultShortcuts: ShortcutMap = {
+  newConnection: 'CommandOrControl+Shift+N',
+  closeTab: 'CommandOrControl+W',
+  toggleTheme: 'CommandOrControl+Shift+T',
+  toggleSidebar: 'CommandOrControl+B',
+  focusTerminal: 'CommandOrControl+`',
+}
+
+export const useSettingsStore = defineStore('settings', () => {
+  const themeMode = ref<ThemeMode>((localStorage.getItem('theme') as ThemeMode) || 'dark')
+  const localeCode = ref<LocaleCode>((localStorage.getItem('locale') as LocaleCode) || 'zh-CN')
+  const uiFontSize = ref<number>(loadJSON<number>('uiFontSize', 13))
+  const uiFontFamily = ref<string>(localStorage.getItem('uiFontFamily') || 'system-ui')
+  const accentColor = ref<string>(localStorage.getItem('accentColor') || '#0078d4')
+  const terminalFontSize = ref<number>(loadJSON<number>('terminalFontSize', 14))
+  const terminalFontFamily = ref<string>(localStorage.getItem('terminalFontFamily') || 'Menlo')
+  const terminalColorScheme = ref<string>(localStorage.getItem('terminalColorScheme') || 'default')
+  const shortcuts = ref<ShortcutMap>(loadJSON<ShortcutMap>('shortcuts', { ...defaultShortcuts }))
+
+  const isDark = computed(() => themeMode.value === 'dark')
+
+  function setTheme(mode: ThemeMode) {
+    themeMode.value = mode
+    localStorage.setItem('theme', mode)
+  }
+
+  function toggleTheme() {
+    setTheme(isDark.value ? 'light' : 'dark')
+  }
+
+  function setLocale(code: LocaleCode) {
+    localeCode.value = code
+    localStorage.setItem('locale', code)
+  }
+
+  function setUIFontSize(size: number) {
+    uiFontSize.value = size
+    localStorage.setItem('uiFontSize', JSON.stringify(size))
+  }
+
+  function setUIFontFamily(family: string) {
+    uiFontFamily.value = family
+    localStorage.setItem('uiFontFamily', family)
+  }
+
+  function setAccentColor(color: string) {
+    accentColor.value = color
+    localStorage.setItem('accentColor', color)
+  }
+
+  function setTerminalFontSize(size: number) {
+
+--- 第 14 页 ---
+
+    terminalFontSize.value = size
+    localStorage.setItem('terminalFontSize', JSON.stringify(size))
+  }
+
+  function setTerminalFontFamily(family: string) {
+    terminalFontFamily.value = family
+    localStorage.setItem('terminalFontFamily', family)
+  }
+
+  function setTerminalColorScheme(scheme: string) {
+    terminalColorScheme.value = scheme
+    localStorage.setItem('terminalColorScheme', scheme)
+  }
+
+  function setShortcut(action: keyof ShortcutMap, combo: string) {
+    shortcuts.value = { ...shortcuts.value, [action]: combo }
+    localStorage.setItem('shortcuts', JSON.stringify(shortcuts.value))
+  }
+
+  function resetShortcuts() {
+    shortcuts.value = { ...defaultShortcuts }
+    localStorage.setItem('shortcuts', JSON.stringify(shortcuts.value))
+  }
+
+  return {
+    themeMode, localeCode, uiFontSize, uiFontFamily, accentColor,
+    terminalFontSize, terminalFontFamily, terminalColorScheme, shortcuts,
+    isDark,
+    setTheme, toggleTheme, setLocale,
+    setUIFontSize, setUIFontFamily, setAccentColor,
+    setTerminalFontSize, setTerminalFontFamily, setTerminalColorScheme,
+    setShortcut, resetShortcuts,
+  }
+})
+
+===[FE] frontend/src/stores/sftp.ts===
+import { defineStore } from 'pinia'
+import { ref, reactive } from 'vue'
+import { SFTPReadDir } from '../../bindings/vshell/internal/app/appservice'
+
+export interface SFTPFile {
+  name: string
+  size: number
+  mode: number
+  mod_time: number
+  is_dir: boolean
+}
+
+export interface SFTPPanelState {
+  connectionID: string
+  currentPath: string
+  files: SFTPFile[]
+  loading: boolean
+  error: string | null
+  expandedPaths: string[]
+
+--- 第 15 页 ---
+
+  treeCache: Record<string, SFTPFile[]>
+}
+
+function createPanel(connectionID: string): SFTPPanelState {
+  return {
+    connectionID,
+    currentPath: '/',
+    files: [],
+    loading: false,
+    error: null,
+    expandedPaths: [],
+    treeCache: {},
+  }
+}
+
+export const useSFTPStore = defineStore('sftp', () => {
+  const panels = ref(new Map<string, SFTPPanelState>())
+  const treeVersion = ref(0)
+
+  function getPanel(connectionID: string): SFTPPanelState {
+    if (!panels.value.has(connectionID)) {
+      panels.value.set(connectionID, createPanel(connectionID))
+    }
+    return panels.value.get(connectionID)!
+  }
+
+  async function readDir(connectionID: string, path: string): Promise<SFTPFile[]> {
+    const result = await SFTPReadDir(connectionID, path)
+    return (result || []).map((f: any) => ({
+      name: f.name || '',
+      size: f.size || 0,
+      mode: f.mode || 0,
+      mod_time: f.mod_time || 0,
+      is_dir: f.is_dir || false,
+    }))
+  }
+
+  async function navigateToDir(connectionID: string, path: string) {
+    const panel = getPanel(connectionID)
+    panel.loading = true
+    panel.error = null
+    try {
+      const items = await readDir(connectionID, path)
+      panel.files = items
+      panel.currentPath = path
+      panel.treeCache = { ...panel.treeCache, [path]: items }
+      treeVersion.value++
+    } catch (e: any) {
+      panel.error = String(e)
+    } finally {
+      panel.loading = false
+    }
+  }
+
+  async function loadTreeDir(connectionID: string, path: string) {
+
+--- 第 16 页 ---
+
+    const panel = getPanel(connectionID)
+    if (path in panel.treeCache) return
+    try {
+      const items = await readDir(connectionID, path)
+      panel.treeCache = { ...panel.treeCache, [path]: items }
+      treeVersion.value++
+    } catch {
+      panel.treeCache = { ...panel.treeCache, [path]: [] }
+      treeVersion.value++
+    }
+  }
+
+  function toggleExpandPath(connectionID: string, path: string, expand: boolean) {
+    const panel = getPanel(connectionID)
+    if (expand) {
+      if (!panel.expandedPaths.includes(path)) {
+        panel.expandedPaths = [...panel.expandedPaths, path]
+      }
+    } else {
+      panel.expandedPaths = panel.expandedPaths.filter(p => p !== path)
+    }
+    treeVersion.value++
+  }
+
+  function closePanel(connectionID: string) {
+    panels.value.delete(connectionID)
+  }
+
+  return {
+    panels,
+    treeVersion,
+    getPanel,
+    readDir,
+    navigateToDir,
+    loadTreeDir,
+    toggleExpandPath,
+    closePanel,
+  }
+})
+
+===[FE] frontend/src/stores/sshconfig.ts===
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import { ReadSSHConfig, WriteSSHConfig, ReadSSHConfigRaw, WriteSSHConfigRaw, GetSSHConfigImportCandidates, ImportSSHConfigHosts } from '../../bindings/vshell/internal/app/appservice'
+import type { SSHConfigEntry, SSHConfigDirective, SSHConfigImportCandidate } from '../types'
+
+export const useSSHConfigStore = defineStore('sshconfig', () => {
+  const entries = ref<SSHConfigEntry[]>([])
+  const loading = ref(false)
+
+  async function loadEntries() {
+    loading.value = true
+    try {
+      const result = await ReadSSHConfig()
+      entries.value = (result || []).map((e: any) => ({
+
+--- 第 17 页 ---
+
+        type: e.type || 'Host',
+        pattern: e.pattern || '',
+        directives: (e.directives || []).map((d: any) => ({
+          key: d.key || '',
+          value: d.value || '',
+        })),
+      })) as SSHConfigEntry[]
+    } catch (e) {
+      console.error('Failed to load SSH config:', e)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function saveEntries(newEntries: SSHConfigEntry[]) {
+    await WriteSSHConfig(newEntries as any)
+    await loadEntries()
+  }
+
+  async function addEntry(entry: SSHConfigEntry) {
+    const updated = [...entries.value, entry]
+    await saveEntries(updated)
+  }
+
+  async function updateEntry(index: number, entry: SSHConfigEntry) {
+    const updated = [...entries.value]
+    updated[index] = entry
+    await saveEntries(updated)
+  }
+
+  async function deleteEntry(index: number) {
+    const updated = entries.value.filter((_, i) => i !== index)
+    await saveEntries(updated)
+  }
+
+  async function readRaw(): Promise<string> {
+    return await ReadSSHConfigRaw()
+  }
+
+  async function writeRaw(content: string) {
+    await WriteSSHConfigRaw(content)
+    await loadEntries()
+  }
+
+  async function getImportCandidates(): Promise<SSHConfigImportCandidate[]> {
+    const result = await GetSSHConfigImportCandidates()
+    return (result || []).map((c: any) => ({
+      pattern: c.pattern || '',
+      hostname: c.hostname || '',
+      port: c.port || 22,
+      user: c.user || '',
+      identity_file: c.identity_file || '',
+      has_key: !!c.has_key,
+    })) as SSHConfigImportCandidate[]
+  }
+
+--- 第 18 页 ---
+
+
+  async function importHosts(patterns: string[]): Promise<void> {
+    await ImportSSHConfigHosts(patterns)
+  }
+
+  return {
+    entries,
+    loading,
+    loadEntries,
+    saveEntries,
+    addEntry,
+    updateEntry,
+    deleteEntry,
+    readRaw,
+    writeRaw,
+    getImportCandidates,
+    importHosts,
+  }
+})
+
+===[FE] frontend/src/stores/sshkey.ts===
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import { ListSSHKeys, SaveSSHKey, RenameSSHKey, DeleteSSHKey, ReadSSHKeyContent, GenerateSSHKey } from '../../bindings/vshell/internal/app/appservice'
+import type { SSHKeyInfo } from '../types'
+
+export const useSSHKeyStore = defineStore('sshkey', () => {
+  const keys = ref<SSHKeyInfo[]>([])
+
+  async function loadKeys() {
+    try {
+      const result = await ListSSHKeys()
+      keys.value = (result || []).map((k: any) => ({
+        name: k.name || '',
+        type: k.type || '',
+        fingerprint: k.fingerprint || '',
+        public_key: k.public_key || '',
+        comment: k.comment || '',
+        has_passphrase: !!k.has_passphrase,
+      })) as SSHKeyInfo[]
+    } catch (e) {
+      console.error('Failed to load SSH keys:', e)
+    }
+  }
+
+  async function saveKey(name: string, privateKey: string, publicKey: string) {
+    await SaveSSHKey(name, privateKey, publicKey)
+    await loadKeys()
+  }
+
+  async function renameKey(oldName: string, newName: string) {
+    await RenameSSHKey(oldName, newName)
+    await loadKeys()
+  }
+
+
+--- 第 19 页 ---
+
+  async function deleteKey(name: string) {
+    await DeleteSSHKey(name)
+    await loadKeys()
+  }
+
+  async function readContent(name: string, kind: string): Promise<string> {
+    return await ReadSSHKeyContent(name, kind)
+  }
+
+  async function generateKey(name: string, keyType: string, bits: number, comment: string, passphrase: string) {
+    await GenerateSSHKey(name, keyType, bits, comment, passphrase)
+    await loadKeys()
+  }
+
+  return {
+    keys,
+    loadKeys,
+    saveKey,
+    renameKey,
+    deleteKey,
+    readContent,
+    generateKey,
+  }
+})
+
+===[FE] frontend/src/stores/terminal.ts===
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import type { TreeNode } from '../types'
+
+export type TabType = 'terminal' | 'editor'
+export type EditorMode = 'ssh-config' | 'remote-sftp' | 'local-file'
+
+export interface TerminalTab {
+  id: string
+  connectionID: string
+  title: string
+  type?: TabType
+  editorContent?: string
+  filePath?: string
+  dirty?: boolean
+  isRemote?: boolean
+  editorMode?: EditorMode
+  tooltip?: string
+  connected?: boolean
+}
+
+export const useTerminalStore = defineStore('terminal', () => {
+  const tabs = ref<TerminalTab[]>([])
+  const activeTabID = ref<string | null>(null)
+  const splitTree = ref<TreeNode | null>(null)
+
+  function addTab(tab: TerminalTab) {
+    tabs.value.push(tab)
+    activeTabID.value = tab.id
+
+--- 第 20 页 ---
+
+    if (!splitTree.value) {
+      splitTree.value = { type: 'leaf', sessionID: tab.id }
+    }
+  }
+
+  function addEditorTab(
+    id: string,
+    title: string,
+    content: string,
+    filePath: string,
+    opts?: { isRemote?: boolean; editorMode?: EditorMode; tooltip?: string; connectionID?: string },
+  ) {
+    if (tabs.value.find((t) => t.id === id)) {
+      activeTabID.value = id
+      return
+    }
+    addTab({
+      id,
+      connectionID: opts?.connectionID || '',
+      title,
+      type: 'editor',
+      editorContent: content,
+      filePath,
+      dirty: false,
+      isRemote: opts?.isRemote,
+      editorMode: opts?.editorMode,
+      tooltip: opts?.tooltip,
+    })
+  }
+
+  function updateTabContent(id: string, content: string) {
+    const tab = tabs.value.find((t) => t.id === id)
+    if (tab) {
+      tab.editorContent = content
+    }
+  }
+
+  function markTabDirty(id: string, dirty: boolean) {
+    const tab = tabs.value.find((t) => t.id === id)
+    if (tab) {
+      tab.dirty = dirty
+    }
+  }
+
+  function removeTab(id: string) {
+    const idx = tabs.value.findIndex((t) => t.id === id)
+    if (idx >= 0) {
+      tabs.value.splice(idx, 1)
+    }
+    if (activeTabID.value === id) {
+      activeTabID.value = tabs.value.length > 0 ? tabs.value[0].id : null
+    }
+    if (splitTree.value?.type === 'leaf' && splitTree.value.sessionID === id) {
+      splitTree.value = tabs.value.length > 0
+        ? { type: 'leaf', sessionID: tabs.value[0].id }
+
+--- 第 21 页 ---
+
+        : null
+    }
+  }
+
+  function markTabDisconnected(sessionID: string) {
+    const tab = tabs.value.find((t) => t.id === sessionID)
+    if (tab) {
+      tab.connected = false
+    }
+  }
+
+  function closeOtherTabs(id: string) {
+    const keep = tabs.value.find((t) => t.id === id)
+    tabs.value = keep ? [keep] : []
+    activeTabID.value = id
+  }
+
+  function closeAllTabs() {
+    tabs.value = []
+    activeTabID.value = null
+    splitTree.value = null
+  }
+
+  return {
+    tabs,
+    activeTabID,
+    splitTree,
+    addTab,
+    addEditorTab,
+    updateTabContent,
+    markTabDirty,
+    removeTab,
+    markTabDisconnected,
+    closeOtherTabs,
+    closeAllTabs,
+  }
+})
+
+===[FE] frontend/src/stores/transfers.ts===
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+
+export interface TransferProgress {
+  id: string
+  file_name: string
+  total_bytes: number
+  transferred: number
+  percent: number
+  speed_kbps: number
+  done: boolean
+  error?: string
+  direction: 'upload' | 'download'
+}
+
+export const useTransferStore = defineStore('transfers', () => {
+
+--- 第 22 页 ---
+
+  const transfers = ref<TransferProgress[]>([])
+
+  function addOrUpdateTransfer(t: TransferProgress) {
+    const idx = transfers.value.findIndex(x => x.id === t.id)
+    if (idx >= 0) {
+      transfers.value[idx] = t
+    } else {
+      transfers.value.push(t)
+    }
+  }
+
+  function removeTransfer(id: string) {
+    transfers.value = transfers.value.filter(x => x.id !== id)
+  }
+
+  function clearDone() {
+    transfers.value = transfers.value.filter(x => !x.done)
+  }
+
+  return {
+    transfers,
+    addOrUpdateTransfer,
+    removeTransfer,
+    clearDone,
+  }
+})
+
+===[FE] frontend/src/styles/global.css===
+:root {
+  /* Layout tokens from doc/*.json */
+  --border-radius: 6px;
+
+  /* Typography */
+  --font-size-base: 13px;
+  --font-size-sm: 11px;
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Layout dimensions */
+  --terminal-bar-height: 36px;
+  --title-bar-height: 30px;
+  --activity-bar-width: 48px;
+}
+
+/* ── Dark theme (from doc/dark.json tokens) ── */
+[data-theme="dark"] {
+  /* Semantic colors */
+  --color-primary: #646cff;
+  --color-info: #2080f0;
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+  --color-error: #f5222d;
+
+  /* Background tokens → dark.container=rgb(28,28,28), dark.layout=rgb(18,18,18) */
+  --bg-primary: rgb(18, 18, 18);
+  --bg-secondary: rgb(28, 28, 28);
+
+--- 第 23 页 ---
+
+  --bg-tertiary: #2d2d2d;
+  --bg-hover: #3d3d3d;
+
+  /* Text tokens → dark.base-text=rgb(224,224,224) */
+  --text-primary: rgb(224, 224, 224);
+  --text-secondary: #858585;
+
+  /* Borders */
+  --border-color: #3d3d3d;
+
+  /* Shadows (dark context) */
+  --shadow-header: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sider: 2px 0 8px 0 rgba(0, 0, 0, 0.25);
+  --shadow-tab: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* Interaction overlays */
+  --hover-overlay: rgba(255, 255, 255, 0.06);
+  --hover-overlay-strong: rgba(255, 255, 255, 0.04);
+  --action-hover-bg: rgba(100, 108, 255, 0.15);
+  --delete-hover-color: #f5222d;
+  --delete-hover-bg: rgba(245, 34, 45, 0.15);
+
+  /* Status indicator */
+  --stat-bar-bg: #3a3a3a;
+}
+
+/* ── Light theme (from doc/default.json tokens) ── */
+[data-theme="light"] {
+  /* Semantic colors */
+  --color-primary: #646cff;
+  --color-info: #2080f0;
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+  --color-error: #f5222d;
+
+  /* Background tokens → light.container=rgb(255,255,255), light.layout=rgb(247,250,252) */
+  --bg-primary: rgb(247, 250, 252);
+  --bg-secondary: rgb(255, 255, 255);
+  --bg-tertiary: #e8e8e8;
+  --bg-hover: #e0e0e0;
+
+  /* Text tokens → light.base-text=rgb(31,31,31) */
+  --text-primary: rgb(31, 31, 31);
+  --text-secondary: #666666;
+
+  /* Borders */
+  --border-color: #d9d9d9;
+
+  /* Shadows (from tokens.light.boxShadow) */
+  --shadow-header: 0 1px 2px rgb(0, 21, 41, 0.08);
+  --shadow-sider: 2px 0 8px 0 rgb(29, 35, 41, 0.05);
+  --shadow-tab: 0 1px 2px rgb(0, 21, 41, 0.08);
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+
+--- 第 24 页 ---
+
+  /* Interaction overlays */
+  --hover-overlay: rgba(0, 0, 0, 0.04);
+  --hover-overlay-strong: rgba(0, 0, 0, 0.03);
+  --action-hover-bg: rgba(100, 108, 255, 0.1);
+  --delete-hover-color: #f5222d;
+  --delete-hover-bg: rgba(245, 34, 45, 0.1);
+
+  /* Status indicator */
+  --stat-bar-bg: #e0e0e0;
+}
+
+/* ── Global resets ── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-hover);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* ── Drag ghost ── */
+.drag-ghost {
+  position: fixed;
+
+--- 第 25 页 ---
+
+  pointer-events: none;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--border-radius);
+  font-size: 12px;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-elevated);
+  white-space: nowrap;
+  opacity: 0.92;
+}
+.drag-ghost-icon { font-size: 14px; }
+.drag-ghost-label { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.drag-ghost-count {
+  font-size: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 8px;
+  padding: 1px 5px;
+}
+
+===[FE] frontend/src/types/index.ts===
+export interface Group {
+  id: string
+  name: string
+  parent_id: string | null
+  sort_order: number
+}
+
+export type AuthType = 'password' | 'private_key' | 'agent' | 'interactive'
+
+export interface Connection {
+  id: string
+  group_id: string | null
+  name: string
+  host: string
+  port: number
+  username: string
+  auth_type: AuthType
+  upload_path: string
+  default_cmd: string | null
+  sort_order: number
+  color: string | null
+  last_used_at: string | null
+}
+
+export interface ConnectionForm {
+  id: string
+  group_id: string | null
+  name: string
+  host: string
+
+--- 第 26 页 ---
+
+  port: number
+  username: string
+  auth_type: AuthType
+  password?: string
+  private_key?: string
+  key_passphrase?: string
+  proxy_type?: string
+  proxy_addr?: string
+  jump_host_id?: string
+  upload_path: string
+  default_cmd?: string
+  sort_order: number
+  color?: string
+}
+
+export interface QuickCommand {
+  id: string
+  name: string
+  command: string
+  connection_id: string | null
+  sort_order: number
+}
+
+export type ForwardType = 'local' | 'remote' | 'dynamic'
+
+export interface PortForward {
+  id: string
+  connection_id: string
+  type: ForwardType
+  local_host: string
+  local_port: number
+  remote_host: string
+  remote_port: number
+  auto_start: boolean
+}
+
+export interface SystemStats {
+  cpu_percent: number
+  mem_percent: number
+  mem_total: number
+  mem_used: number
+  net_interfaces: Record<string, NetIO>
+  load_avg: [number, number, number]
+  disk_stats: DiskStat[]
+  uptime_seconds: number
+  os: string
+}
+
+export interface NetIO {
+  receive_bytes: number
+  transmit_bytes: number
+  receive_kbps: number
+  transmit_kbps: number
+}
+
+
+--- 第 27 页 ---
+
+export interface DiskStat {
+  device: string
+  mount_point: string
+  total: number
+  used: number
+  percent: number
+}
+
+export interface SFTPFileInfo {
+  name: string
+  size: number
+  mode: number
+  mod_time: number
+  is_dir: boolean
+}
+
+export interface TransferProgress {
+  id: string
+  file_name: string
+  total_bytes: number
+  transferred: number
+  percent: number
+  speed_kbps: number
+  done: boolean
+  error?: string
+}
+
+export type SplitDirection = 'h' | 'v'
+
+export interface SplitNode {
+  type: 'split'
+  direction: SplitDirection
+  children: TreeNode[]
+  ratio: number
+}
+
+export interface LeafNode {
+  type: 'leaf'
+  sessionID: string
+}
+
+export type TreeNode = SplitNode | LeafNode
+
+export interface SSHKeyInfo {
+  name: string
+  type: string
+  fingerprint: string
+  public_key: string
+  comment: string
+  has_passphrase: boolean
+}
+
+export interface SSHConfigDirective {
+  key: string
+  value: string
+
+--- 第 28 页 ---
+
+}
+
+export interface SSHConfigEntry {
+  type: string
+  pattern: string
+  directives: SSHConfigDirective[]
+}
+
+export interface SSHConfigImportCandidate {
+  pattern: string
+  hostname: string
+  port: number
+  user: string
+  identity_file: string
+  has_key: boolean
+}
+
+===[FE] frontend/src/utils/fileType.ts===
+const BINARY_EXTENSIONS = new Set([
+  // archives
+  '.zip', '.tar', '.gz', '.bz2', '.xz', '.7z', '.rar', '.tgz', '.zst',
+  // executables
+  '.exe', '.app', '.dmg', '.msi', '.deb', '.rpm', '.apk',
+  // media
+  '.mp3', '.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flac', '.ogg', '.wav', '.webm', '.aac',
+  // images
+  '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp', '.svg', '.tiff', '.tif',
+  // databases
+  '.db', '.sqlite', '.sqlite3',
+  // ISOs
+  '.iso',
+  // fonts
+  '.ttf', '.otf', '.woff', '.woff2',
+  // compiled
+  '.o', '.so', '.dll', '.dylib', '.class', '.pyc', '.bin', '.wasm',
+  // PDF
+  '.pdf',
+])
+
+const MAX_EDIT_SIZE = 5 * 1024 * 1024 // 5MB
+
+export function isEditableFile(filename: string, fileSize: number): boolean {
+  if (fileSize > MAX_EDIT_SIZE) return false
+  const dotIdx = filename.lastIndexOf('.')
+  const ext = dotIdx >= 0 ? filename.slice(dotIdx).toLowerCase() : ''
+  if (BINARY_EXTENSIONS.has(ext)) return false
+  return true
+}
+
+const EXT_TO_LANG: Record<string, string> = {
+  '.ts': 'typescript', '.tsx': 'typescript',
+  '.js': 'javascript', '.jsx': 'javascript',
+  '.json': 'json',
+  '.html': 'html', '.htm': 'html',
+  '.css': 'css', '.scss': 'scss', '.less': 'less',
+
+--- 第 29 页 ---
+
+  '.vue': 'html',
+  '.md': 'markdown',
+  '.yaml': 'yaml', '.yml': 'yaml',
+  '.xml': 'xml',
+  '.go': 'go',
+  '.py': 'python',
+  '.java': 'java',
+  '.c': 'c', '.h': 'c',
+  '.cpp': 'cpp', '.cc': 'cpp', '.cxx': 'cpp', '.hpp': 'cpp',
+  '.rs': 'rust',
+  '.rb': 'ruby',
+  '.php': 'php',
+  '.sh': 'shell', '.bash': 'shell', '.zsh': 'shell',
+  '.sql': 'sql',
+  '.toml': 'ini',
+  '.ini': 'ini', '.cfg': 'ini', '.conf': 'ini',
+  '.dockerfile': 'dockerfile',
+  '.tf': 'hcl',
+  '.lua': 'lua',
+  '.swift': 'swift',
+  '.kt': 'kotlin',
+  '.scala': 'scala',
+  '.r': 'r',
+  '.dart': 'dart',
+}
+
+export function detectLanguage(filename: string): string {
+  const dotIdx = filename.lastIndexOf('.')
+  const ext = dotIdx >= 0 ? filename.slice(dotIdx).toLowerCase() : ''
+  if (EXT_TO_LANG[ext]) return EXT_TO_LANG[ext]
+  const base = filename.toLowerCase()
+  if (base === 'makefile' || base === 'gnumakefile') return 'makefile'
+  if (base === 'dockerfile') return 'dockerfile'
+  if (base === 'cmakelists.txt') return 'cmake'
+  return 'plaintext'
+}
+
+===[FE] frontend/src/vite-env.d.ts===
+/// <reference types="vite/client" />
+
+===[FE] frontend/src/wails-runtime.d.ts===
+declare module '@wailsio/runtime' {
+  export const Events: {
+    On(eventName: string, callback: (ev: any) => void): () => void
+    OnMultiple(eventName: string, callback: (ev: any) => void, maxCallbacks: number): () => void
+    Once(eventName: string, callback: (ev: any) => void): () => void
+    Off(...eventNames: [string, ...string[]]): void
+    OffAll(): void
+    Emit(name: string, data?: any): Promise<boolean>
+  }
+  export const Call: {
+    ByID(id: number, ...args: any[]): Promise<any>
+    ByName(name: string, ...args: any[]): Promise<any>
+  }
+}
+
+--- 第 30 页 ---

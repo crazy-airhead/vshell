@@ -422,7 +422,7 @@ func (a *AppService) DeleteQuickCommand(id string) error {
 // --- Port Forwarding ---
 
 func (a *AppService) ListPortForwards(connectionID string) ([]models.PortForward, error) {
-	rows, err := a.db.Query("SELECT id, connection_id, type, local_host, local_port, remote_host, remote_port, auto_start FROM port_forwards WHERE connection_id = ?", connectionID)
+	rows, err := a.db.Query("SELECT id, name, connection_id, type, local_host, local_port, remote_host, remote_port, auto_start FROM port_forwards WHERE connection_id = ?", connectionID)
 	if err != nil {
 		return nil, err
 	}
@@ -432,13 +432,147 @@ func (a *AppService) ListPortForwards(connectionID string) ([]models.PortForward
 	for rows.Next() {
 		var f models.PortForward
 		var autoStart int
-		if err := rows.Scan(&f.ID, &f.ConnectionID, &f.Type, &f.LocalHost, &f.LocalPort, &f.RemoteHost, &f.RemotePort, &autoStart); err != nil {
+		if err := rows.Scan(&f.ID, &f.Name, &f.ConnectionID, &f.Type, &f.LocalHost, &f.LocalPort, &f.RemoteHost, &f.RemotePort, &autoStart); err != nil {
 			return nil, err
 		}
 		f.AutoStart = autoStart == 1
 		forwards = append(forwards, f)
 	}
 	return forwards, nil
+}
+
+func (a *AppService) ListAllPortForwards() ([]models.PortForward, error) {
+	rows, err := a.db.Query(`
+		SELECT pf.id, pf.name, pf.connection_id, COALESCE(c.name, ''), COALESCE(c.host, ''),
+		       pf.type, pf.local_host, pf.local_port, pf.remote_host, pf.remote_port, pf.auto_start
+		FROM port_forwards pf
+		LEFT JOIN connections c ON c.id = pf.connection_id
+		ORDER BY c.name, c.host, pf.name
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var forwards []models.PortForward
+	for rows.Next() {
+		var f models.PortForward
+		var autoStart int
+		if err := rows.Scan(&f.ID, &f.Name, &f.ConnectionID, &f.ConnectionName, &f.ConnectionHost,
+			&f.Type, &f.LocalHost, &f.LocalPort, &f.RemoteHost, &f.RemotePort, &autoStart); err != nil {
+			return nil, err
+		}
+		f.AutoStart = autoStart == 1
+		forwards = append(forwards, f)
+	}
+	return forwards, nil
+}
+
+func (a *AppService) CreatePortForward(name, connectionID, fwdType string, localHost string, localPort int, remoteHost string, remotePort int, autoStart bool) (models.PortForward, error) {
+	fwd := models.PortForward{
+		ID:           uuid.New().String(),
+		Name:         name,
+		ConnectionID: connectionID,
+		Type:         models.ForwardType(fwdType),
+		LocalHost:    localHost,
+		LocalPort:    localPort,
+		RemoteHost:   remoteHost,
+		RemotePort:   remotePort,
+		AutoStart:    autoStart,
+	}
+	autoStartInt := 0
+	if autoStart {
+		autoStartInt = 1
+	}
+	_, err := a.db.Exec(
+		"INSERT INTO port_forwards (id, name, connection_id, type, local_host, local_port, remote_host, remote_port, auto_start) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		fwd.ID, fwd.Name, fwd.ConnectionID, string(fwd.Type), fwd.LocalHost, fwd.LocalPort, fwd.RemoteHost, fwd.RemotePort, autoStartInt,
+	)
+	if err != nil {
+		return models.PortForward{}, fmt.Errorf("create port forward: %w", err)
+	}
+	return fwd, nil
+}
+
+func (a *AppService) DeletePortForward(id string) error {
+	a.fwdManager.Stop(id)
+	_, err := a.db.Exec("DELETE FROM port_forwards WHERE id = ?", id)
+	return err
+}
+
+func (a *AppService) UpdatePortForward(id, name, connectionID, fwdType string, localHost string, localPort int, remoteHost string, remotePort int, autoStart bool) error {
+	autoStartInt := 0
+	if autoStart {
+		autoStartInt = 1
+	}
+	_, err := a.db.Exec(
+		"UPDATE port_forwards SET name = ?, connection_id = ?, type = ?, local_host = ?, local_port = ?, remote_host = ?, remote_port = ?, auto_start = ? WHERE id = ?",
+		name, connectionID, fwdType, localHost, localPort, remoteHost, remotePort, autoStartInt, id,
+	)
+	return err
+}
+
+func (a *AppService) ListRunningPortForwards() []string {
+	return a.fwdManager.RunningIDs()
+}
+
+func (a *AppService) StartPortForward(id string) error {
+	rows, err := a.db.Query("SELECT id, name, connection_id, type, local_host, local_port, remote_host, remote_port, auto_start FROM port_forwards WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+	if !rows.Next() {
+		rows.Close()
+		return fmt.Errorf("port forward %s not found", id)
+	}
+	var f models.PortForward
+	var autoStart int
+	if err := rows.Scan(&f.ID, &f.Name, &f.ConnectionID, &f.Type, &f.LocalHost, &f.LocalPort, &f.RemoteHost, &f.RemotePort, &autoStart); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+
+	client, err := a.sshManager.GetSSHClient(f.ConnectionID)
+	if err != nil {
+		// No active session — ensure connection for port forwarding
+		conn, dbErr := a.getConnectionByID(f.ConnectionID)
+		if dbErr != nil {
+			return fmt.Errorf("connection %s not found", f.ConnectionID)
+		}
+		if ensureErr := a.sshManager.EnsureClient(conn); ensureErr != nil {
+			return fmt.Errorf("connect to %s: %w", conn.Host, ensureErr)
+		}
+		client, err = a.sshManager.GetSSHClient(f.ConnectionID)
+		if err != nil {
+			return err
+		}
+	}
+
+	switch f.Type {
+	case models.ForwardLocal:
+		return a.fwdManager.StartLocal(client, &f)
+	default:
+		return fmt.Errorf("forward type %s not yet supported", f.Type)
+	}
+}
+
+func (a *AppService) StopPortForward(id string) error {
+	// Resolve connectionID before stopping, so we can check cleanup
+	var connectionID string
+	if f, ok := a.fwdManager.Forward(id); ok {
+		connectionID = f.ConnectionID
+	}
+
+	if err := a.fwdManager.Stop(id); err != nil {
+		return err
+	}
+
+	// If no more active forwards and no terminal sessions, disconnect
+	if connectionID != "" && a.fwdManager.ActiveCount(connectionID) == 0 {
+		a.sshManager.RemoveClient(connectionID)
+	}
+	return nil
 }
 
 // --- SFTP ---

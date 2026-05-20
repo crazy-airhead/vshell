@@ -112,6 +112,32 @@ func (m *Manager) Stop(forwardID string) error {
 	return f.Listener.Close()
 }
 
+// Forward returns the forward by ID, or nil if not found.
+func (m *Manager) Forward(id string) (*Forward, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	f, ok := m.forwards[id]
+	return f, ok
+}
+
+// RunningIDs returns the IDs of all currently running forwards.
+func (m *Manager) RunningIDs() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	ids := make([]string, 0, len(m.forwards))
+	for id := range m.forwards {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// ActiveCount returns the number of running forwards for a connection.
+func (m *Manager) ActiveCount(connectionID string) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.listeners[connectionID])
+}
+
 func (m *Manager) StopAllForConnection(connectionID string) {
 	m.mu.Lock()
 	listeners := m.listeners[connectionID]

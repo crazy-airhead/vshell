@@ -287,6 +287,57 @@ func (m *Manager) ExecOnConnection(connectionID string, cmd string) (string, err
 	return string(out), nil
 }
 
+// EnsureClient ensures an SSH TCP connection exists for the given connection,
+// without creating a terminal session. Reuses an existing client if available.
+func (m *Manager) EnsureClient(conn *models.Connection) error {
+	m.mu.RLock()
+	_, exists := m.clients[conn.ID]
+	m.mu.RUnlock()
+	if exists {
+		return nil
+	}
+
+	config, err := m.buildSSHConfig(conn)
+	if err != nil {
+		return fmt.Errorf("build ssh config: %w", err)
+	}
+
+	addr := fmt.Sprintf("%s:%d", conn.Host, conn.Port)
+	client, err := ssh.Dial("tcp", addr, config)
+	if err != nil {
+		return fmt.Errorf("dial %s: %w", addr, err)
+	}
+
+	m.mu.Lock()
+	m.clients[conn.ID] = client
+	m.mu.Unlock()
+	return nil
+}
+
+// RemoveClient closes and removes the SSH client for a connection if no terminal
+// sessions are active. Returns true if the client was removed.
+func (m *Manager) RemoveClient(connectionID string) bool {
+	m.mu.RLock()
+	hasSessions := len(m.connSess[connectionID]) > 0
+	m.mu.RUnlock()
+	if hasSessions {
+		return false
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Double-check after acquiring write lock
+	if len(m.connSess[connectionID]) > 0 {
+		return false
+	}
+	if client, ok := m.clients[connectionID]; ok {
+		client.Close()
+		delete(m.clients, connectionID)
+		return true
+	}
+	return false
+}
+
 // GetSSHClient returns the underlying SSH client for a connection.
 func (m *Manager) GetSSHClient(connectionID string) (*ssh.Client, error) {
 	m.mu.RLock()

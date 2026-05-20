@@ -43,6 +43,7 @@ func (db *DB) migrate() error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS port_forwards (
 			id TEXT PRIMARY KEY,
+			name TEXT,
 			connection_id TEXT NOT NULL,
 			type TEXT NOT NULL,
 			local_host TEXT,
@@ -57,6 +58,14 @@ func (db *DB) migrate() error {
 		if _, err := db.Exec(m); err != nil {
 			return err
 		}
+	}
+
+	// Additive migrations that may fail on fresh DBs (column/table already exists).
+	additive := []string{
+		`ALTER TABLE port_forwards ADD COLUMN name TEXT`,
+	}
+	for _, m := range additive {
+		db.Exec(m) // ignore errors
 	}
 	return nil
 }

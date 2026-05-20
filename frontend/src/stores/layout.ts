@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-export type SidebarView = 'connections' | 'keys' | 'ssh-config'
+export type SidebarView = 'connections' | 'keys' | 'ssh-config' | 'port-forward'
 export type BottomTool = 'monitor' | 'sftp'
 
 export const useLayoutStore = defineStore('layout', () => {

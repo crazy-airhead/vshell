@@ -54,7 +54,10 @@ export type ForwardType = 'local' | 'remote' | 'dynamic'
 
 export interface PortForward {
   id: string
+  name: string
   connection_id: string
+  connection_name: string
+  connection_host: string
   type: ForwardType
   local_host: string
   local_port: number
