@@ -85,6 +85,9 @@ export default {
     deleteContent: 'Are you sure you want to delete "{name}"?',
     deleted: 'Deleted "{name}"',
     deleteFailed: 'Delete failed: {error}',
+    remotePrefix: 'Remote',
+    localPrefix: 'Local',
+    fileNotEditable: 'This file type cannot be edited',
   },
   keys: {
     title: 'SSH Keys',

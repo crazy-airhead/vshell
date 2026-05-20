@@ -450,6 +450,41 @@ func (c *Client) ReadDir(path string) ([]FileInfo, error) {
 	return result, nil
 }
 
+const maxEditSize = 5 * 1024 * 1024 // 5MB
+
+func (c *Client) ReadFileContent(remotePath string) (string, error) {
+	stat, err := c.sftpClient.Stat(remotePath)
+	if err != nil {
+		return "", fmt.Errorf("stat %s: %w", remotePath, err)
+	}
+	if stat.Size() > maxEditSize {
+		return "", fmt.Errorf("file too large to edit (%d bytes, max %d)", stat.Size(), maxEditSize)
+	}
+	f, err := c.sftpClient.Open(remotePath)
+	if err != nil {
+		return "", fmt.Errorf("open %s: %w", remotePath, err)
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return "", fmt.Errorf("read %s: %w", remotePath, err)
+	}
+	return string(data), nil
+}
+
+func (c *Client) WriteFileContent(remotePath string, content string) error {
+	f, err := c.sftpClient.Create(remotePath)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", remotePath, err)
+	}
+	defer f.Close()
+	_, err = f.Write([]byte(content))
+	if err != nil {
+		return fmt.Errorf("write %s: %w", remotePath, err)
+	}
+	return nil
+}
+
 func (c *Client) Remove(path string) error {
 	stat, err := c.sftpClient.Stat(path)
 	if err != nil {

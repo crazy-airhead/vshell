@@ -85,7 +85,7 @@ function displayMeta(entry: SSHConfigEntry): string {
 <template>
   <div class="entry-item" :class="{ expanded }">
     <!-- Collapsed view -->
-    <div v-if="!expanded" class="entry-collapsed" @click="emit('update:expanded', true)">
+    <div v-if="!expanded" class="entry-collapsed">
       <div class="entry-main">
         <div class="entry-row">
           <span class="entry-badge">Host</span>

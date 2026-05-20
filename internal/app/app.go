@@ -442,6 +442,14 @@ func (a *AppService) SFTPDownload(connectionID, remotePath, localPath string) er
 	return nil
 }
 
+func (a *AppService) SFTPReadFileContent(connectionID, remotePath string) (string, error) {
+	return a.sftpManager.ReadFileContent(connectionID, remotePath)
+}
+
+func (a *AppService) SFTPWriteFileContent(connectionID, remotePath, content string) error {
+	return a.sftpManager.WriteFileContent(connectionID, remotePath, content)
+}
+
 func (a *AppService) SFTPDelete(connectionID, remotePath string) error {
 	go func() {
 		if err := a.sftpManager.RemoveFile(connectionID, remotePath); err != nil {
@@ -473,6 +481,30 @@ func (a *AppService) ListLocalDir(dirPath string) ([]LocalFileInfo, error) {
 
 func (a *AppService) DeleteLocalFile(localPath string) error {
 	return os.RemoveAll(localPath)
+}
+
+const maxLocalEditSize = 5 * 1024 * 1024 // 5MB
+
+func (a *AppService) ReadLocalFileContent(localPath string) (string, error) {
+	stat, err := os.Stat(localPath)
+	if err != nil {
+		return "", err
+	}
+	if stat.Size() > maxLocalEditSize {
+		return "", fmt.Errorf("file too large to edit (%d bytes, max %d)", stat.Size(), maxLocalEditSize)
+	}
+	data, err := os.ReadFile(localPath)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func (a *AppService) WriteLocalFileContent(localPath, content string) error {
+	if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(localPath, []byte(content), 0644)
 }
 
 func (a *AppService) listLocalDir(dirPath string) ([]LocalFileInfo, error) {

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as monaco from 'monaco-editor'
-import { WriteSSHConfigRaw } from '../../../bindings/vshell/internal/app/appservice'
+import { WriteSSHConfigRaw, SFTPWriteFileContent, WriteLocalFileContent } from '../../../bindings/vshell/internal/app/appservice'
 import { useSSHConfigStore } from '../../stores/sshconfig'
 import { useTerminalStore } from '../../stores/terminal'
 import type { TerminalTab } from '../../stores/terminal'
+import { detectLanguage } from '../../utils/fileType'
 
 const props = defineProps<{ tab: TerminalTab }>()
 
@@ -20,10 +21,11 @@ onMounted(() => {
   if (!editorContainer.value) return
 
   const isDark = document.documentElement.getAttribute('data-theme')?.includes('dark') !== false
+  const language = props.tab.filePath ? detectLanguage(props.tab.filePath) : 'plaintext'
 
   editor = monaco.editor.create(editorContainer.value, {
     value: props.tab.editorContent || '',
-    language: 'plaintext',
+    language,
     theme: isDark ? 'vs-dark' : 'vs',
     minimap: { enabled: false },
     wordWrap: 'on',
@@ -46,7 +48,7 @@ onMounted(() => {
   })
 
   editor.addAction({
-    id: 'save-ssh-config',
+    id: 'save-file',
     label: 'Save',
     keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
     run: async () => {
@@ -64,12 +66,25 @@ async function handleSave() {
   if (!editor) return
   const content = editor.getValue()
   try {
-    await WriteSSHConfigRaw(content)
+    switch (props.tab.editorMode) {
+      case 'remote-sftp':
+        if (!props.tab.connectionID || !props.tab.filePath) break
+        await SFTPWriteFileContent(props.tab.connectionID, props.tab.filePath, content)
+        break
+      case 'local-file':
+        if (!props.tab.filePath) break
+        await WriteLocalFileContent(props.tab.filePath, content)
+        break
+      case 'ssh-config':
+      default:
+        await WriteSSHConfigRaw(content)
+        sshConfigStore.loadEntries()
+        break
+    }
     originalContent = content
     terminalStore.markTabDirty(props.tab.id, false)
-    sshConfigStore.loadEntries()
   } catch (e: any) {
-    console.error('Failed to save SSH config:', e)
+    console.error('Failed to save file:', e)
   }
 }
 

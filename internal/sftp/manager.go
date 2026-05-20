@@ -95,6 +95,22 @@ func (m *Manager) RemoveFile(connectionID, remotePath string) error {
 	return client.Remove(remotePath)
 }
 
+func (m *Manager) ReadFileContent(connectionID, remotePath string) (string, error) {
+	client, err := m.GetOrCreateClient(connectionID)
+	if err != nil {
+		return "", err
+	}
+	return client.ReadFileContent(remotePath)
+}
+
+func (m *Manager) WriteFileContent(connectionID, remotePath, content string) error {
+	client, err := m.GetOrCreateClient(connectionID)
+	if err != nil {
+		return err
+	}
+	return client.WriteFileContent(remotePath, content)
+}
+
 func (m *Manager) CloseClient(connectionID string) {
 	m.mu.Lock()
 	c, ok := m.clients[connectionID]

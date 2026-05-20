@@ -2,8 +2,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NSpin, NButton, useDialog, useMessage } from 'naive-ui'
-import { GetHomeDir, ListLocalDir, DeleteLocalFile } from '../../../bindings/vshell/internal/app/appservice'
+import { GetHomeDir, ListLocalDir, DeleteLocalFile, ReadLocalFileContent } from '../../../bindings/vshell/internal/app/appservice'
 import { useDragSource, useDropTarget } from '../../composables/useDragTransfer'
+import { isEditableFile } from '../../utils/fileType'
+import { useTerminalStore } from '../../stores/terminal'
 
 const emit = defineEmits<{
   (e: 'upload', paths: string[], targetDir: string): void
@@ -22,6 +24,7 @@ interface LocalEntry {
 const { t } = useI18n()
 const dialog = useDialog()
 const message = useMessage()
+const terminalStore = useTerminalStore()
 
 const showHidden = ref(false)
 const currentPath = ref('')
@@ -100,15 +103,39 @@ async function navigateTo(dirPath: string) {
   }
 }
 
+// Manual dblclick detection because drag overlay suppresses native dblclick
+let lastLocalClickTime = 0
+let lastLocalClickName = ''
+
+function checkLocalDblClick(entry: LocalEntry): boolean {
+  const now = Date.now()
+  if (now - lastLocalClickTime < 400 && lastLocalClickName === entry.name) {
+    lastLocalClickTime = 0
+    lastLocalClickName = ''
+    return true
+  }
+  lastLocalClickTime = now
+  lastLocalClickName = entry.name
+  return false
+}
+
 function handleNameClick(entry: LocalEntry, e: MouseEvent) {
   if (entry.is_dir && !e.ctrlKey && !e.metaKey) {
     navigateTo(entry.path)
+    return
+  }
+  if (!entry.is_dir && checkLocalDblClick(entry)) {
+    handleRowDblClick(entry)
     return
   }
   toggleSelect(entry, e)
 }
 
 function handleRowClick(entry: LocalEntry, e: MouseEvent) {
+  if (!entry.is_dir && checkLocalDblClick(entry)) {
+    handleRowDblClick(entry)
+    return
+  }
   toggleSelect(entry, e)
 }
 
@@ -137,6 +164,30 @@ function handleDeleteLocal() {
       handleRefresh()
     },
   })
+}
+
+async function handleRowDblClick(entry: LocalEntry) {
+  if (entry.is_dir) return
+  if (!isEditableFile(entry.name, entry.size)) return
+
+  const tabId = `editor-local:${entry.path}`
+
+  if (terminalStore.tabs.find(t => t.id === tabId)) {
+    terminalStore.activeTabID = tabId
+    return
+  }
+
+  try {
+    const content = await ReadLocalFileContent(entry.path)
+
+    terminalStore.addEditorTab(tabId, entry.name, content, entry.path, {
+      isRemote: false,
+      editorMode: 'local-file',
+      tooltip: entry.path,
+    })
+  } catch (e: any) {
+    console.error('Failed to open local file:', e)
+  }
 }
 
 function handleRefresh() {

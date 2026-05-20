@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NEmpty } from 'naive-ui'
 import { useTerminalStore } from '../../stores/terminal'
@@ -10,9 +10,15 @@ const { t } = useI18n()
 const terminalStore = useTerminalStore()
 const sftpStore = useSFTPStore()
 
+const lastConnectionID = ref<string | null>(null)
+
 const activeConnectionID = computed(() => {
   const tab = terminalStore.tabs.find(t => t.id === terminalStore.activeTabID)
-  return tab?.connectionID ?? null
+  const connID = tab?.connectionID || null
+  if (connID) {
+    lastConnectionID.value = connID
+  }
+  return connID || lastConnectionID.value
 })
 
 watch(activeConnectionID, (newID) => {

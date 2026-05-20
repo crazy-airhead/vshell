@@ -187,6 +187,7 @@ function cleanupDrag() {
 export function useDragSource(options: SourceOptions) {
   function onRowMouseDown(e: MouseEvent, item: any) {
     if (e.button !== 0) return
+    e.preventDefault()
     startX = e.clientX
     startY = e.clientY
     active = true

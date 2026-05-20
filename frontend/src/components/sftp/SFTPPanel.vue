@@ -6,11 +6,14 @@ import type { TreeOption } from 'naive-ui'
 import { Events } from '@wailsio/runtime'
 import { useSFTPStore } from '../../stores/sftp'
 import { useTransferStore } from '../../stores/transfers'
+import { useTerminalStore } from '../../stores/terminal'
+import { useConnectionStore } from '../../stores/connection'
 import type { SFTPFile } from '../../stores/sftp'
 import type { TransferProgress } from '../../stores/transfers'
 import LocalFileTree from './LocalFileTree.vue'
-import { SFTPUpload, SFTPDownload, SFTPDelete } from '../../../bindings/vshell/internal/app/appservice'
+import { SFTPUpload, SFTPDownload, SFTPDelete, SFTPReadFileContent } from '../../../bindings/vshell/internal/app/appservice'
 import { useDragSource, useDropTarget } from '../../composables/useDragTransfer'
+import { isEditableFile } from '../../utils/fileType'
 
 const localTreeRef = ref<InstanceType<typeof LocalFileTree> | null>(null)
 
@@ -18,6 +21,8 @@ const props = defineProps<{ connectionID: string }>()
 const { t } = useI18n()
 const sftpStore = useSFTPStore()
 const transferStore = useTransferStore()
+const terminalStore = useTerminalStore()
+const connectionStore = useConnectionStore()
 const dialog = useDialog()
 const message = useMessage()
 
@@ -146,10 +151,10 @@ function handleRemoteNameClick(file: SFTPFile, e: MouseEvent) {
     sftpStore.navigateToDir(props.connectionID, newPath)
     return
   }
-  toggleRemoteSelect(file, e)
-}
-
-function handleRemoteRowClick(file: SFTPFile, e: MouseEvent) {
+  if (!file.is_dir && checkRemoteDblClick(file)) {
+    handleRemoteRowDblClick(file)
+    return
+  }
   toggleRemoteSelect(file, e)
 }
 
@@ -160,6 +165,61 @@ function toggleRemoteSelect(file: SFTPFile, e: MouseEvent) {
     else selectedRemote.value.add(fp)
   } else {
     selectedRemote.value = new Set([fp])
+  }
+}
+
+// Manual dblclick detection because drag overlay suppresses native dblclick
+let lastRemoteClickTime = 0
+let lastRemoteClickName = ''
+
+function checkRemoteDblClick(file: SFTPFile): boolean {
+  const now = Date.now()
+  if (now - lastRemoteClickTime < 400 && lastRemoteClickName === file.name) {
+    lastRemoteClickTime = 0
+    lastRemoteClickName = ''
+    return true
+  }
+  lastRemoteClickTime = now
+  lastRemoteClickName = file.name
+  return false
+}
+
+function handleRemoteRowClick(file: SFTPFile, e: MouseEvent) {
+  if (!file.is_dir && checkRemoteDblClick(file)) {
+    handleRemoteRowDblClick(file)
+    return
+  }
+  toggleRemoteSelect(file, e)
+}
+
+async function handleRemoteRowDblClick(file: SFTPFile) {
+  if (file.is_dir) return
+  if (!isEditableFile(file.name, file.size)) return
+
+  const fullPath = remoteFilePath(file.name)
+  const tabId = `editor-remote:${props.connectionID}:${fullPath}`
+
+  if (terminalStore.tabs.find(t => t.id === tabId)) {
+    terminalStore.activeTabID = tabId
+    return
+  }
+
+  try {
+    const content = await SFTPReadFileContent(props.connectionID, fullPath)
+
+    const conn = connectionStore.connections.find(c => c.id === props.connectionID)
+    const username = conn?.username || 'user'
+    const host = conn?.host || 'unknown'
+    const tooltip = `${username}@${host}:${fullPath}`
+
+    terminalStore.addEditorTab(tabId, file.name, content, fullPath, {
+      isRemote: true,
+      editorMode: 'remote-sftp',
+      tooltip,
+      connectionID: props.connectionID,
+    })
+  } catch (e: any) {
+    console.error('Failed to open remote file:', e)
   }
 }
 

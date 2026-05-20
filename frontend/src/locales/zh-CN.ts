@@ -85,6 +85,9 @@ export default {
     deleteContent: '确定要删除 "{name}" 吗？',
     deleted: '已删除 "{name}"',
     deleteFailed: '删除失败: {error}',
+    remotePrefix: '远端',
+    localPrefix: '本地',
+    fileNotEditable: '该文件类型不支持编辑',
   },
   keys: {
     title: '密钥管理',

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type { TreeNode } from '../types'
 
 export type TabType = 'terminal' | 'editor'
+export type EditorMode = 'ssh-config' | 'remote-sftp' | 'local-file'
 
 export interface TerminalTab {
   id: string
@@ -12,6 +13,9 @@ export interface TerminalTab {
   editorContent?: string
   filePath?: string
   dirty?: boolean
+  isRemote?: boolean
+  editorMode?: EditorMode
+  tooltip?: string
 }
 
 export const useTerminalStore = defineStore('terminal', () => {
@@ -29,12 +33,29 @@ export const useTerminalStore = defineStore('terminal', () => {
     }
   }
 
-  function addEditorTab(id: string, title: string, content: string, filePath: string) {
+  function addEditorTab(
+    id: string,
+    title: string,
+    content: string,
+    filePath: string,
+    opts?: { isRemote?: boolean; editorMode?: EditorMode; tooltip?: string; connectionID?: string },
+  ) {
     if (tabs.value.find((t) => t.id === id)) {
       activeTabID.value = id
       return
     }
-    addTab({ id, connectionID: '', title, type: 'editor', editorContent: content, filePath, dirty: false })
+    addTab({
+      id,
+      connectionID: opts?.connectionID || '',
+      title,
+      type: 'editor',
+      editorContent: content,
+      filePath,
+      dirty: false,
+      isRemote: opts?.isRemote,
+      editorMode: opts?.editorMode,
+      tooltip: opts?.tooltip,
+    })
   }
 
   function updateTabContent(id: string, content: string) {

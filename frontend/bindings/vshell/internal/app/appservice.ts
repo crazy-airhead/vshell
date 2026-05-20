@@ -112,6 +112,10 @@ export function ListSSHKeys(): $CancellablePromise<$models.SSHKeyInfo[]> {
     });
 }
 
+export function ReadLocalFileContent(localPath: string): $CancellablePromise<string> {
+    return $Call.ByID(183856699, localPath);
+}
+
 /**
  * ReadSSHConfig parses ~/.ssh/config and returns structured entries.
  */
@@ -157,8 +161,16 @@ export function SFTPReadDir(connectionID: string, path: string): $CancellablePro
     });
 }
 
+export function SFTPReadFileContent(connectionID: string, remotePath: string): $CancellablePromise<string> {
+    return $Call.ByID(2657354111, connectionID, remotePath);
+}
+
 export function SFTPUpload(connectionID: string, localPath: string, remotePath: string): $CancellablePromise<void> {
     return $Call.ByID(1896528085, connectionID, localPath, remotePath);
+}
+
+export function SFTPWriteFileContent(connectionID: string, remotePath: string, content: string): $CancellablePromise<void> {
+    return $Call.ByID(952444442, connectionID, remotePath, content);
 }
 
 /**
@@ -185,6 +197,10 @@ export function StopMonitor(connectionID: string): $CancellablePromise<void> {
 
 export function UpdateConnection(form: models$0.ConnectionForm): $CancellablePromise<void> {
     return $Call.ByID(3356068760, form);
+}
+
+export function WriteLocalFileContent(localPath: string, content: string): $CancellablePromise<void> {
+    return $Call.ByID(3166138842, localPath, content);
 }
 
 /**

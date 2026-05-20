@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NTabs, NTabPane, NEmpty } from 'naive-ui'
+import { NTabs, NTabPane, NEmpty, NTooltip } from 'naive-ui'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
 import XTerminal from './XTerminal.vue'
@@ -14,11 +15,28 @@ function getActiveTab(): string | undefined {
   return terminalStore.activeTabID ?? undefined
 }
 
-function getTabTitle(tab: { title: string; type?: string; dirty?: boolean }): string {
-  if (tab.type === 'editor' && tab.dirty) {
-    return tab.title + ' •'
+function renderTabTitle(tab: typeof terminalStore.tabs[number]) {
+  if (tab.type !== 'editor') {
+    return tab.title
   }
-  return tab.title
+
+  const children: (string | ReturnType<typeof h>)[] = []
+  if (tab.isRemote === true) {
+    children.push(h('span', { class: 'tab-tag-remote' }, `[${t('sftp.remotePrefix')}] `))
+  } else if (tab.isRemote === false) {
+    children.push(h('span', { class: 'tab-tag-local' }, `[${t('sftp.localPrefix')}] `))
+  }
+
+  children.push(tab.title)
+
+  if (tab.dirty) {
+    children.push(h('span', { class: 'tab-dirty' }, ' •'))
+  }
+
+  return h(NTooltip, { delay: 0, placement: 'bottom' }, {
+    trigger: () => h('span', children),
+    default: () => tab.tooltip || tab.title,
+  })
 }
 
 function handleClose(id: string) {
@@ -48,7 +66,7 @@ function handleClose(id: string) {
           v-for="tab in terminalStore.tabs"
           :key="tab.id"
           :name="tab.id"
-          :tab="getTabTitle(tab)"
+          :tab="renderTabTitle(tab)"
         />
       </NTabs>
       <div class="terminals-container">
@@ -123,5 +141,19 @@ function handleClose(id: string) {
 .terminal-instance.active {
   visibility: visible;
   pointer-events: auto;
+}
+</style>
+
+<style>
+.tab-tag-remote {
+  color: #5dade2;
+  font-weight: 600;
+}
+.tab-tag-local {
+  color: #2ecc71;
+  font-weight: 600;
+}
+.tab-dirty {
+  color: #e5c07b;
 }
 </style>
