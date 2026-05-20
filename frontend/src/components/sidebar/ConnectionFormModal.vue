@@ -11,9 +11,12 @@ import {
   NButton,
   NSpace,
   NDivider,
+  NRadioGroup,
+  NRadio,
   useMessage,
 } from 'naive-ui'
 import { useConnectionStore, newFormData, AuthType } from '../../stores/connection'
+import { useSSHKeyStore } from '../../stores/sshkey'
 import type { ConnectionFormData } from '../../stores/connection'
 import type { Connection } from '../../types'
 
@@ -25,12 +28,16 @@ const emit = defineEmits<{ (e: 'update:show', val: boolean): void }>()
 
 const { t } = useI18n()
 const store = useConnectionStore()
+const sshKeyStore = useSSHKeyStore()
 const message = useMessage()
 
 const isEdit = computed(() => !!props.editConnection)
 
 const form = ref<ConnectionFormData>(newFormData())
 const saving = ref(false)
+const keySource = ref<'managed' | 'manual'>('managed')
+const selectedKeyName = ref<string | null>(null)
+const loadingKey = ref(false)
 
 const showModal = computed({
   get: () => props.show,
@@ -44,6 +51,20 @@ const authTypeOptions = computed(() => [
   { label: t('connection.authInteractive'), value: AuthType.AuthInteractive },
 ])
 
+const managedKeyOptions = computed(() => {
+  if (!sshKeyStore.keys.length) return []
+  return sshKeyStore.keys.map((k) => ({
+    label: `${k.name} (${k.type}${k.comment ? ' - ' + k.comment : ''})`,
+    value: k.name,
+  }))
+})
+
+const selectedKeyHasPassphrase = computed(() => {
+  if (!selectedKeyName.value) return false
+  const key = sshKeyStore.keys.find((k) => k.name === selectedKeyName.value)
+  return key?.has_passphrase ?? false
+})
+
 const groupOptions = computed(() => {
   const opts = [{ label: '-', value: '' }]
   for (const g of store.groups) {
@@ -54,7 +75,7 @@ const groupOptions = computed(() => {
 
 watch(
   () => props.show,
-  (visible) => {
+  async (visible) => {
     if (visible) {
       if (props.editConnection) {
         const c = props.editConnection
@@ -70,12 +91,35 @@ watch(
           keyPassphrase: '',
           groupID: c.group_id || null,
         }
+        keySource.value = 'manual'
+        selectedKeyName.value = null
       } else {
         form.value = newFormData()
+        keySource.value = 'managed'
+        selectedKeyName.value = null
       }
+      await sshKeyStore.loadKeys()
     }
   },
 )
+
+async function onManagedKeyChange(name: string | null) {
+  if (!name) {
+    form.value.privateKey = ''
+    selectedKeyName.value = null
+    return
+  }
+  selectedKeyName.value = name
+  loadingKey.value = true
+  try {
+    const content = await sshKeyStore.readContent(name, 'priv')
+    form.value.privateKey = content
+  } catch (e: any) {
+    message.error(t('connection.keyReadFailed', { error: e }))
+  } finally {
+    loadingKey.value = false
+  }
+}
 
 function handleClose() {
   showModal.value = false
@@ -85,6 +129,10 @@ async function handleSave() {
   const f = form.value
   if (!f.name.trim()) { message.warning(t('connection.nameRequired')); return }
   if (!f.host.trim()) { message.warning(t('connection.hostRequired')); return }
+  if (f.authType === 'private_key' && !f.privateKey.trim()) {
+    message.warning(t('connection.keyRequired'))
+    return
+  }
 
   saving.value = true
   try {
@@ -130,14 +178,42 @@ async function handleSave() {
         <NInput v-model:value="form.password" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passwordEditPlaceholder') : t('connection.passwordPlaceholder')" />
       </NFormItem>
       <template v-if="form.authType === 'private_key'">
-        <NFormItem :label="isEdit ? t('connection.newPrivateKey') : t('connection.authPrivateKey')">
-          <NInput
-            v-model:value="form.privateKey"
-            type="textarea"
-            :rows="4"
-            :placeholder="isEdit ? t('connection.keyEditPlaceholder') : t('connection.keyPlaceholder')"
-          />
+        <NFormItem :label="t('connection.keySource')">
+          <NRadioGroup v-model:value="keySource" name="keySource">
+            <NSpace>
+              <NRadio value="managed">{{ t('connection.keyFromManaged') }}</NRadio>
+              <NRadio value="manual">{{ t('connection.keyManual') }}</NRadio>
+            </NSpace>
+          </NRadioGroup>
         </NFormItem>
+        <template v-if="keySource === 'managed'">
+          <NFormItem :label="t('connection.selectKey')">
+            <NSelect
+              v-model:value="selectedKeyName"
+              :options="managedKeyOptions"
+              :placeholder="t('connection.selectKeyPlaceholder')"
+              :loading="sshKeyStore.keys.length === 0"
+              clearable
+              filterable
+              @update:value="onManagedKeyChange"
+            />
+          </NFormItem>
+          <NFormItem v-if="selectedKeyHasPassphrase" label=" " style="margin-top: -16px">
+            <span style="color: var(--warning-color); font-size: 12px">
+              {{ t('connection.keyHasPassphrase') }}
+            </span>
+          </NFormItem>
+        </template>
+        <template v-else>
+          <NFormItem :label="isEdit ? t('connection.newPrivateKey') : t('connection.authPrivateKey')">
+            <NInput
+              v-model:value="form.privateKey"
+              type="textarea"
+              :rows="4"
+              :placeholder="isEdit ? t('connection.keyEditPlaceholder') : t('connection.keyPlaceholder')"
+            />
+          </NFormItem>
+        </template>
         <NFormItem :label="isEdit ? t('connection.newPassphrase') : t('connection.passphrase')">
           <NInput v-model:value="form.keyPassphrase" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passphraseEditPlaceholder') : t('connection.passphrasePlaceholder')" />
         </NFormItem>
