@@ -2,6 +2,11 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NSpin, NButton, useDialog, useMessage } from 'naive-ui'
+import IconRefreshCw from '~icons/lucide/refresh-cw'
+import IconUpload from '~icons/lucide/upload'
+import IconTrash2 from '~icons/lucide/trash-2'
+import IconFolder from '~icons/lucide/folder'
+import IconFile from '~icons/lucide/file'
 import { GetHomeDir, ListLocalDir, DeleteLocalFile, ReadLocalFileContent } from '../../../bindings/vshell/internal/app/appservice'
 import { useDragSource, useDropTarget } from '../../composables/useDragTransfer'
 import { isEditableFile } from '../../utils/fileType'
@@ -265,13 +270,13 @@ onUnmounted(() => {
       </template>
       <input v-else v-model="editPath" class="flex-1 bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
         @keyup.enter="commitEdit" @keyup.escape="editing = false" @blur="commitEdit" />
-      <NButton size="tiny" quaternary @click="handleRefresh" title="Refresh">&#x21bb;</NButton>
+      <NButton size="tiny" quaternary @click="handleRefresh" title="Refresh"><IconRefreshCw :width="14" :height="14" /></NButton>
       <NButton size="tiny" quaternary :type="showHidden ? 'primary' : 'default'" @click="showHidden = !showHidden">.*</NButton>
       <NButton size="tiny" quaternary class="upload-btn" :class="{ active: selected.size > 0 }" @click="handleUpload" title="Upload selected">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 12V3M4 6l4-4 4 4"/><path d="M2 12v2h12v-2"/></svg>
+        <IconUpload :width="14" :height="14" />
       </NButton>
       <NButton size="tiny" quaternary class="delete-btn" :class="{ active: selected.size > 0 }" @click="handleDeleteLocal" title="Delete selected">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/></svg>
+        <IconTrash2 :width="14" :height="14" />
       </NButton>
     </div>
 
@@ -294,7 +299,7 @@ onUnmounted(() => {
           >
             <td class="py-[3px] px-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[160px]">
               <span class="dir-name" @click.stop="handleNameClick(f, $event)">
-                <span class="mr-1">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>
+                <component :is="f.is_dir ? IconFolder : IconFile" :width="14" :height="14" class="mr-1 inline-block align-[-2px]" />
                 {{ f.name }}
               </span>
             </td>

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { NButton, NSpin, useMessage, useDialog } from 'naive-ui'
+import IconPlus from '~icons/lucide/plus'
+import IconPencil from '~icons/lucide/pencil'
+import IconTrash2 from '~icons/lucide/trash-2'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
 import ConnectionFormModal from './ConnectionFormModal.vue'
@@ -79,7 +82,7 @@ function handleNew() {
     <div class="px-4 py-3 border-b border-solid border-[var(--border-color)] flex items-center justify-between">
       <span class="text-[13px] font-semibold text-[var(--text-primary)]">Connections ({{ connectionStore.connections.length }})</span>
       <NButton size="tiny" quaternary @click="handleNew" title="New Connection">
-        +
+        <IconPlus :width="14" :height="14" />
       </NButton>
     </div>
     <div class="flex-1 overflow-y-auto p-2">
@@ -94,8 +97,8 @@ function handleNew() {
         <span class="inline-block w-2 h-2 rounded-full mr-2 shrink-0" :style="{ backgroundColor: connectionStore.connectedIDs.has(conn.id) ? 'var(--color-success)' : 'var(--text-secondary)' }"></span>
         <span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{{ conn.name }}</span>
         <span class="text-[var(--text-secondary)] text-[11px] ml-2 shrink-0">{{ conn.host }}</span>
-        <button class="conn-action" title="Edit" @click.stop="handleEdit(conn)">&#9998;</button>
-        <button class="conn-action conn-action-danger" title="Delete" @click.stop="handleDelete(conn.id, conn.name)">x</button>
+        <button class="conn-action" title="Edit" @click.stop="handleEdit(conn)"><IconPencil :width="12" :height="12" /></button>
+        <button class="conn-action conn-action-danger" title="Delete" @click.stop="handleDelete(conn.id, conn.name)"><IconTrash2 :width="12" :height="12" /></button>
       </div>
     </div>
     <ConnectionFormModal v-model:show="showModal" :edit-connection="editConn" />

@@ -2,6 +2,9 @@
 import { reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NInput, NInputNumber, NButton, NPopconfirm, NSpace } from 'naive-ui'
+import IconPencil from '~icons/lucide/pencil'
+import IconTrash2 from '~icons/lucide/trash-2'
+import IconX from '~icons/lucide/x'
 import type { SSHConfigEntry, SSHConfigDirective } from '../../types'
 
 const props = defineProps<{
@@ -95,16 +98,12 @@ function displayMeta(entry: SSHConfigEntry): string {
       </div>
       <div class="flex gap-[2px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
         <button class="entry-action-btn" @click.stop="emit('update:expanded', true)" title="Edit">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" />
-          </svg>
+          <IconPencil :width="12" :height="12" />
         </button>
         <NPopconfirm @positive-click="handleDelete">
           <template #trigger>
             <button class="entry-action-btn entry-action-danger" @click.stop title="Delete">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M3 4h10M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v4M10 7v4M4 4l.7 9.4a1 1 0 001 .6h4.6a1 1 0 001-.6L12 4" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <IconTrash2 :width="12" :height="12" />
             </button>
           </template>
           {{ t('sshConfig.deleteConfirm', { name: entry.pattern }) }}
@@ -140,7 +139,7 @@ function displayMeta(entry: SSHConfigEntry): string {
         <NInput v-model:value="dir.key" size="small" :placeholder="t('sshConfig.directiveKey')" class="w-[100px] shrink-0" />
         <NInput v-model:value="dir.value" size="small" :placeholder="t('sshConfig.directiveValue')" class="flex-1" />
         <button class="directive-remove" @click="removeDirective(dir.key)">
-          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+          <IconX :width="10" :height="10" />
         </button>
       </div>
 

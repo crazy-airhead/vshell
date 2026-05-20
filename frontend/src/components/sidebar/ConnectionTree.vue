@@ -3,6 +3,9 @@ import { ref, computed, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NTree, NButton, NSpin, NInputGroup, NInput, useMessage, useDialog } from 'naive-ui'
 import type { TreeOption } from 'naive-ui'
+import IconFolderPlus from '~icons/lucide/folder-plus'
+import IconPlus from '~icons/lucide/plus'
+import IconFolder from '~icons/lucide/folder'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
 import ConnectionFormModal from './ConnectionFormModal.vue'
@@ -51,7 +54,7 @@ const treeData = computed<TreeOption[]>(() => {
     const node: TreeOption = {
       key: group.id,
       label: group.name,
-      prefix: () => h('span', { style: 'margin-right: 4px; font-size: 13px; opacity: 0.7' }, '\u{1F4C1}'),
+      prefix: () => h(IconFolder, { width: 14, height: 14, style: 'margin-right: 4px; opacity: 0.7' }),
       children: [],
     }
     groupNodeMap.set(group.id, node)
@@ -206,16 +209,16 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
       <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('connection.title') }}</span>
       <div class="flex gap-[2px]">
         <NButton size="tiny" quaternary @click="startNewGroup(null)" :title="t('group.newGroup')">
-          <span style="font-size:13px">&#x2295;</span>
+          <IconFolderPlus :width="14" :height="14" />
         </NButton>
         <NButton size="tiny" quaternary @click="handleNew" :title="t('connection.newConnection')">
-          +
+          <IconPlus :width="14" :height="14" />
         </NButton>
       </div>
     </div>
 
     <!-- New group inline input -->
-    <div v-if="showGroupInput" class="px-3 py-[6px] border-b border-solid border-[var(--border-color)] shrink-0">
+    <div v-if="showGroupInput" class="px-3 py-[6px] thin-border-b shrink-0">
       <NInputGroup>
         <NInput
           v-model:value="newGroupName"
@@ -244,7 +247,7 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
     </div>
 
     <!-- Context actions -->
-    <div v-if="contextMenuKey" class="flex gap-1 px-2 py-1 border-t border-solid border-[var(--border-color)] shrink-0">
+    <div v-if="contextMenuKey" class="flex gap-1 px-2 py-1 thin-border-t shrink-0">
       <template v-if="contextIsConnection">
         <button class="action-btn" @click="handleEdit(contextMenuKey!)">{{ t('common.edit') }}</button>
         <button class="action-btn action-btn-danger" @click="handleDelete(contextMenuKey!)">{{ t('common.delete') }}</button>
@@ -260,6 +263,9 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
 </template>
 
 <style scoped>
+.thin-border-b { border-bottom: 1px solid rgba(128, 128, 128, 0.12); }
+.thin-border-t { border-top: 1px solid rgba(128, 128, 128, 0.12); }
+
 .tree-content :deep(.n-tree-node-content) {
   font-size: var(--font-size-base);
 }

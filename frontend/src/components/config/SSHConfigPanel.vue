@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NEmpty, useMessage } from 'naive-ui'
+import IconRefreshCw from '~icons/lucide/refresh-cw'
+import IconPencil from '~icons/lucide/pencil'
+import IconPlus from '~icons/lucide/plus'
 import { useSSHConfigStore } from '../../stores/sshconfig'
 import { useTerminalStore } from '../../stores/terminal'
 import ConfigEntryForm from './ConfigEntryForm.vue'
@@ -51,20 +54,13 @@ async function handleEditRaw() {
       <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('sshConfig.title') }}</span>
       <div class="flex items-center gap-[2px]">
         <button class="panel-action-btn" @click="store.loadEntries()" :title="t('common.refresh')">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M13.65 2.35A7.5 7.5 0 1 0 15.5 8.5" stroke-linecap="round" />
-            <path d="M13.65 0.5v2.5h2.5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+          <IconRefreshCw :width="14" :height="14" />
         </button>
         <button class="panel-action-btn" @click="handleEditRaw" :title="t('sshConfig.editRaw')">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" />
-          </svg>
+          <IconPencil :width="14" :height="14" />
         </button>
         <button class="panel-action-btn" @click="handleAdd" :title="t('sshConfig.addHost')">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M2 8h12M8 2v12" stroke-linecap="round" />
-          </svg>
+          <IconPlus :width="14" :height="14" />
         </button>
       </div>
     </div>

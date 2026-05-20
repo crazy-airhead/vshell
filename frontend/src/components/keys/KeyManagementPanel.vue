@@ -15,6 +15,13 @@ import {
   NDropdown,
   useMessage,
 } from 'naive-ui'
+import IconRefreshCw from '~icons/lucide/refresh-cw'
+import IconKeyRound from '~icons/lucide/key-round'
+import IconPlus from '~icons/lucide/plus'
+import IconLock from '~icons/lucide/lock'
+import IconCopy from '~icons/lucide/copy'
+import IconPencil from '~icons/lucide/pencil'
+import IconTrash2 from '~icons/lucide/trash-2'
 import { useSSHKeyStore } from '../../stores/sshkey'
 import type { SSHKeyInfo } from '../../types'
 
@@ -193,23 +200,13 @@ function formatType(keyType: string): string {
       <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('keys.title') }}</span>
       <div class="flex items-center gap-[2px]">
         <button class="panel-action-btn" @click="store.loadKeys()" :title="t('common.refresh')">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M13.65 2.35A7.5 7.5 0 1 0 15.5 8.5" stroke-linecap="round" />
-            <path d="M13.65 0.5v2.5h2.5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+          <IconRefreshCw :width="14" :height="14" />
         </button>
         <button class="panel-action-btn" @click="openGenerate" :title="t('keys.generateKey')">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="6" cy="6" r="4" />
-            <path d="M9 9l5.5 5.5" stroke-linecap="round" />
-            <path d="M12 14.5l1.5-1.5" stroke-linecap="round" />
-            <path d="M5 5h2M6 4v2" stroke-linecap="round" />
-          </svg>
+          <IconKeyRound :width="14" :height="14" />
         </button>
         <button class="panel-action-btn" @click="openCreate" :title="t('keys.newKey')">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M2 8h12M8 2v12" stroke-linecap="round" />
-          </svg>
+          <IconPlus :width="14" :height="14" />
         </button>
       </div>
     </div>
@@ -240,9 +237,7 @@ function formatType(keyType: string): string {
               <span v-if="key.type" class="text-[10px] py-[1px] px-[5px] rounded-[3px] bg-[var(--color-primary)] text-white font-semibold leading-[1.4] shrink-0">{{ formatType(key.type) }}</span>
               <span class="text-[var(--font-size-base)] text-[var(--text-primary)] font-medium whitespace-nowrap overflow-hidden text-ellipsis">{{ key.name }}</span>
               <span v-if="key.has_passphrase" class="text-[var(--text-secondary)] shrink-0 flex items-center" :title="t('keys.passphraseProtected')">
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 1a3 3 0 00-3 3v2H4a1 1 0 00-1 1v7a1 1 0 001 1h8a1 1 0 001-1V7a1 1 0 00-1-1h-1V4a3 3 0 00-3-3zm2 5H6V4a2 2 0 114 0v2z"/>
-                </svg>
+                <IconLock :width="10" :height="10" />
               </span>
             </div>
             <div class="flex flex-col gap-[1px] mt-[2px]">
@@ -252,22 +247,15 @@ function formatType(keyType: string): string {
           </div>
           <div class="flex gap-[2px] shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100" :class="{ '!opacity-100': ctxKey === key.name }">
             <button class="key-action-btn" :title="t('keys.copyPub')" @click.stop="copyKey(key, 'pub')">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                <rect x="5" y="5" width="9" height="9" rx="1" />
-                <path d="M3 11V3a1 1 0 011-1h8" stroke-linecap="round" />
-              </svg>
+              <IconCopy :width="12" :height="12" />
             </button>
             <button class="key-action-btn" @click.stop="openRename(key)" :title="t('keys.rename')">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" />
-              </svg>
+              <IconPencil :width="12" :height="12" />
             </button>
             <NPopconfirm @positive-click="handleDelete(key)">
               <template #trigger>
                 <button class="key-action-btn key-action-danger" :title="t('common.delete')" @click.stop>
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M3 4h10M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v4M10 7v4M4 4l.7 9.4a1 1 0 001 .6h4.6a1 1 0 001-.6L12 4" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
+                  <IconTrash2 :width="12" :height="12" />
                 </button>
               </template>
               {{ t('keys.deleteContent', { name: key.name }) }}

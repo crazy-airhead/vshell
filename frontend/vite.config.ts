@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import wails from "@wailsio/runtime/plugins/vite";
 import UnoCSS from "unocss/vite";
+import Icons from "unplugin-icons/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -10,5 +11,5 @@ export default defineConfig({
     port: Number(process.env.WAILS_VITE_PORT) || 9245,
     strictPort: true,
   },
-  plugins: [UnoCSS(), vue(), wails("./bindings")],
+  plugins: [UnoCSS(), vue(), Icons({ compiler: "vue3", autoInstall: false }), wails("./bindings")],
 });

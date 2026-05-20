@@ -4,6 +4,11 @@ import { useI18n } from 'vue-i18n'
 import { NTree, NSpin, NButton, useDialog, useMessage } from 'naive-ui'
 import type { TreeOption } from 'naive-ui'
 import { Events } from '@wailsio/runtime'
+import IconRefreshCw from '~icons/lucide/refresh-cw'
+import IconDownload from '~icons/lucide/download'
+import IconTrash2 from '~icons/lucide/trash-2'
+import IconFolder from '~icons/lucide/folder'
+import IconFile from '~icons/lucide/file'
 import { useSFTPStore } from '../../stores/sftp'
 import { useTransferStore } from '../../stores/transfers'
 import { useTerminalStore } from '../../stores/terminal'
@@ -363,12 +368,12 @@ watch(() => sftpStore.treeVersion, rebuildTree)
           </template>
           <input v-else v-model="editRemotePath" class="flex-1 bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
             @keyup.enter="commitRemoteEdit" @keyup.escape="editingRemotePath = false" @blur="commitRemoteEdit" />
-          <NButton size="tiny" quaternary @click="refreshRemote" title="Refresh">&#x21bb;</NButton>
+          <NButton size="tiny" quaternary @click="refreshRemote" title="Refresh"><IconRefreshCw :width="14" :height="14" /></NButton>
           <NButton size="tiny" quaternary class="download-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDownload" title="Download selected">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v9M4 9l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
+            <IconDownload :width="14" :height="14" />
           </NButton>
           <NButton size="tiny" quaternary class="delete-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDeleteRemote" title="Delete selected">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/></svg>
+            <IconTrash2 :width="14" :height="14" />
           </NButton>
         </div>
 
@@ -400,7 +405,7 @@ watch(() => sftpStore.treeVersion, rebuildTree)
                 >
                   <td class="py-[3px] px-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px]">
                     <span class="dir-name" @click.stop="handleRemoteNameClick(f, $event)">
-                      <span class="mr-1">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>{{ f.name }}
+                      <component :is="f.is_dir ? IconFolder : IconFile" :width="14" :height="14" class="mr-1 inline-block align-[-2px]" />{{ f.name }}
                     </span>
                   </td>
                   <td class="py-[3px] px-2 whitespace-nowrap text-right w-[70px]">{{ f.is_dir ? '-' : formatSize(f.size) }}</td>

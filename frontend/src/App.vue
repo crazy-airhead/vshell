@@ -6,6 +6,8 @@ import { Events } from '@wailsio/runtime'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Window is exported at runtime
 import { Window } from '@wailsio/runtime'
+import IconSun from '~icons/lucide/sun'
+import IconMoon from '~icons/lucide/moon'
 import ActivityBar from './components/activity/ActivityBar.vue'
 import ConnectionTree from './components/sidebar/ConnectionTree.vue'
 import KeyManagementPanel from './components/keys/KeyManagementPanel.vue'
@@ -31,7 +33,7 @@ const sidebarVisible = ref(true)
 const showSettings = ref(false)
 
 const naiveTheme = computed(() => settings.isDark ? darkTheme : null)
-const themeIcon = computed(() => settings.isDark ? '☾' : '☀')
+const themeIcon = computed(() => settings.isDark ? IconMoon : IconSun)
 const localeLabel = computed(() => settings.localeCode === 'zh-CN' ? 'EN' : '中')
 
 const naiveThemeOverrides = computed<GlobalThemeOverrides>(() => {
@@ -117,7 +119,7 @@ onMounted(() => {
                 class="bg-transparent border-none text-[var(--text-secondary)] text-[11px] cursor-pointer px-2 py-[2px] rounded-[3px] transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
                 :title="settings.isDark ? t('settings.light') : t('settings.dark')"
                 @click="settings.toggleTheme()"
-              >{{ themeIcon }}</button>
+              ><component :is="themeIcon" :width="14" :height="14" /></button>
               <button
                 class="bg-transparent border-none text-[var(--text-secondary)] text-[11px] cursor-pointer px-2 py-[2px] rounded-[3px] transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
                 :title="t('settings.language')"
