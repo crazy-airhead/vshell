@@ -188,10 +188,10 @@ function formatType(keyType: string): string {
 </script>
 
 <template>
-  <div class="key-panel">
-    <div class="panel-header">
-      <span class="panel-title">{{ t('keys.title') }}</span>
-      <div class="panel-header-actions">
+  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-secondary)]">
+    <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0">
+      <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('keys.title') }}</span>
+      <div class="flex items-center gap-[2px]">
         <button class="panel-action-btn" @click="store.loadKeys()" :title="t('common.refresh')">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M13.65 2.35A7.5 7.5 0 1 0 15.5 8.5" stroke-linecap="round" />
@@ -214,15 +214,15 @@ function formatType(keyType: string): string {
       </div>
     </div>
 
-    <div class="key-list">
-      <div v-if="store.keys.length === 0" class="panel-body-empty">
-        <span class="empty-text">{{ t('keys.noKeys') }}</span>
+    <div class="flex-1 overflow-y-auto py-1">
+      <div v-if="store.keys.length === 0" class="px-3 py-10 flex-center">
+        <span class="text-[var(--font-size-sm)] text-[var(--text-secondary)]">{{ t('keys.noKeys') }}</span>
       </div>
 
       <div
         v-for="key in store.keys"
         :key="key.name"
-        class="key-item"
+        class="group flex items-center justify-between px-3 py-2 gap-2 cursor-default transition-colors duration-150 hover:bg-[var(--hover-overlay)]"
         @contextmenu.prevent="(e: MouseEvent) => { ctxX = e.clientX; ctxY = e.clientY; ctxKey = key.name }"
       >
         <NDropdown
@@ -235,22 +235,22 @@ function formatType(keyType: string): string {
           @clickoutside="ctxKey = ''"
           placement="bottom-start"
         />
-          <div class="key-item-main">
-            <div class="key-item-row">
-              <span v-if="key.type" class="key-badge">{{ formatType(key.type) }}</span>
-              <span class="key-item-name">{{ key.name }}</span>
-              <span v-if="key.has_passphrase" class="key-lock" :title="t('keys.passphraseProtected')">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-[6px]">
+              <span v-if="key.type" class="text-[10px] py-[1px] px-[5px] rounded-[3px] bg-[var(--color-primary)] text-white font-semibold leading-[1.4] shrink-0">{{ formatType(key.type) }}</span>
+              <span class="text-[var(--font-size-base)] text-[var(--text-primary)] font-medium whitespace-nowrap overflow-hidden text-ellipsis">{{ key.name }}</span>
+              <span v-if="key.has_passphrase" class="text-[var(--text-secondary)] shrink-0 flex items-center" :title="t('keys.passphraseProtected')">
                 <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8 1a3 3 0 00-3 3v2H4a1 1 0 00-1 1v7a1 1 0 001 1h8a1 1 0 001-1V7a1 1 0 00-1-1h-1V4a3 3 0 00-3-3zm2 5H6V4a2 2 0 114 0v2z"/>
                 </svg>
               </span>
             </div>
-            <div class="key-item-meta">
-              <span v-if="key.fingerprint" class="key-fingerprint">{{ key.fingerprint }}</span>
-              <span v-if="key.comment" class="key-comment">{{ key.comment }}</span>
+            <div class="flex flex-col gap-[1px] mt-[2px]">
+              <span v-if="key.fingerprint" class="text-[11px] text-[var(--text-secondary)] whitespace-nowrap overflow-hidden text-ellipsis opacity-70">{{ key.fingerprint }}</span>
+              <span v-if="key.comment" class="text-[11px] text-[var(--text-secondary)] whitespace-nowrap overflow-hidden text-ellipsis">{{ key.comment }}</span>
             </div>
           </div>
-          <div class="key-item-actions">
+          <div class="flex gap-[2px] shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100" :class="{ '!opacity-100': ctxKey === key.name }">
             <button class="key-action-btn" :title="t('keys.copyPub')" @click.stop="copyKey(key, 'pub')">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
                 <rect x="5" y="5" width="9" height="9" rx="1" />
@@ -352,35 +352,6 @@ function formatType(keyType: string): string {
 </template>
 
 <style scoped>
-.key-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg-secondary);
-}
-
-.panel-header {
-  padding: 10px 12px;
-  background: var(--bg-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-
-.panel-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.panel-title {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .panel-action-btn {
   background: none;
   border: none;
@@ -392,106 +363,11 @@ function formatType(keyType: string): string {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.15s, background 0.15s;
 }
-
 .panel-action-btn:hover {
   color: var(--text-primary);
   background: var(--hover-overlay);
-}
-
-.key-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-
-.key-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  gap: 8px;
-  cursor: default;
-  transition: background 0.15s;
-}
-
-.key-item:hover {
-  background: var(--hover-overlay);
-}
-
-.key-item-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.key-item-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.key-badge {
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: var(--accent-color);
-  color: #fff;
-  font-weight: 600;
-  line-height: 1.4;
-  flex-shrink: 0;
-}
-
-.key-item-name {
-  font-size: var(--font-size-base);
-  color: var(--text-primary);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.key-lock {
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-}
-
-.key-item-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  margin-top: 2px;
-}
-
-.key-comment {
-  font-size: 11px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.key-fingerprint {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-family: var(--font-family);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0.7;
-}
-
-.key-item-actions {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.key-item:hover .key-item-actions {
-  opacity: 1;
 }
 
 .key-action-btn {
@@ -504,26 +380,13 @@ function formatType(keyType: string): string {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.15s, background 0.15s;
 }
-
 .key-action-btn:hover {
   color: var(--text-primary);
   background: var(--hover-overlay);
 }
-
 .key-action-danger:hover {
-  color: #e74c3c;
-}
-
-.panel-body-empty {
-  padding: 40px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.empty-text {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
+  color: var(--color-error);
 }
 </style>

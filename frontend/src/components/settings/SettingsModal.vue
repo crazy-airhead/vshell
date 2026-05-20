@@ -113,15 +113,15 @@ function findFontValue(options: { value: string }[], current: string): string {
 
           <NFormItem :label="t('settings.uiFontSize')" label-placement="left" :show-feedback="false">
             <NSlider v-model:value="settings.uiFontSize" :min="11" :max="18" :step="1" :marks="{ 11: '11', 13: '13', 16: '16', 18: '18' }" style="flex: 1" @update:value="settings.setUIFontSize" />
-            <span style="width:32px;text-align:right;font-variant-numeric:tabular-nums">{{ settings.uiFontSize }}</span>
+            <span class="w-8 text-right" style="font-variant-numeric: tabular-nums">{{ settings.uiFontSize }}</span>
           </NFormItem>
 
           <NFormItem :label="t('settings.accentColor')" label-placement="left" :show-feedback="false">
-            <div class="color-swatches">
+            <div class="flex gap-2 flex-wrap">
               <button
                 v-for="c in accentColors" :key="c"
-                class="swatch"
-                :class="{ active: settings.accentColor === c }"
+                class="w-6 h-6 rounded-full border-2 border-transparent cursor-pointer transition-all duration-150 hover:scale-115"
+                :class="{ '!border-[var(--text-primary)]': settings.accentColor === c }"
                 :style="{ background: c }"
                 @click="settings.setAccentColor(c)"
               />
@@ -144,7 +144,7 @@ function findFontValue(options: { value: string }[], current: string): string {
 
           <NFormItem :label="t('settings.terminalFontSize')" label-placement="left" :show-feedback="false">
             <NSlider v-model:value="settings.terminalFontSize" :min="10" :max="24" :step="1" :marks="{ 10: '10', 14: '14', 18: '18', 24: '24' }" style="flex: 1" @update:value="settings.setTerminalFontSize" />
-            <span style="width:32px;text-align:right;font-variant-numeric:tabular-nums">{{ settings.terminalFontSize }}</span>
+            <span class="w-8 text-right" style="font-variant-numeric: tabular-nums">{{ settings.terminalFontSize }}</span>
           </NFormItem>
 
           <NFormItem :label="t('settings.colorScheme')" label-placement="left" :show-feedback="false">
@@ -156,11 +156,11 @@ function findFontValue(options: { value: string }[], current: string): string {
       <!-- Shortcuts Tab -->
       <NTabPane :name="t('settings.shortcuts')">
         <NSpace vertical :size="10" style="padding: 8px 0" @keydown="onKeyCapture">
-          <div v-for="s in shortcutActions" :key="s.key" class="shortcut-row">
-            <span class="shortcut-label">{{ t(s.label) }}</span>
+          <div v-for="s in shortcutActions" :key="s.key" class="flex items-center justify-between">
+            <span class="text-[var(--font-size-base)] text-[var(--text-primary)]">{{ t(s.label) }}</span>
             <button
-              class="shortcut-key"
-              :class="{ capturing: capturingKey === s.key }"
+              class="bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] text-[var(--text-primary)] text-[var(--font-size-sm)] px-3 py-1 rounded-[4px] cursor-pointer min-w-[120px] text-center font-mono transition-colors duration-150 hover:border-[var(--color-primary)]"
+              :class="{ '!border-[var(--color-primary)] text-[var(--text-secondary)] !font-sans': capturingKey === s.key }"
               @click="startCapture(s.key)"
             >
               <template v-if="capturingKey === s.key">{{ t('settings.shortcutCaptureHint') }}</template>
@@ -173,63 +173,3 @@ function findFontValue(options: { value: string }[], current: string): string {
     </NTabs>
   </NModal>
 </template>
-
-<style scoped>
-.color-swatches {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: border-color 0.15s, transform 0.1s;
-}
-
-.swatch:hover {
-  transform: scale(1.15);
-}
-
-.swatch.active {
-  border-color: var(--text-primary);
-}
-
-.shortcut-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.shortcut-label {
-  font-size: var(--font-size-base);
-  color: var(--text-primary);
-}
-
-.shortcut-key {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-  padding: 4px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  min-width: 120px;
-  text-align: center;
-  font-family: monospace;
-  transition: border-color 0.15s;
-}
-
-.shortcut-key:hover {
-  border-color: var(--accent-color);
-}
-
-.shortcut-key.capturing {
-  border-color: var(--accent-color);
-  color: var(--text-secondary);
-  font-family: inherit;
-}
-</style>

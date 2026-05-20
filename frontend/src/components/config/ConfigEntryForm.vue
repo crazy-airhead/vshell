@@ -83,17 +83,17 @@ function displayMeta(entry: SSHConfigEntry): string {
 </script>
 
 <template>
-  <div class="entry-item" :class="{ expanded }">
+  <div :class="{ '': expanded }">
     <!-- Collapsed view -->
-    <div v-if="!expanded" class="entry-collapsed">
-      <div class="entry-main">
-        <div class="entry-row">
-          <span class="entry-badge">Host</span>
-          <span class="entry-pattern">{{ entry.pattern }}</span>
+    <div v-if="!expanded" class="group flex items-center justify-between px-3 py-2 cursor-pointer transition-colors duration-150 hover:bg-[var(--hover-overlay)]">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-[6px]">
+          <span class="text-[10px] py-[1px] px-[5px] rounded-[3px] bg-[var(--color-primary)] text-white font-semibold leading-[1.4] shrink-0">Host</span>
+          <span class="text-[var(--font-size-base)] text-[var(--text-primary)] font-medium whitespace-nowrap overflow-hidden text-ellipsis">{{ entry.pattern }}</span>
         </div>
-        <div v-if="displayMeta(entry)" class="entry-meta">{{ displayMeta(entry) }}</div>
+        <div v-if="displayMeta(entry)" class="text-[11px] text-[var(--text-secondary)] mt-[2px] ml-[40px] whitespace-nowrap overflow-hidden text-ellipsis">{{ displayMeta(entry) }}</div>
       </div>
-      <div class="entry-actions">
+      <div class="flex gap-[2px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
         <button class="entry-action-btn" @click.stop="emit('update:expanded', true)" title="Edit">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" />
@@ -113,40 +113,40 @@ function displayMeta(entry: SSHConfigEntry): string {
     </div>
 
     <!-- Expanded edit form -->
-    <div v-else class="entry-form">
-      <div class="form-row">
-        <label class="form-label">{{ t('sshConfig.hostPattern') }}</label>
+    <div v-else class="px-3 py-[10px] flex flex-col gap-[6px] bg-[var(--hover-overlay)]">
+      <div class="flex items-center gap-2">
+        <label class="text-[var(--font-size-sm)] text-[var(--text-secondary)] w-[70px] shrink-0 text-right">{{ t('sshConfig.hostPattern') }}</label>
         <NInput v-model:value="form.pattern" size="small" :placeholder="t('sshConfig.hostPatternPlaceholder')" />
       </div>
-      <div class="form-row">
-        <label class="form-label">{{ t('sshConfig.hostName') }}</label>
+      <div class="flex items-center gap-2">
+        <label class="text-[var(--font-size-sm)] text-[var(--text-secondary)] w-[70px] shrink-0 text-right">{{ t('sshConfig.hostName') }}</label>
         <NInput :value="getDirective('HostName')" size="small" :placeholder="t('sshConfig.hostNamePlaceholder')" @update:value="(v: string) => setDirective('HostName', v)" />
       </div>
-      <div class="form-row">
-        <label class="form-label">{{ t('sshConfig.user') }}</label>
+      <div class="flex items-center gap-2">
+        <label class="text-[var(--font-size-sm)] text-[var(--text-secondary)] w-[70px] shrink-0 text-right">{{ t('sshConfig.user') }}</label>
         <NInput :value="getDirective('User')" size="small" :placeholder="t('sshConfig.userPlaceholder')" @update:value="(v: string) => setDirective('User', v)" />
       </div>
-      <div class="form-row">
-        <label class="form-label">{{ t('sshConfig.port') }}</label>
+      <div class="flex items-center gap-2">
+        <label class="text-[var(--font-size-sm)] text-[var(--text-secondary)] w-[70px] shrink-0 text-right">{{ t('sshConfig.port') }}</label>
         <NInputNumber :value="parseInt(getDirective('Port')) || null" size="small" :min="1" :max="65535" placeholder="22" style="width: 100%" @update:value="(v: number | null) => setDirective('Port', v ? String(v) : '')" />
       </div>
-      <div class="form-row">
-        <label class="form-label">{{ t('sshConfig.identityFile') }}</label>
+      <div class="flex items-center gap-2">
+        <label class="text-[var(--font-size-sm)] text-[var(--text-secondary)] w-[70px] shrink-0 text-right">{{ t('sshConfig.identityFile') }}</label>
         <NInput :value="getDirective('IdentityFile')" size="small" :placeholder="t('sshConfig.identityFilePlaceholder')" @update:value="(v: string) => setDirective('IdentityFile', v)" />
       </div>
 
       <!-- Extra directives -->
-      <div v-for="(dir, i) in extraDirectives()" :key="i" class="form-row form-row-dynamic">
-        <NInput v-model:value="dir.key" size="small" :placeholder="t('sshConfig.directiveKey')" class="directive-key" />
-        <NInput v-model:value="dir.value" size="small" :placeholder="t('sshConfig.directiveValue')" class="directive-value" />
+      <div v-for="(dir, i) in extraDirectives()" :key="i" class="flex items-center gap-2 ml-[78px]">
+        <NInput v-model:value="dir.key" size="small" :placeholder="t('sshConfig.directiveKey')" class="w-[100px] shrink-0" />
+        <NInput v-model:value="dir.value" size="small" :placeholder="t('sshConfig.directiveValue')" class="flex-1" />
         <button class="directive-remove" @click="removeDirective(dir.key)">
           <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8" /></svg>
         </button>
       </div>
 
-      <button class="add-directive-btn" @click="addDirective">+ {{ t('sshConfig.addDirective') }}</button>
+      <button class="add-directive-btn ml-[78px]" @click="addDirective">+ {{ t('sshConfig.addDirective') }}</button>
 
-      <div class="form-actions">
+      <div class="flex justify-end mt-1">
         <NSpace>
           <NButton size="small" @click="handleCancel">{{ t('common.cancel') }}</NButton>
           <NButton size="small" type="primary" @click="handleSave" :disabled="!form.pattern.trim()">{{ t('common.save') }}</NButton>
@@ -157,80 +157,6 @@ function displayMeta(entry: SSHConfigEntry): string {
 </template>
 
 <style scoped>
-.entry-item {
-  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06));
-}
-
-.entry-item:last-child {
-  border-bottom: none;
-}
-
-.entry-collapsed {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.entry-collapsed:hover {
-  background: var(--hover-overlay);
-}
-
-.entry-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.entry-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.entry-badge {
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: var(--accent-color);
-  color: #fff;
-  font-weight: 600;
-  line-height: 1.4;
-  flex-shrink: 0;
-}
-
-.entry-pattern {
-  font-size: var(--font-size-base);
-  color: var(--text-primary);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.entry-meta {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-  margin-left: 40px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.entry-actions {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.entry-collapsed:hover .entry-actions {
-  opacity: 1;
-}
-
 .entry-action-btn {
   background: none;
   border: none;
@@ -241,55 +167,14 @@ function displayMeta(entry: SSHConfigEntry): string {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.15s, background 0.15s;
 }
-
 .entry-action-btn:hover {
   color: var(--text-primary);
   background: var(--hover-overlay);
 }
-
 .entry-action-danger:hover {
-  color: #e74c3c;
-}
-
-.entry-form {
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--hover-overlay);
-}
-
-.form-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.form-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  width: 70px;
-  flex-shrink: 0;
-  text-align: right;
-}
-
-.form-row :deep(.n-input),
-.form-row :deep(.n-input-number) {
-  flex: 1;
-}
-
-.form-row-dynamic {
-  margin-left: 78px;
-}
-
-.form-row-dynamic .directive-key {
-  width: 100px;
-  flex-shrink: 0;
-}
-
-.form-row-dynamic .directive-value {
-  flex: 1;
+  color: var(--color-error);
 }
 
 .directive-remove {
@@ -301,32 +186,24 @@ function displayMeta(entry: SSHConfigEntry): string {
   border-radius: 3px;
   display: flex;
   align-items: center;
+  transition: color 0.15s;
 }
-
 .directive-remove:hover {
-  color: #e74c3c;
+  color: var(--color-error);
 }
 
 .add-directive-btn {
   background: none;
-  border: 1px dashed var(--border-color, rgba(255,255,255,0.1));
+  border: 1px dashed var(--border-color);
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
-  margin-left: 78px;
   transition: color 0.15s, border-color 0.15s;
 }
-
 .add-directive-btn:hover {
-  color: var(--accent-color);
-  border-color: var(--accent-color);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 4px;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 </style>

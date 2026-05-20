@@ -40,31 +40,8 @@ function onMouseUp() {
 
 <template>
   <div
-    class="drag-divider"
-    :class="[direction]"
+    class="shrink-0 bg-transparent transition-colors duration-150 hover:bg-[var(--color-primary)]"
+    :class="direction === 'horizontal' ? 'h-[6px] w-full cursor-ns-resize rounded-[3px]' : 'w-[6px] h-full cursor-ew-resize rounded-[3px]'"
     @mousedown="onMouseDown"
   ></div>
 </template>
-
-<style scoped>
-.drag-divider {
-  flex-shrink: 0;
-  background: transparent;
-  transition: background 0.15s;
-}
-.drag-divider:hover {
-  background: #59a8f5;
-}
-.drag-divider.horizontal {
-  height: 6px;
-  width: 100%;
-  cursor: ns-resize;
-  border-radius: 3px;
-}
-.drag-divider.vertical {
-  width: 6px;
-  height: 100%;
-  cursor: ew-resize;
-  border-radius: 3px;
-}
-</style>

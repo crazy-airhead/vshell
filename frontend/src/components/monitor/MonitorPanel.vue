@@ -61,9 +61,9 @@ const netTotal = computed(() => {
 })
 
 function barColor(pct: number): string {
-  if (pct < 60) return '#4caf50'
-  if (pct < 85) return '#ff9800'
-  return '#f44336'
+  if (pct < 60) return 'var(--color-success)'
+  if (pct < 85) return 'var(--color-warning)'
+  return 'var(--color-error)'
 }
 
 function formatBytes(bytes: number): string {
@@ -80,138 +80,67 @@ function formatKbps(kbps: number): string {
 </script>
 
 <template>
-  <div class="monitor-panel">
-    <div v-if="!activeConnectionID" class="monitor-empty">
+  <div class="flex flex-col h-full overflow-y-auto bg-[var(--bg-secondary)] text-[var(--text-primary)] text-[var(--font-size-sm)]">
+    <div v-if="!activeConnectionID" class="flex-1 flex-center">
       <NEmpty :description="t('monitor.noConnection')" size="small" />
     </div>
     <template v-else-if="stats">
-      <div class="monitor-header">
-        <span class="monitor-name">{{ connName }}</span>
+      <div class="px-3 py-2 shrink-0">
+        <span class="font-semibold text-[var(--font-size-base)]">{{ connName }}</span>
       </div>
-      <div class="monitor-stats">
+      <div class="px-3 py-2 flex flex-col gap-2">
         <!-- Uptime -->
-        <div class="stat-row">
-          <div class="stat-label">
+        <div class="flex flex-col gap-[3px]">
+          <div class="flex justify-between items-center text-[var(--text-secondary)] text-[var(--font-size-sm)]">
             <span>{{ t('monitor.uptime') }}</span>
-            <span class="stat-value">{{ formatUptime(stats.uptime_seconds) }}</span>
+            <span class="text-[var(--text-primary)] font-mono text-[var(--font-size-sm)]">{{ formatUptime(stats.uptime_seconds) }}</span>
           </div>
         </div>
 
         <!-- CPU -->
-        <div class="stat-row">
-          <div class="stat-label">
+        <div class="flex flex-col gap-[3px]">
+          <div class="flex justify-between items-center text-[var(--text-secondary)] text-[var(--font-size-sm)]">
             <span>{{ t('monitor.cpu') }}</span>
-            <span class="stat-value">{{ stats.cpu_percent.toFixed(1) }}%</span>
+            <span class="text-[var(--text-primary)] font-mono text-[var(--font-size-sm)]">{{ stats.cpu_percent.toFixed(1) }}%</span>
           </div>
-          <div class="stat-bar">
-            <div class="stat-bar-fill" :style="{ width: stats.cpu_percent + '%', background: barColor(stats.cpu_percent) }"></div>
+          <div class="h-[5px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+            <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: stats.cpu_percent + '%', background: barColor(stats.cpu_percent) }"></div>
           </div>
         </div>
 
         <!-- Memory -->
-        <div class="stat-row">
-          <div class="stat-label">
+        <div class="flex flex-col gap-[3px]">
+          <div class="flex justify-between items-center text-[var(--text-secondary)] text-[var(--font-size-sm)]">
             <span>{{ t('monitor.memory') }}</span>
-            <span class="stat-value">{{ formatBytes(stats.mem_used * 1024) }} / {{ formatBytes(stats.mem_total * 1024) }}</span>
+            <span class="text-[var(--text-primary)] font-mono text-[var(--font-size-sm)]">{{ formatBytes(stats.mem_used * 1024) }} / {{ formatBytes(stats.mem_total * 1024) }}</span>
           </div>
-          <div class="stat-bar">
-            <div class="stat-bar-fill" :style="{ width: stats.mem_percent + '%', background: barColor(stats.mem_percent) }"></div>
+          <div class="h-[5px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+            <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: stats.mem_percent + '%', background: barColor(stats.mem_percent) }"></div>
           </div>
         </div>
 
         <!-- Disk (total) -->
-        <div v-if="diskTotal" class="stat-row">
-          <div class="stat-label">
+        <div v-if="diskTotal" class="flex flex-col gap-[3px]">
+          <div class="flex justify-between items-center text-[var(--text-secondary)] text-[var(--font-size-sm)]">
             <span>{{ t('monitor.disk') }}</span>
-            <span class="stat-value">{{ formatBytes(diskTotal.used) }} / {{ formatBytes(diskTotal.total) }}</span>
+            <span class="text-[var(--text-primary)] font-mono text-[var(--font-size-sm)]">{{ formatBytes(diskTotal.used) }} / {{ formatBytes(diskTotal.total) }}</span>
           </div>
-          <div class="stat-bar">
-            <div class="stat-bar-fill" :style="{ width: diskTotal.pct + '%', background: barColor(diskTotal.pct) }"></div>
+          <div class="h-[5px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+            <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: diskTotal.pct + '%', background: barColor(diskTotal.pct) }"></div>
           </div>
         </div>
 
         <!-- Network -->
-        <div v-if="netTotal" class="stat-row">
-          <div class="stat-label">
+        <div v-if="netTotal" class="flex flex-col gap-[3px]">
+          <div class="flex justify-between items-center text-[var(--text-secondary)] text-[var(--font-size-sm)]">
             <span>{{ t('monitor.network') }}</span>
-            <span class="stat-value">&#8595;{{ formatKbps(netTotal.rx) }} &#8593;{{ formatKbps(netTotal.tx) }}</span>
+            <span class="text-[var(--text-primary)] font-mono text-[var(--font-size-sm)]">&#8595;{{ formatKbps(netTotal.rx) }} &#8593;{{ formatKbps(netTotal.tx) }}</span>
           </div>
         </div>
       </div>
     </template>
-    <div v-else class="monitor-empty">
+    <div v-else class="flex-1 flex-center">
       <NEmpty :description="t('monitor.waitingStats')" size="small" />
     </div>
   </div>
 </template>
-
-<style scoped>
-.monitor-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow-y: auto;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-}
-
-.monitor-empty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.monitor-header {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
-}
-
-.monitor-name {
-  font-weight: 600;
-  font-size: var(--font-size-base);
-}
-
-.monitor-stats {
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.stat-row {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.stat-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.stat-value {
-  color: var(--text-primary);
-  font-family: monospace;
-  font-size: var(--font-size-sm);
-}
-
-.stat-bar {
-  height: 5px;
-  background: var(--stat-bar-bg);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.stat-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s ease;
-}
-
-</style>

@@ -49,11 +49,11 @@ function handleClose(id: string) {
 </script>
 
 <template>
-  <div class="terminal-pane">
-    <div v-if="terminalStore.tabs.length === 0" class="terminal-empty">
+  <div class="flex-1 h-full flex flex-col overflow-hidden">
+    <div v-if="terminalStore.tabs.length === 0" class="flex-1 flex-center">
       <NEmpty :description="t('terminal.empty')" />
     </div>
-    <div v-else class="terminal-tabs">
+    <div v-else class="flex-1 flex flex-col overflow-hidden min-h-0 terminal-tabs">
       <NTabs
         :value="getActiveTab()"
         type="card"
@@ -69,12 +69,12 @@ function handleClose(id: string) {
           :tab="renderTabTitle(tab)"
         />
       </NTabs>
-      <div class="terminals-container">
+      <div class="flex-1 relative min-h-0">
         <div
           v-for="tab in terminalStore.tabs"
           :key="tab.id"
-          class="terminal-instance"
-          :class="{ active: tab.id === terminalStore.activeTabID }"
+          class="absolute inset-0 invisible pointer-events-none"
+          :class="{ '!visible !pointer-events-auto': tab.id === terminalStore.activeTabID }"
         >
           <XTerminal v-if="tab.type !== 'editor'" :sessionID="tab.id" />
           <EditorTab v-else :tab="tab" />
@@ -85,29 +85,6 @@ function handleClose(id: string) {
 </template>
 
 <style scoped>
-.terminal-pane {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.terminal-empty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.terminal-tabs {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
-}
-
 .terminal-tabs :deep(.n-tabs) {
   display: flex;
   flex-direction: column;
@@ -121,39 +98,18 @@ function handleClose(id: string) {
 .terminal-tabs :deep(.n-tabs-content) {
   display: none;
 }
-
-.terminals-container {
-  flex: 1;
-  position: relative;
-  min-height: 0;
-}
-
-.terminal-instance {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.terminal-instance.active {
-  visibility: visible;
-  pointer-events: auto;
-}
 </style>
 
 <style>
 .tab-tag-remote {
-  color: #5dade2;
+  color: var(--color-info);
   font-weight: 600;
 }
 .tab-tag-local {
-  color: #2ecc71;
+  color: var(--color-success);
   font-weight: 600;
 }
 .tab-dirty {
-  color: #e5c07b;
+  color: var(--color-warning);
 }
 </style>

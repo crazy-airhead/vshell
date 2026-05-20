@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import i18n from './locales'
+import 'virtual:uno.css'
 import './styles/global.css'
 
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'

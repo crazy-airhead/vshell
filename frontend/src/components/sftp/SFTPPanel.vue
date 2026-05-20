@@ -347,21 +347,21 @@ watch(() => sftpStore.treeVersion, rebuildTree)
 </script>
 
 <template>
-  <div class="sftp-panel">
-    <div class="sftp-body">
+  <div class="flex flex-col h-full bg-[var(--bg-secondary)] text-[var(--text-primary)] text-[var(--font-size-sm)]">
+    <div class="flex-1 flex overflow-hidden min-h-0">
       <!-- Remote side -->
-      <div class="remote-side" :style="{ flex: 6 }">
-        <div class="remote-toolbar">
+      <div class="flex flex-col min-w-0 thin-border-r" :style="{ flex: 6 }">
+        <div class="flex items-center px-2 py-1 thin-border-b gap-1 shrink-0">
           <template v-if="!editingRemotePath">
-            <span class="remote-breadcrumb" @dblclick="startRemoteEdit">
-              <span class="breadcrumb-part" @click="navigateRemoteTo('/')">/</span>
+            <span class="flex-1 overflow-hidden whitespace-nowrap text-[var(--font-size-sm)] select-none cursor-default" @dblclick="startRemoteEdit">
+              <span class="text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] hover:underline" @click="navigateRemoteTo('/')">/</span>
               <template v-for="p in remotePathParts" :key="p.path">
-                <span class="breadcrumb-part" @click="navigateRemoteTo(p.path)">{{ p.name }}</span>
-                <span class="breadcrumb-sep">/</span>
+                <span class="text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] hover:underline" @click="navigateRemoteTo(p.path)">{{ p.name }}</span>
+                <span class="text-[var(--text-secondary)]">/</span>
               </template>
             </span>
           </template>
-          <input v-else v-model="editRemotePath" class="remote-path-input"
+          <input v-else v-model="editRemotePath" class="flex-1 bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
             @keyup.enter="commitRemoteEdit" @keyup.escape="editingRemotePath = false" @blur="commitRemoteEdit" />
           <NButton size="tiny" quaternary @click="refreshRemote" title="Refresh">&#x21bb;</NButton>
           <NButton size="tiny" quaternary class="download-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDownload" title="Download selected">
@@ -372,23 +372,23 @@ watch(() => sftpStore.treeVersion, rebuildTree)
           </NButton>
         </div>
 
-        <div class="remote-content">
-          <div class="remote-tree" :style="{ width: treeWidth + 'px', flexShrink: 0 }">
+        <div class="flex-1 flex overflow-hidden min-h-0">
+          <div class="overflow-y-auto thin-border-r" :style="{ width: treeWidth + 'px', flexShrink: 0 }">
             <NTree :data="treeData" :expanded-keys="expandedKeys" :on-load="handleLoad"
               selectable block-line
               @update:expanded-keys="(keys: string[]) => expandedKeys = keys"
               @update:selected-keys="handleTreeSelect" />
           </div>
 
-          <div class="remote-list" ref="remoteDropRef" :class="{ 'drag-over': remoteIsDragOver }">
+          <div class="flex-1 overflow-y-auto" ref="remoteDropRef" :class="{ 'drag-over': remoteIsDragOver }">
             <NSpin v-if="sftpStore.getPanel(props.connectionID).loading" size="small" />
-            <div v-else-if="sftpStore.getPanel(props.connectionID).error" class="sftp-error">{{ sftpStore.getPanel(props.connectionID).error }}</div>
-            <table v-else class="sftp-table">
+            <div v-else-if="sftpStore.getPanel(props.connectionID).error" class="p-2 text-[var(--color-error)]">{{ sftpStore.getPanel(props.connectionID).error }}</div>
+            <table v-else class="w-full border-collapse sftp-table">
               <thead>
                 <tr>
-                  <th class="col-name sortable" @click="toggleSort('name')">{{ t('sftp.name') }} <span class="sort-arrow" v-if="sortKey === 'name'">{{ sortAsc ? '↑' : '↓' }}</span></th>
-                  <th class="col-size sortable" @click="toggleSort('size')">{{ t('sftp.size') }} <span class="sort-arrow" v-if="sortKey === 'size'">{{ sortAsc ? '↑' : '↓' }}</span></th>
-                  <th class="col-time sortable" @click="toggleSort('time')">{{ t('sftp.modified') }} <span class="sort-arrow" v-if="sortKey === 'time'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+                  <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] max-w-[300px]" @click="toggleSort('name')">{{ t('sftp.name') }} <span class="ml-[2px] text-[10px]" v-if="sortKey === 'name'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+                  <th class="text-right py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] w-[70px]" @click="toggleSort('size')">{{ t('sftp.size') }} <span class="ml-[2px] text-[10px]" v-if="sortKey === 'size'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+                  <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] w-[100px]" @click="toggleSort('time')">{{ t('sftp.modified') }} <span class="ml-[2px] text-[10px]" v-if="sortKey === 'time'">{{ sortAsc ? '↑' : '↓' }}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -398,16 +398,16 @@ watch(() => sftpStore.treeVersion, rebuildTree)
                   @mousedown="onRemoteRowMouseDown($event, f)"
                   @click="handleRemoteRowClick(f, $event)"
                 >
-                  <td class="col-name">
+                  <td class="py-[3px] px-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px]">
                     <span class="dir-name" @click.stop="handleRemoteNameClick(f, $event)">
-                      <span class="file-icon">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>{{ f.name }}
+                      <span class="mr-1">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>{{ f.name }}
                     </span>
                   </td>
-                  <td class="col-size">{{ f.is_dir ? '-' : formatSize(f.size) }}</td>
-                  <td class="col-time">{{ formatTime(f.mod_time) }}</td>
+                  <td class="py-[3px] px-2 whitespace-nowrap text-right w-[70px]">{{ f.is_dir ? '-' : formatSize(f.size) }}</td>
+                  <td class="py-[3px] px-2 whitespace-nowrap w-[100px]">{{ formatTime(f.mod_time) }}</td>
                 </tr>
                 <tr v-if="sftpStore.getPanel(props.connectionID).files.length === 0">
-                  <td colspan="3" class="sftp-empty-msg">{{ t('sftp.emptyDir') }}</td>
+                  <td colspan="3" class="text-center text-[var(--text-secondary)] p-4">Empty directory</td>
                 </tr>
               </tbody>
             </table>
@@ -422,7 +422,7 @@ watch(() => sftpStore.treeVersion, rebuildTree)
       </div>
 
       <!-- Local side -->
-      <div class="local-side" :style="{ flex: 4 }">
+      <div class="min-w-0 flex flex-col" :style="{ flex: 4 }">
         <LocalFileTree ref="localTreeRef" @upload="handleUpload" @path-change="handleLocalPathChange" @drop-files="handleLocalDrop" />
         <!-- Upload status bar -->
         <div class="status-bar">
@@ -436,115 +436,28 @@ watch(() => sftpStore.treeVersion, rebuildTree)
 </template>
 
 <style scoped>
-.sftp-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-}
-
-.sftp-body {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  min-height: 0;
-}
-
-/* ---- Remote side ---- */
-.remote-side {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  border-right: 1px solid var(--border-color);
-}
-
-.remote-toolbar {
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--border-color);
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.remote-breadcrumb {
-  flex: 1;
-  overflow: hidden;
-  white-space: nowrap;
-  font-size: var(--font-size-sm);
-  cursor: default;
-  user-select: none;
-}
-
-.breadcrumb-part { color: var(--text-secondary); cursor: pointer; }
-.breadcrumb-part:hover { color: var(--text-primary); text-decoration: underline; }
-.breadcrumb-sep { color: var(--text-secondary); }
-
-.remote-path-input {
-  flex: 1;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-  font-family: monospace;
-  padding: 2px 6px;
-  outline: none;
-}
-
-.download-btn { color: var(--text-secondary); }
-.download-btn.active { color: var(--accent-color, #0078d4); }
-.delete-btn { color: var(--text-secondary); }
-.delete-btn.active { color: var(--delete-hover-color, #e55); }
-
-.remote-content { flex: 1; display: flex; overflow: hidden; min-height: 0; }
-.remote-tree { overflow-y: auto; border-right: 1px solid var(--border-color); }
-.remote-list { flex: 1; overflow-y: auto; }
-
-.sftp-error { padding: 8px; color: var(--error-color, #e55); }
-
-.sftp-table { width: 100%; border-collapse: collapse; }
-.sftp-table th {
-  text-align: left; padding: 4px 8px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary); font-weight: 500; font-size: var(--font-size-sm);
-  user-select: none;
-}
-th.sortable { cursor: pointer; }
-th.sortable:hover { color: var(--text-primary); }
-.sort-arrow { margin-left: 2px; font-size: 10px; }
-.sftp-table td {
-  padding: 3px 8px;
-  border-bottom: 1px solid var(--border-color);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.thin-border-b { border-bottom: 1px solid rgba(128, 128, 128, 0.12); }
+.thin-border-r { border-right: 1px solid rgba(128, 128, 128, 0.12); }
 
 .sftp-row { cursor: default; }
+.sftp-row:nth-child(even) { background: var(--hover-overlay-strong); }
 .sftp-row.sftp-dir .dir-name { cursor: pointer; }
-.sftp-row:hover { background: var(--hover-overlay-strong); }
-.sftp-dir:hover .dir-name:hover { color: #5dade2; }
+.sftp-row:hover { background: var(--hover-overlay); }
+.sftp-dir:hover .dir-name:hover { color: var(--color-info); }
 .sftp-row.selected { background: var(--action-hover-bg); }
 
-.col-name { max-width: 300px; }
-.col-size { width: 70px; text-align: right; }
-.col-time { width: 100px; }
-.file-icon { margin-right: 4px; }
-.sftp-empty-msg { text-align: center; color: var(--text-secondary); padding: 16px; }
+.download-btn { color: var(--text-secondary); }
+.download-btn.active { color: var(--color-primary); }
+.delete-btn { color: var(--text-secondary); }
+.delete-btn.active { color: var(--delete-hover-color); }
 
-/* ---- Local side ---- */
-.local-side { min-width: 0; display: flex; flex-direction: column; }
-
-/* ---- Drag over ---- */
 .drag-over {
-  outline: 2px dashed rgba(56, 132, 244, 0.5);
+  outline: 2px dashed rgba(100, 108, 255, 0.5);
   outline-offset: -2px;
-  background: rgba(56, 132, 244, 0.06) !important;
+  background: rgba(100, 108, 255, 0.06) !important;
   transition: outline 0.15s, background 0.15s;
 }
 
-/* ---- Status bar ---- */
 .status-bar {
   position: relative;
   height: 22px;
@@ -556,20 +469,17 @@ th.sortable:hover { color: var(--text-primary); }
   padding: 0 8px;
   font-size: 11px;
 }
-
 .status-bg {
   position: absolute;
   inset: 0;
   background: var(--stat-bar-bg);
   overflow: hidden;
 }
-
 .status-fill {
   height: 100%;
-  background: rgba(56, 132, 244, 0.35);
+  background: rgba(100, 108, 255, 0.35);
   transition: width 0.15s ease;
 }
-
 .status-path {
   position: relative;
   z-index: 1;
@@ -579,7 +489,6 @@ th.sortable:hover { color: var(--text-primary); }
   white-space: nowrap;
   color: var(--text-primary);
 }
-
 .status-speed {
   position: relative;
   z-index: 1;

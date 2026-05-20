@@ -32,25 +32,10 @@ watch(activeConnectionID, (newID) => {
 </script>
 
 <template>
-  <div class="sftp-area">
-    <div v-if="!activeConnectionID" class="sftp-empty">
+  <div class="h-full overflow-hidden bg-[var(--bg-secondary)]">
+    <div v-if="!activeConnectionID" class="h-full flex-center">
       <NEmpty :description="t('sftp.noSession')" size="small" />
     </div>
     <SFTPPanel v-else :connectionID="activeConnectionID" />
   </div>
 </template>
-
-<style scoped>
-.sftp-area {
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg-secondary);
-}
-
-.sftp-empty {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-</style>

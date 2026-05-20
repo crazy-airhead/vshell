@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NConfigProvider, darkTheme, NMessageProvider, NDialogProvider } from 'naive-ui'
+import { NConfigProvider, darkTheme, NMessageProvider, NDialogProvider, type GlobalThemeOverrides } from 'naive-ui'
 import { Events } from '@wailsio/runtime'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Window is exported at runtime
@@ -34,6 +34,31 @@ const naiveTheme = computed(() => settings.isDark ? darkTheme : null)
 const themeIcon = computed(() => settings.isDark ? '☾' : '☀')
 const localeLabel = computed(() => settings.localeCode === 'zh-CN' ? 'EN' : '中')
 
+const naiveThemeOverrides = computed<GlobalThemeOverrides>(() => {
+  const s = getComputedStyle(document.documentElement)
+  const primary = s.getPropertyValue('--color-primary').trim() || '#646cff'
+  const info = s.getPropertyValue('--color-info').trim() || '#2080f0'
+  const success = s.getPropertyValue('--color-success').trim() || '#52c41a'
+  const warning = s.getPropertyValue('--color-warning').trim() || '#faad14'
+  const error = s.getPropertyValue('--color-error').trim() || '#f5222d'
+  const borderRadius = s.getPropertyValue('--border-radius').trim() || '6px'
+  const border = s.getPropertyValue('--border-color').trim()
+
+  return {
+    common: {
+      primaryColor: primary,
+      primaryColorHover: primary + 'cc',
+      primaryColorPressed: primary + 'aa',
+      infoColor: info,
+      successColor: success,
+      warningColor: warning,
+      errorColor: error,
+      borderRadius,
+      borderColor: border || undefined,
+    },
+  }
+})
+
 function handleLocaleSelect(key: string) {
   settings.setLocale(key as LocaleCode)
   locale.value = key
@@ -45,10 +70,6 @@ function syncCSSVars() {
   root.style.setProperty('--font-size-base', settings.uiFontSize + 'px')
   root.style.setProperty('--font-size-sm', Math.max(9, settings.uiFontSize - 2) + 'px')
   root.style.setProperty('--font-family', settings.uiFontFamily)
-  root.style.setProperty('--accent-color', settings.accentColor)
-  root.style.setProperty('--accent-hover', settings.accentColor + 'cc')
-  root.style.setProperty('--action-hover-color', settings.accentColor)
-  root.style.setProperty('--action-hover-bg', settings.accentColor + '1a')
 }
 
 watch(
@@ -80,29 +101,41 @@ onMounted(() => {
 </script>
 
 <template>
-  <NConfigProvider :theme="naiveTheme">
+  <NConfigProvider :theme="naiveTheme" :theme-overrides="naiveThemeOverrides">
     <NMessageProvider>
       <NDialogProvider>
-        <div class="app-layout">
+        <div class="flex flex-col w-screen h-screen overflow-hidden bg-[var(--bg-primary)]">
           <!-- Title bar -->
-          <div class="title-bar" @dblclick="Window.ToggleMaximise()">
-            <span class="app-title">vShell</span>
-            <div class="title-bar-right">
-              <button class="title-bar-btn theme-btn" :title="settings.isDark ? t('settings.light') : t('settings.dark')" @click="settings.toggleTheme()">{{ themeIcon }}</button>
-              <button class="title-bar-btn" :title="t('settings.language')" @click="handleLocaleSelect(settings.localeCode === 'zh-CN' ? 'en' : 'zh-CN')">{{ localeLabel }}</button>
+          <div
+            class="h-[30px] flex items-center justify-center px-2 bg-[var(--bg-tertiary)] shrink-0 relative"
+            style="-webkit-app-region: drag"
+            @dblclick="Window.ToggleMaximise()"
+          >
+            <span class="text-xs font-semibold text-[var(--text-primary)]">vShell</span>
+            <div class="absolute right-2 flex items-center gap-[2px]" style="-webkit-app-region: no-drag">
+              <button
+                class="bg-transparent border-none text-[var(--text-secondary)] text-[11px] cursor-pointer px-2 py-[2px] rounded-[3px] transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
+                :title="settings.isDark ? t('settings.light') : t('settings.dark')"
+                @click="settings.toggleTheme()"
+              >{{ themeIcon }}</button>
+              <button
+                class="bg-transparent border-none text-[var(--text-secondary)] text-[11px] cursor-pointer px-2 py-[2px] rounded-[3px] transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
+                :title="t('settings.language')"
+                @click="handleLocaleSelect(settings.localeCode === 'zh-CN' ? 'en' : 'zh-CN')"
+              >{{ localeLabel }}</button>
             </div>
           </div>
 
-          <div class="app-body">
+          <div class="flex flex-1 min-h-0">
             <!-- Activity Bar -->
             <ActivityBar @open-settings="showSettings = true" />
 
             <!-- Main Area: Sidebar + Terminal + Bottom Panel -->
-            <div class="main-area">
-              <div class="content-row">
+            <div class="flex-1 flex flex-col min-w-0 p-1.5">
+              <div class="flex flex-1 min-h-0">
                 <!-- Sidebar -->
                 <template v-if="sidebarVisible">
-                  <div class="sidebar" :style="{ width: layout.sidebarWidth + 'px' }">
+                  <div class="shrink-0 overflow-hidden rounded-[var(--border-radius)] bg-[var(--bg-secondary)]" :style="{ width: layout.sidebarWidth + 'px' }">
                     <ConnectionTree v-if="layout.activeSidebar === 'connections'" />
                     <KeyManagementPanel v-else-if="layout.activeSidebar === 'keys'" />
                     <SSHConfigPanel v-else-if="layout.activeSidebar === 'ssh-config'" />
@@ -117,7 +150,7 @@ onMounted(() => {
                 </template>
 
                 <!-- Terminal -->
-                <div class="terminal-zone">
+                <div class="flex-1 min-w-0 min-h-0 overflow-hidden rounded-[var(--border-radius)] bg-[var(--bg-secondary)]">
                   <TerminalPane />
                 </div>
               </div>
@@ -132,7 +165,7 @@ onMounted(() => {
                   :max="600"
                   :invert="true"
                 />
-                <div class="bottom-zone" :style="{ height: layout.bottomPanelHeight + 'px', flexShrink: 0, minHeight: 0 }">
+                <div class="overflow-hidden bg-[var(--bg-secondary)] rounded-t-[var(--border-radius)]" :style="{ height: layout.bottomPanelHeight + 'px', flexShrink: 0, minHeight: 0 }">
                   <BottomPanel />
                 </div>
               </template>
@@ -145,105 +178,3 @@ onMounted(() => {
     </NMessageProvider>
   </NConfigProvider>
 </template>
-
-<style scoped>
-.app-layout {
-  display: flex;
-  flex-direction: column;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  background: var(--bg-primary);
-}
-
-.title-bar {
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 8px;
-  background: var(--bg-tertiary);
-  flex-shrink: 0;
-  position: relative;
-  -webkit-app-region: drag;
-}
-
-.app-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.title-bar-right {
-  position: absolute;
-  right: 8px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  -webkit-app-region: no-drag;
-}
-
-.title-bar-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 11px;
-  cursor: pointer;
-  padding: 2px 8px;
-  border-radius: 3px;
-  transition: color 0.15s, background 0.15s;
-}
-
-.title-bar-btn:hover {
-  color: var(--text-primary);
-  background: var(--hover-overlay);
-}
-
-.theme-btn {
-  font-size: 14px;
-  padding: 2px 6px;
-}
-
-.app-body {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-
-.main-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: 6px;
-  gap: 0;
-}
-
-.content-row {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-
-.sidebar {
-  flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 8px;
-  background: var(--bg-secondary);
-}
-
-.terminal-zone {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  border-radius: 8px;
-  background: var(--bg-secondary);
-}
-
-.bottom-zone {
-  overflow: hidden;
-  background: var(--bg-secondary);
-  border-radius: 8px 8px 0 0;
-}
-</style>

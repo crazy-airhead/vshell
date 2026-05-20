@@ -252,18 +252,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="local-panel">
-    <div class="local-toolbar">
+  <div class="flex flex-col h-full overflow-hidden">
+    <div class="flex items-center px-2 py-1 thin-border-b gap-1 shrink-0">
       <template v-if="!editing">
-        <span class="local-breadcrumb" @dblclick="startEdit">
-          <span class="crumb-part" @click="navigateTo('/')">/</span>
+        <span class="flex-1 overflow-hidden whitespace-nowrap text-[var(--font-size-sm)] select-none cursor-default" @dblclick="startEdit">
+          <span class="text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] hover:underline" @click="navigateTo('/')">/</span>
           <template v-for="p in pathParts" :key="p.path">
-            <span class="crumb-part" @click="navigateTo(p.path)">{{ p.name }}</span>
-            <span class="crumb-sep">/</span>
+            <span class="text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] hover:underline" @click="navigateTo(p.path)">{{ p.name }}</span>
+            <span class="text-[var(--text-secondary)]">/</span>
           </template>
         </span>
       </template>
-      <input v-else v-model="editPath" class="local-path-input"
+      <input v-else v-model="editPath" class="flex-1 bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
         @keyup.enter="commitEdit" @keyup.escape="editing = false" @blur="commitEdit" />
       <NButton size="tiny" quaternary @click="handleRefresh" title="Refresh">&#x21bb;</NButton>
       <NButton size="tiny" quaternary :type="showHidden ? 'primary' : 'default'" @click="showHidden = !showHidden">.*</NButton>
@@ -275,14 +275,14 @@ onUnmounted(() => {
       </NButton>
     </div>
 
-    <div class="local-body" ref="localBodyRef" :class="{ 'drag-over': localIsDragOver }">
+    <div class="flex-1 overflow-y-auto min-h-0" ref="localBodyRef" :class="{ 'drag-over': localIsDragOver }">
       <NSpin v-if="loading || loadingDir" size="small" />
-      <table v-else class="local-table">
+      <table v-else class="w-full border-collapse local-table">
         <thead>
           <tr>
-            <th class="col-name sortable" @click="toggleSort('name')">Name <span class="sort-arrow" v-if="sortKey === 'name'">{{ sortAsc ? '↑' : '↓' }}</span></th>
-            <th class="col-size sortable" @click="toggleSort('size')">Size <span class="sort-arrow" v-if="sortKey === 'size'">{{ sortAsc ? '↑' : '↓' }}</span></th>
-            <th class="col-time sortable" @click="toggleSort('time')">Modified <span class="sort-arrow" v-if="sortKey === 'time'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+            <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] max-w-[160px]" @click="toggleSort('name')">Name <span class="ml-[2px] text-[10px]" v-if="sortKey === 'name'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+            <th class="text-right py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] w-[60px]" @click="toggleSort('size')">Size <span class="ml-[2px] text-[10px]" v-if="sortKey === 'size'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+            <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] w-[85px] text-[11px]" @click="toggleSort('time')">Modified <span class="ml-[2px] text-[10px]" v-if="sortKey === 'time'">{{ sortAsc ? '↑' : '↓' }}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -292,17 +292,17 @@ onUnmounted(() => {
             @mousedown="onLocalRowMouseDown($event, f)"
             @click="handleRowClick(f, $event)"
           >
-            <td class="col-name">
+            <td class="py-[3px] px-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[160px]">
               <span class="dir-name" @click.stop="handleNameClick(f, $event)">
-                <span class="file-icon">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>
+                <span class="mr-1">{{ f.is_dir ? '\u{1F4C1}' : '\u{1F4C4}' }}</span>
                 {{ f.name }}
               </span>
             </td>
-            <td class="col-size">{{ f.is_dir ? '-' : formatSize(f.size) }}</td>
-            <td class="col-time">{{ formatTime(f.mod_time) }}</td>
+            <td class="py-[3px] px-2 whitespace-nowrap text-right w-[60px]">{{ f.is_dir ? '-' : formatSize(f.size) }}</td>
+            <td class="py-[3px] px-2 whitespace-nowrap w-[85px] text-[11px]">{{ formatTime(f.mod_time) }}</td>
           </tr>
           <tr v-if="files.length === 0">
-            <td colspan="3" class="local-empty">Empty directory</td>
+            <td colspan="3" class="text-center text-[var(--text-secondary)] p-4">Empty directory</td>
           </tr>
         </tbody>
       </table>
@@ -311,85 +311,24 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.local-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-.local-toolbar {
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--border-color);
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.local-breadcrumb {
-  flex: 1;
-  overflow: hidden;
-  white-space: nowrap;
-  font-size: var(--font-size-sm);
-  user-select: none;
-}
-
-.crumb-part { color: var(--text-secondary); cursor: pointer; }
-.crumb-part:hover { color: var(--text-primary); text-decoration: underline; }
-.crumb-sep { color: var(--text-secondary); }
-
-.local-path-input {
-  flex: 1;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-  font-family: monospace;
-  padding: 2px 6px;
-  outline: none;
-}
-
-.upload-btn { color: var(--text-secondary); }
-.upload-btn.active { color: var(--accent-color, #0078d4); }
-.delete-btn { color: var(--text-secondary); }
-.delete-btn.active { color: var(--delete-hover-color, #e55); }
-
-.local-body { flex: 1; overflow-y: auto; min-height: 0; }
-
-.drag-over {
-  outline: 2px dashed rgba(56, 132, 244, 0.5);
-  outline-offset: -2px;
-  background: rgba(56, 132, 244, 0.06) !important;
-  transition: outline 0.15s, background 0.15s;
-}
-
-.local-table { width: 100%; border-collapse: collapse; }
-.local-table th {
-  text-align: left; padding: 4px 8px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary); font-weight: 500; font-size: var(--font-size-sm);
-  user-select: none;
-}
-th.sortable { cursor: pointer; }
-th.sortable:hover { color: var(--text-primary); }
-.sort-arrow { margin-left: 2px; font-size: 10px; }
-.local-table td {
-  padding: 3px 8px;
-  border-bottom: 1px solid var(--border-color);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.thin-border-b { border-bottom: 1px solid rgba(128, 128, 128, 0.12); }
 
 .local-row { cursor: default; }
+.local-row:nth-child(even) { background: var(--hover-overlay-strong); }
 .local-row.dir-row .dir-name { cursor: pointer; }
-.local-row:hover { background: var(--hover-overlay-strong); }
-.dir-row:hover .dir-name:hover { color: #5dade2; }
+.local-row:hover { background: var(--hover-overlay); }
+.dir-row:hover .dir-name:hover { color: var(--color-info); }
 .local-row.selected { background: var(--action-hover-bg); }
 
-.col-name { max-width: 160px; }
-.col-size { width: 60px; text-align: right; }
-.col-time { width: 85px; font-size: 11px; }
-.file-icon { margin-right: 4px; }
-.local-empty { text-align: center; color: var(--text-secondary); padding: 16px; }
+.upload-btn { color: var(--text-secondary); }
+.upload-btn.active { color: var(--color-primary); }
+.delete-btn { color: var(--text-secondary); }
+.delete-btn.active { color: var(--delete-hover-color); }
+
+.drag-over {
+  outline: 2px dashed rgba(100, 108, 255, 0.5);
+  outline-offset: -2px;
+  background: rgba(100, 108, 255, 0.06) !important;
+  transition: outline 0.15s, background 0.15s;
+}
 </style>

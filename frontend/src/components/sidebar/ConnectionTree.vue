@@ -73,7 +73,7 @@ const treeData = computed<TreeOption[]>(() => {
       key: conn.id,
       label: conn.name,
       prefix: () => h('span', {
-        style: `display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${connected ? '#4caf50' : '#666'};flex-shrink:0`
+        style: `display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${connected ? 'var(--color-success)' : 'var(--text-secondary)'};flex-shrink:0`
       }),
       suffix: () => h('span', { style: 'color:var(--text-secondary);font-size:11px' }, conn.host),
     }
@@ -201,10 +201,10 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
 </script>
 
 <template>
-  <div class="connection-tree" @click="clearContextMenu">
-    <div class="tree-header">
-      <span class="tree-title">{{ t('connection.title') }}</span>
-      <div class="tree-header-actions">
+  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-secondary)]" @click="clearContextMenu">
+    <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0">
+      <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('connection.title') }}</span>
+      <div class="flex gap-[2px]">
         <NButton size="tiny" quaternary @click="startNewGroup(null)" :title="t('group.newGroup')">
           <span style="font-size:13px">&#x2295;</span>
         </NButton>
@@ -215,7 +215,7 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
     </div>
 
     <!-- New group inline input -->
-    <div v-if="showGroupInput" class="group-input-row">
+    <div v-if="showGroupInput" class="px-3 py-[6px] border-b border-solid border-[var(--border-color)] shrink-0">
       <NInputGroup>
         <NInput
           v-model:value="newGroupName"
@@ -229,7 +229,7 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
       </NInputGroup>
     </div>
 
-    <div class="tree-content">
+    <div class="flex-1 overflow-y-auto p-2 tree-content">
       <NSpin v-if="loading" />
       <NTree
         v-else
@@ -244,14 +244,14 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
     </div>
 
     <!-- Context actions -->
-    <div v-if="contextMenuKey" class="tree-actions">
+    <div v-if="contextMenuKey" class="flex gap-1 px-2 py-1 border-t border-solid border-[var(--border-color)] shrink-0">
       <template v-if="contextIsConnection">
         <button class="action-btn" @click="handleEdit(contextMenuKey!)">{{ t('common.edit') }}</button>
-        <button class="action-btn delete" @click="handleDelete(contextMenuKey!)">{{ t('common.delete') }}</button>
+        <button class="action-btn action-btn-danger" @click="handleDelete(contextMenuKey!)">{{ t('common.delete') }}</button>
       </template>
       <template v-if="contextIsGroup">
         <button class="action-btn" @click="startNewGroup(contextMenuKey!)">{{ t('group.newSubGroup') }}</button>
-        <button class="action-btn delete" @click="handleDeleteGroup(contextMenuKey!)">{{ t('common.delete') }}</button>
+        <button class="action-btn action-btn-danger" @click="handleDeleteGroup(contextMenuKey!)">{{ t('common.delete') }}</button>
       </template>
     </div>
 
@@ -260,60 +260,12 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
 </template>
 
 <style scoped>
-.connection-tree {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg-secondary);
-}
-
-.tree-header {
-  padding: 10px 12px;
-  background: var(--bg-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-
-.tree-title {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.tree-header-actions {
-  display: flex;
-  gap: 2px;
-}
-
-.group-input-row {
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
-}
-
-.tree-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
 .tree-content :deep(.n-tree-node-content) {
   font-size: var(--font-size-base);
 }
 
 .tree-content :deep(.n-tree-node-content__suffix) {
   margin-left: 8px;
-}
-
-.tree-actions {
-  display: flex;
-  gap: 4px;
-  padding: 4px 8px;
-  border-top: 1px solid var(--border-color);
-  flex-shrink: 0;
 }
 
 .action-btn {
@@ -324,12 +276,13 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
   cursor: pointer;
   padding: 2px 8px;
   border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
 }
 .action-btn:hover {
-  color: var(--action-hover-color);
+  color: var(--color-primary);
   background: var(--action-hover-bg);
 }
-.action-btn.delete:hover {
+.action-btn-danger:hover {
   color: var(--delete-hover-color);
   background: var(--delete-hover-bg);
 }

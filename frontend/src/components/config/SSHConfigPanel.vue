@@ -46,10 +46,10 @@ async function handleEditRaw() {
 </script>
 
 <template>
-  <div class="config-panel">
-    <div class="panel-header">
-      <span class="panel-title">{{ t('sshConfig.title') }}</span>
-      <div class="panel-header-actions">
+  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-secondary)]">
+    <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0">
+      <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('sshConfig.title') }}</span>
+      <div class="flex items-center gap-[2px]">
         <button class="panel-action-btn" @click="store.loadEntries()" :title="t('common.refresh')">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M13.65 2.35A7.5 7.5 0 1 0 15.5 8.5" stroke-linecap="round" />
@@ -69,8 +69,8 @@ async function handleEditRaw() {
       </div>
     </div>
 
-    <div class="entry-list">
-      <div v-if="store.entries.length === 0 && !store.loading" class="panel-body-empty">
+    <div class="flex-1 overflow-y-auto py-1">
+      <div v-if="store.entries.length === 0 && !store.loading" class="px-3 py-10 flex-center">
         <NEmpty :description="t('sshConfig.noEntries')" />
       </div>
 
@@ -89,35 +89,6 @@ async function handleEditRaw() {
 </template>
 
 <style scoped>
-.config-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg-secondary);
-}
-
-.panel-header {
-  padding: 10px 12px;
-  background: var(--bg-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-
-.panel-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.panel-title {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .panel-action-btn {
   background: none;
   border: none;
@@ -129,23 +100,10 @@ async function handleEditRaw() {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.15s, background 0.15s;
 }
-
 .panel-action-btn:hover {
   color: var(--text-primary);
   background: var(--hover-overlay);
-}
-
-.entry-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-
-.panel-body-empty {
-  padding: 40px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 </style>
