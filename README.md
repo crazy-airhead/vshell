@@ -1,59 +1,85 @@
-# Welcome to Your New Wails3 Project!
+# vShell
 
-Congratulations on generating your Wails3 application! This README will guide you through the next steps to get your project up and running.
+A desktop SSH client management tool built with **Wails 3** (Go + Vue 3). A purely local application — no cloud, no accounts, no telemetry.
 
-## Getting Started
+## Features
 
-1. Navigate to your project directory in the terminal.
+- **SSH Connection Management** — Organize connections in a tree hierarchy with groups, colors, and tags
+- **Full Terminal Emulation** — xterm.js-based PTY terminal with xterm-256color support
+- **SFTP File Management** — Browse, upload, download, delete, and drag-and-drop file transfers with progress tracking
+- **Remote File Editing** — Edit remote files directly with Monaco Editor
+- **Server Resource Monitoring** — Real-time CPU and memory charts via ECharts
+- **SSH Key Management** — Generate, import, and manage SSH key pairs
+- **SSH Config Import/Export** — Import connections from `~/.ssh/config`
+- **Port Forwarding** — Local port forwarding with auto-start option
+- **Quick Commands** — Save and execute frequently used commands
+- **i18n** — Chinese and English language support
 
-2. To run your application in development mode, use the following command:
+## Tech Stack
 
-   ```
-   wails3 dev
-   ```
+| Layer | Technology |
+|-------|-----------|
+| Framework | Wails 3 (alpha) |
+| Backend | Go 1.25 |
+| Frontend | Vue 3 + TypeScript |
+| UI Library | Naive UI |
+| CSS | UnoCSS |
+| Terminal | xterm.js v6 |
+| Editor | Monaco Editor |
+| Charts | ECharts |
+| Database | SQLite (pure Go, no CGO) |
+| Encryption | AES-256-GCM |
+| Build | Taskfile + Vite |
 
-   This will start your application and enable hot-reloading for both frontend and backend changes.
+## Development
 
-3. To build your application for production, use:
+```bash
+# Install Wails 3 CLI
+go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
-   ```
-   wails3 build
-   ```
+# Run in development mode (hot-reload for frontend and backend)
+wails3 dev
 
-   This will create a production-ready executable in the `build` directory.
+# Build production executable
+wails3 build
+```
 
-## Exploring Wails3 Features
+Frontend-only development:
 
-Now that you have your project set up, it's time to explore the features that Wails3 offers:
-
-1. **Check out the examples**: The best way to learn is by example. Visit the `examples` directory in the `v3/examples` directory to see various sample applications.
-
-2. **Run an example**: To run any of the examples, navigate to the example's directory and use:
-
-   ```
-   go run .
-   ```
-
-   Note: Some examples may be under development during the alpha phase.
-
-3. **Explore the documentation**: Visit the [Wails3 documentation](https://v3.wails.io/) for in-depth guides and API references.
-
-4. **Join the community**: Have questions or want to share your progress? Join the [Wails Discord](https://discord.gg/JDdSxwjhGf) or visit the [Wails discussions on GitHub](https://github.com/wailsapp/wails/discussions).
+```bash
+cd frontend
+npm install
+npm run dev          # Start Vite dev server on port 9245
+```
 
 ## Project Structure
 
-Take a moment to familiarize yourself with your project structure:
+```
+vshell/
+├── main.go                  # Application entry point, window config, native menu
+├── build/
+│   └── config.yml           # Wails 3 build configuration
+├── internal/
+│   ├── app/                 # Wails AppService (all bound methods exposed to frontend)
+│   ├── ssh/                 # SSH client, session (PTY), and server monitor
+│   ├── sftp/                # SFTP client and transfer manager
+│   ├── portforward/         # Local port forwarding
+│   ├── zmodem/              # Zmodem protocol support
+│   ├── db/                  # SQLite database and migrations
+│   ├── crypto/              # AES-256-GCM encryption
+│   └── models/              # Data models
+├── frontend/
+│   └── src/
+│       ├── components/      # Vue components by domain
+│       ├── stores/          # Pinia state stores
+│       ├── composables/     # Reusable composables
+│       ├── locales/         # i18n translations (zh-CN, en)
+│       ├── styles/          # Global CSS with theme variables
+│       ├── types/           # TypeScript type definitions
+│       └── utils/           # Utility functions
+└── doc/                     # Architecture documentation
+```
 
-- `frontend/`: Contains your frontend code (HTML, CSS, JavaScript/TypeScript)
-- `main.go`: The entry point of your Go backend
-- `app.go`: Define your application structure and methods here
-- `wails.json`: Configuration file for your Wails project
+## Database
 
-## Next Steps
-
-1. Modify the frontend in the `frontend/` directory to create your desired UI.
-2. Add backend functionality in `main.go`.
-3. Use `wails3 dev` to see your changes in real-time.
-4. When ready, build your application with `wails3 build`.
-
-Happy coding with Wails3! If you encounter any issues or have questions, don't hesitate to consult the documentation or reach out to the Wails community.
+SQLite database stored at `~/Library/Application Support/vshell/vshell.db` (macOS). All sensitive data (passwords, private keys, passphrases) is encrypted with AES-256-GCM before storage.

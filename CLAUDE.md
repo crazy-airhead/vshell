@@ -31,12 +31,15 @@ go test ./...           # Run tests
 
 ### Backend (Go) — `internal/`
 
-- **`app/app.go`** — `AppService` is the Wails service exposing all bound methods to the frontend (CRUD for connections/groups/quick-commands, SSH connect/disconnect, SFTP operations, SSH key management, local filesystem access). It orchestrates the managers.
+- **`app/app.go`** — `AppService` is the Wails service exposing all bound methods to the frontend (CRUD for connections/groups/quick-commands, SSH connect/disconnect, SFTP operations, SSH key management, local filesystem access, file editing). It orchestrates the managers.
+- **`app/sshconfig.go`** — SSH config file (`~/.ssh/config`) import/export logic.
+- **`app/icons/`** — PNG menu bar icons (save, close) embedded via `//go:embed`.
 - **`ssh/client.go`** — `Manager` holds active SSH sessions, handles connect/disconnect, builds `ssh.ClientConfig` with encrypted credentials.
 - **`ssh/session.go`** — `Session` wraps an SSH session with PTY. Uses a `flushingWriter` that buffers stdout/stderr and emits events every 50ms to avoid per-byte overhead.
 - **`ssh/monitor.go`** — `Monitor` reuses the SSH client to periodically exec commands (`/proc/stat`, `/proc/meminfo`, etc.) for server resource monitoring.
 - **`sftp/manager.go`** + **`sftp/client.go`** — SFTP operations with a concurrency pool (3 concurrent transfers). Wraps `io.Reader`/`io.Writer` for progress tracking via events.
 - **`portforward/forward.go`** — Local port forwarding via `net.Listen` → `ssh.Client.Dial` → bidirectional `io.Copy`.
+- **`zmodem/zmodem.go`** — Zmodem file transfer protocol support (minimal/stub).
 - **`db/db.go`** — SQLite via `modernc.org/sqlite` (pure Go, no CGO). Stored at `~/Library/Application Support/vshell/vshell.db` (macOS). Single connection (`SetMaxOpenConns(1)`).
 - **`db/migrations.go`** — Inline SQL migrations run on startup. Tables: `groups`, `connections`, `quick_commands`, `port_forwards`.
 - **`crypto/crypto.go`** — AES-256-GCM encryption for passwords, private keys, and passphrases stored in the database.
@@ -45,8 +48,14 @@ go test ./...           # Run tests
 ### Frontend (Vue 3 + TypeScript) — `frontend/src/`
 
 - **UI Library**: Naive UI (strict — never use Element Plus, Ant Design, or browser native dialogs).
+- **CSS Framework**: UnoCSS (presetUno + custom theme colors/shortcuts in `uno.config.ts`).
 - **State**: Pinia stores in `stores/` — `connection.ts`, `terminal.ts`, `sftp.ts`, `monitor.ts`, `settings.ts`, `layout.ts`, `transfers.ts`, `sshkey.ts`, `sshconfig.ts`.
+- **Routing**: Vue Router.
 - **i18n**: `vue-i18n` with `locales/zh-CN.ts` and `locales/en.ts`.
+- **Terminal**: xterm.js (`@xterm/xterm` v6) with addons: fit, search, serialize, web-links, webgl.
+- **Editor**: Monaco Editor for remote file editing (`components/terminal/EditorTab.vue`).
+- **Charts**: ECharts for server resource monitoring.
+- **Icons**: Iconify with Lucide icon set, loaded via `unplugin-icons`.
 - **Components**: Organized by domain — `sidebar/`, `terminal/`, `sftp/`, `monitor/`, `settings/`, `keys/`, `config/`, `activity/`, `panels/`, `common/`.
 - **Composables**: `useTerminal.ts`, `useTerminalManager.ts`, `useEvents.ts`, `useShortcuts.ts`, `useDragTransfer.ts`.
 
@@ -62,6 +71,8 @@ Terminal data **must** use Wails Events system, **never** `Call/Bind`:
 
 Backend-to-frontend uses Wails `Event.Emit`. Frontend-to-backend for terminal/streaming uses `Events.Emit`. CRUD operations use direct Wails service method calls (the `application.NewService` binding pattern).
 
+Native menu actions (Settings, Save, Close Tab) are emitted from Go to frontend via Wails Events: `menu:settings`, `menu:save`, `menu:close-tab`.
+
 ## Critical Rules
 
 1. **Terminal data**: Always use Wails Events for terminal I/O — never use synchronous `Call/Bind`.
@@ -73,7 +84,7 @@ Backend-to-frontend uses Wails `Event.Emit`. Frontend-to-backend for terminal/st
 
 ## Key Configuration
 
-- **Wails config**: No `wails.json` file found — configuration is in `main.go` via `application.Options`.
+- **Wails config**: Wails 3 uses `build/config.yml` (not `wails.json`). App window options are in `main.go` via `application.Options`.
 - **Vite port**: Default `9245`, configurable via `WAILS_VITE_PORT` env var.
 - **Go version**: 1.25.0
 - **Wails version**: v3.0.0-alpha.92 (alpha API may change)
