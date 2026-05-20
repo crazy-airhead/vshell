@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NTree, NButton, NSpin, NInputGroup, NInput, useMessage, useDialog } from 'naive-ui'
+import { NTree, NButton, NInputGroup, NInput, useMessage, useDialog } from 'naive-ui'
 import type { TreeOption, TreeDropInfo } from 'naive-ui'
 import IconFolderPlus from '~icons/lucide/folder-plus'
 import IconPlus from '~icons/lucide/plus'
@@ -313,7 +313,7 @@ function clearContextMenu() {
 
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-secondary)]" @click="clearContextMenu">
-    <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0">
+    <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0 relative thin-border-b">
       <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('connection.title') }}</span>
       <div class="flex gap-[2px]">
         <NButton size="tiny" quaternary @click="startNewGroup(null)" :title="t('group.newGroup')">
@@ -323,6 +323,7 @@ function clearContextMenu() {
           <IconPlus :width="14" :height="14" />
         </NButton>
       </div>
+      <div v-if="loading" class="loading-bar"></div>
     </div>
 
     <div v-if="showGroupInput" class="px-3 py-[6px] thin-border-b shrink-0">
@@ -340,9 +341,8 @@ function clearContextMenu() {
     </div>
 
     <div class="flex-1 overflow-y-auto p-2 tree-content">
-      <NSpin v-if="loading" />
       <NTree
-        v-else
+        v-if="!loading"
         :data="treeData"
         :expanded-keys="expandedKeys"
         :render-label="renderLabel"
@@ -370,6 +370,31 @@ function clearContextMenu() {
 <style scoped>
 .thin-border-b { border-bottom: 1px solid rgba(128, 128, 128, 0.12); }
 .thin-border-t { border-top: 1px solid rgba(128, 128, 128, 0.12); }
+
+.loading-bar {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  animation: loading-slide 0.8s ease-in-out infinite;
+}
+.loading-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  animation: loading-slide 1.6s ease-in-out 0.4s infinite;
+}
+
+@keyframes loading-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
 
 .tree-content :deep(.n-tree-node-content) {
   font-size: var(--font-size-base);

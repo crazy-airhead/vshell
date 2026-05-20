@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { NButton, NSpin, useMessage, useDialog } from 'naive-ui'
+import { NButton, useMessage, useDialog } from 'naive-ui'
 import IconPlus from '~icons/lucide/plus'
 import IconPencil from '~icons/lucide/pencil'
 import IconTrash2 from '~icons/lucide/trash-2'
@@ -79,16 +79,16 @@ function handleNew() {
 
 <template>
   <div class="w-[280px] min-w-[200px] h-full bg-[var(--bg-secondary)] border-r border-solid border-[var(--border-color)] flex flex-col overflow-hidden">
-    <div class="px-4 py-3 border-b border-solid border-[var(--border-color)] flex items-center justify-between">
+    <div class="px-4 py-3 flex items-center justify-between relative" style="border-bottom: 1px solid rgba(128, 128, 128, 0.12)">
       <span class="text-[13px] font-semibold text-[var(--text-primary)]">Connections ({{ connectionStore.connections.length }})</span>
       <NButton size="tiny" quaternary @click="handleNew" title="New Connection">
         <IconPlus :width="14" :height="14" />
       </NButton>
+      <div v-if="loading" class="loading-bar"></div>
     </div>
     <div class="flex-1 overflow-y-auto p-2">
-      <NSpin v-if="loading" />
       <div
-        v-else
+        v-if="!loading"
         v-for="conn in connectionStore.connections"
         :key="conn.id"
         class="flex items-center py-[6px] px-2 cursor-pointer rounded-[4px] text-[var(--text-primary)] text-[13px] transition-colors duration-150 hover:bg-[var(--hover-overlay)]"
@@ -106,6 +106,31 @@ function handleNew() {
 </template>
 
 <style scoped>
+.loading-bar {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  animation: loading-slide 0.8s ease-in-out infinite;
+}
+.loading-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  animation: loading-slide 1.6s ease-in-out 0.4s infinite;
+}
+
+@keyframes loading-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
 .conn-action {
   background: none;
   border: none;

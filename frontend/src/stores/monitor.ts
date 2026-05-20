@@ -62,12 +62,11 @@ export const useMonitorStore = defineStore('monitor', () => {
   }
 
   async function startMonitoring(connectionID: string) {
-    if (stats.has(connectionID)) return
-
     registerListeners()
-    stats.set(connectionID, newEmptyStats())
-    connectedSince.set(connectionID, Date.now())
-
+    if (!stats.has(connectionID)) {
+      stats.set(connectionID, newEmptyStats())
+      connectedSince.set(connectionID, Date.now())
+    }
     await StartMonitor(connectionID)
   }
 
