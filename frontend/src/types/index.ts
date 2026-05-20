@@ -144,3 +144,12 @@ export interface SSHConfigEntry {
   pattern: string
   directives: SSHConfigDirective[]
 }
+
+export interface SSHConfigImportCandidate {
+  pattern: string
+  hostname: string
+  port: number
+  user: string
+  identity_file: string
+  has_key: boolean
+}

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { ReadSSHConfig, WriteSSHConfig, ReadSSHConfigRaw, WriteSSHConfigRaw } from '../../bindings/vshell/internal/app/appservice'
-import type { SSHConfigEntry, SSHConfigDirective } from '../types'
+import { ReadSSHConfig, WriteSSHConfig, ReadSSHConfigRaw, WriteSSHConfigRaw, GetSSHConfigImportCandidates, ImportSSHConfigHosts } from '../../bindings/vshell/internal/app/appservice'
+import type { SSHConfigEntry, SSHConfigDirective, SSHConfigImportCandidate } from '../types'
 
 export const useSSHConfigStore = defineStore('sshconfig', () => {
   const entries = ref<SSHConfigEntry[]>([])
@@ -56,6 +56,22 @@ export const useSSHConfigStore = defineStore('sshconfig', () => {
     await loadEntries()
   }
 
+  async function getImportCandidates(): Promise<SSHConfigImportCandidate[]> {
+    const result = await GetSSHConfigImportCandidates()
+    return (result || []).map((c: any) => ({
+      pattern: c.pattern || '',
+      hostname: c.hostname || '',
+      port: c.port || 22,
+      user: c.user || '',
+      identity_file: c.identity_file || '',
+      has_key: !!c.has_key,
+    })) as SSHConfigImportCandidate[]
+  }
+
+  async function importHosts(patterns: string[]): Promise<void> {
+    await ImportSSHConfigHosts(patterns)
+  }
+
   return {
     entries,
     loading,
@@ -66,5 +82,7 @@ export const useSSHConfigStore = defineStore('sshconfig', () => {
     deleteEntry,
     readRaw,
     writeRaw,
+    getImportCandidates,
+    importHosts,
   }
 })

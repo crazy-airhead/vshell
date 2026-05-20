@@ -22,7 +22,7 @@ type Session struct {
 	done        chan struct{}
 }
 
-func newSession(client *ssh.Client, connectionID string, onEvent func(string, any)) (*Session, error) {
+func newSession(client *ssh.Client, sessionID string, onEvent func(string, any)) (*Session, error) {
 	sess, err := client.NewSession()
 	if err != nil {
 		return nil, fmt.Errorf("new ssh session: %w", err)
@@ -63,7 +63,7 @@ func newSession(client *ssh.Client, connectionID string, onEvent func(string, an
 	}
 
 	s := &Session{
-		id:          connectionID,
+		id:          sessionID,
 		client:      client,
 		session:     sess,
 		stdinWriter: stdin,
@@ -71,8 +71,8 @@ func newSession(client *ssh.Client, connectionID string, onEvent func(string, an
 		done:        make(chan struct{}),
 	}
 
-	stdoutFW := newFlushingWriter(connectionID, "terminal:stdout", onEvent)
-	stderrFW := newFlushingWriter(connectionID, "terminal:stderr", onEvent)
+	stdoutFW := newFlushingWriter(sessionID, "terminal:stdout", onEvent)
+	stderrFW := newFlushingWriter(sessionID, "terminal:stderr", onEvent)
 
 	go func() {
 		io.Copy(stdoutFW, stdoutPipe)
@@ -88,11 +88,15 @@ func newSession(client *ssh.Client, connectionID string, onEvent func(string, an
 		sess.Wait()
 		close(s.done)
 		onEvent("terminal:closed", map[string]any{
-			"sessionID": connectionID,
+			"sessionID": sessionID,
 		})
 	}()
 
 	return s, nil
+}
+
+func (s *Session) ID() string {
+	return s.id
 }
 
 func (s *Session) Close() {

@@ -16,6 +16,7 @@ export interface TerminalTab {
   isRemote?: boolean
   editorMode?: EditorMode
   tooltip?: string
+  connected?: boolean
 }
 
 export const useTerminalStore = defineStore('terminal', () => {
@@ -24,9 +25,7 @@ export const useTerminalStore = defineStore('terminal', () => {
   const splitTree = ref<TreeNode | null>(null)
 
   function addTab(tab: TerminalTab) {
-    if (!tabs.value.find((t) => t.id === tab.id)) {
-      tabs.value.push(tab)
-    }
+    tabs.value.push(tab)
     activeTabID.value = tab.id
     if (!splitTree.value) {
       splitTree.value = { type: 'leaf', sessionID: tab.id }
@@ -87,6 +86,25 @@ export const useTerminalStore = defineStore('terminal', () => {
     }
   }
 
+  function markTabDisconnected(sessionID: string) {
+    const tab = tabs.value.find((t) => t.id === sessionID)
+    if (tab) {
+      tab.connected = false
+    }
+  }
+
+  function closeOtherTabs(id: string) {
+    const keep = tabs.value.find((t) => t.id === id)
+    tabs.value = keep ? [keep] : []
+    activeTabID.value = id
+  }
+
+  function closeAllTabs() {
+    tabs.value = []
+    activeTabID.value = null
+    splitTree.value = null
+  }
+
   return {
     tabs,
     activeTabID,
@@ -96,5 +114,8 @@ export const useTerminalStore = defineStore('terminal', () => {
     updateTabContent,
     markTabDirty,
     removeTab,
+    markTabDisconnected,
+    closeOtherTabs,
+    closeAllTabs,
   }
 })

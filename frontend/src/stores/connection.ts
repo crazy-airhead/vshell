@@ -5,9 +5,11 @@ import {
   ListGroups,
   ConnectSSH,
   DisconnectSSH,
+  DisconnectSession,
   CreateConnection,
   UpdateConnection,
   DeleteConnection,
+  MoveConnection,
   CreateGroup,
   DeleteGroup,
 } from '../../bindings/vshell/internal/app/appservice'
@@ -92,13 +94,14 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
-  async function connect(id: string) {
+  async function connect(id: string): Promise<string> {
     try {
-      await ConnectSSH(id)
+      const sessionID = await ConnectSSH(id) as unknown as string
       connectedIDs.value.add(id)
       activeConnectionID.value = id
       const monitorStore = useMonitorStore()
       await monitorStore.startMonitoring(id)
+      return sessionID
     } catch (e) {
       console.error('Failed to connect:', e)
       throw e
@@ -116,6 +119,14 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (e) {
       console.error('Failed to disconnect:', e)
+    }
+  }
+
+  async function disconnectSession(sessionID: string, connectionID: string) {
+    try {
+      await DisconnectSession(sessionID, connectionID)
+    } catch (e) {
+      console.error('Failed to disconnect session:', e)
     }
   }
 
@@ -142,6 +153,11 @@ export const useConnectionStore = defineStore('connection', () => {
 
   async function removeConnection(id: string) {
     await DeleteConnection(id)
+    await loadConnections()
+  }
+
+  async function moveConnection(id: string, groupID: string | null) {
+    await MoveConnection(id, groupID)
     await loadConnections()
   }
 
@@ -191,8 +207,10 @@ export const useConnectionStore = defineStore('connection', () => {
     loadGroups,
     connect,
     disconnect,
+    disconnectSession,
     createConnection,
     removeConnection,
+    moveConnection,
     updateConnection,
     getConnectionsByGroup,
     createGroup,

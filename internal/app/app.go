@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"golang.org/x/crypto/ssh"
 
@@ -274,15 +275,28 @@ func (a *AppService) DeleteConnection(id string) error {
 	return err
 }
 
+// MoveConnection updates just the group_id of a connection (for drag-and-drop reordering).
+func (a *AppService) MoveConnection(connectionID string, groupID *string) error {
+	if groupID != nil && *groupID == "" {
+		groupID = nil
+	}
+	_, err := a.db.Exec("UPDATE connections SET group_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", groupID, connectionID)
+	return err
+}
+
 // --- SSH Session Management ---
 
-func (a *AppService) ConnectSSH(connectionID string) error {
+func (a *AppService) ConnectSSH(connectionID string) (string, error) {
 	conn, err := a.getConnectionByID(connectionID)
 	if err != nil {
-		return err
+		return "", err
 	}
-	_, err = a.sshManager.Connect(conn)
-	return err
+	sessionID := uuid.New().String()
+	_, err = a.sshManager.Connect(conn, sessionID)
+	if err != nil {
+		return "", err
+	}
+	return sessionID, nil
 }
 
 func (a *AppService) DisconnectSSH(connectionID string) {
@@ -290,6 +304,17 @@ func (a *AppService) DisconnectSSH(connectionID string) {
 	a.sftpManager.CloseClient(connectionID)
 	a.sshManager.Disconnect(connectionID)
 	a.fwdManager.StopAllForConnection(connectionID)
+}
+
+// DisconnectSession disconnects a single terminal session. If it's the last
+// session for its connection, the full connection cleanup is also performed.
+func (a *AppService) DisconnectSession(sessionID string, connectionID string) {
+	a.sshManager.DisconnectSession(sessionID)
+	if !a.sshManager.HasActiveSession(connectionID) {
+		a.StopMonitor(connectionID)
+		a.sftpManager.CloseClient(connectionID)
+		a.fwdManager.StopAllForConnection(connectionID)
+	}
 }
 
 // --- Monitor ---

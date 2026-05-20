@@ -46,7 +46,8 @@ export default {
     deleteContent: 'Are you sure you want to delete "{name}"?',
     deleted: 'Deleted "{name}"',
     deleteFailed: 'Delete failed: {error}',
-    connectFailed: 'Connection failed: {error}',
+    connectFailed: 'Connection Failed',
+    connectFailedDetail: 'Failed to connect to {host}. Please check the host address, port, and authentication settings.',
     loadFailed: 'Failed to load data',
     keySource: 'Key Source',
     keyFromManaged: 'Select from Key Store',
@@ -67,6 +68,14 @@ export default {
   },
   terminal: {
     empty: 'No active terminal sessions. Click a connection to start.',
+  },
+  tab: {
+    reconnect: 'Reconnect',
+    disconnect: 'Disconnect',
+    duplicate: 'Duplicate Session',
+    close: 'Close',
+    closeOthers: 'Close Others',
+    closeAll: 'Close All',
   },
   monitor: {
     noConnection: 'No active connection',
@@ -155,6 +164,12 @@ export default {
     noEntries: 'No SSH config entries found',
     deleteConfirm: 'Delete host "{name}"?',
     unsavedChanges: 'Unsaved changes',
+    importHosts: 'Import as Connections',
+    importHostsDesc: 'Select Host entries to import as vShell connections. They will appear in the sidebar.',
+    importSelectAll: 'Select All',
+    importDeselectAll: 'Deselect All',
+    imported: 'Imported {count} connection(s)',
+    importNothingSelected: 'Please select hosts to import',
   },
   settings: {
     title: 'Settings',

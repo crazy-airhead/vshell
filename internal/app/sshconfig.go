@@ -4,7 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
+
+	"vshell/internal/models"
 )
 
 // SSHConfigDirective represents a single key-value directive within an SSH config block.
@@ -163,4 +168,134 @@ func splitKV(line string) (string, string, bool) {
 		return line, "", true
 	}
 	return line[:idx], strings.TrimSpace(line[idx+1:]), true
+}
+
+// SSHConfigImportCandidate represents a Host entry from ~/.ssh/config that can be imported as a vShell connection.
+type SSHConfigImportCandidate struct {
+	Pattern      string `json:"pattern"`
+	HostName     string `json:"hostname"`
+	Port         int    `json:"port"`
+	User         string `json:"user"`
+	IdentityFile string `json:"identity_file"`
+	HasKey       bool   `json:"has_key"`
+}
+
+// GetSSHConfigImportCandidates parses ~/.ssh/config and returns Host blocks as importable connection candidates.
+func (a *AppService) GetSSHConfigImportCandidates() ([]SSHConfigImportCandidate, error) {
+	entries, err := a.ReadSSHConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	sshDir, err := sshDir()
+	if err != nil {
+		return nil, err
+	}
+
+	var candidates []SSHConfigImportCandidate
+	for _, entry := range entries {
+		if entry.Type != "HOST" || entry.Pattern == "" {
+			continue
+		}
+		c := SSHConfigImportCandidate{
+			Pattern: entry.Pattern,
+			Port:    22,
+		}
+		for _, d := range entry.Directives {
+			switch strings.ToLower(d.Key) {
+			case "hostname":
+				c.HostName = d.Value
+			case "port":
+				if p, err := strconv.Atoi(d.Value); err == nil {
+					c.Port = p
+				}
+			case "user":
+				c.User = d.Value
+			case "identityfile":
+				c.IdentityFile = d.Value
+				c.HasKey = fileExists(resolveIdentityFile(d.Value, sshDir))
+			}
+		}
+		candidates = append(candidates, c)
+	}
+	return candidates, nil
+}
+
+// ImportSSHConfigHosts imports selected Host entries from ~/.ssh/config as vShell connections.
+func (a *AppService) ImportSSHConfigHosts(patterns []string) error {
+	entries, err := a.ReadSSHConfig()
+	if err != nil {
+		return err
+	}
+
+	sshDir, err := sshDir()
+	if err != nil {
+		return err
+	}
+
+	// Build a map of pattern -> entry for quick lookup
+	entryMap := make(map[string]*SSHConfigEntry)
+	for i := range entries {
+		if entries[i].Type == "HOST" && entries[i].Pattern != "" {
+			entryMap[entries[i].Pattern] = &entries[i]
+		}
+	}
+
+	for _, pattern := range patterns {
+		entry, ok := entryMap[pattern]
+		if !ok {
+			continue
+		}
+
+		form := models.ConnectionForm{
+			ID:         uuid.New().String(),
+			Name:       pattern,
+			Host:       pattern, // fallback
+			Port:       22,
+			Username:   "",
+			AuthType:   models.AuthPassword,
+			UploadPath: "/",
+			SortOrder:  0,
+		}
+
+		for _, d := range entry.Directives {
+			switch strings.ToLower(d.Key) {
+			case "hostname":
+				form.Host = d.Value
+			case "port":
+				if p, err := strconv.Atoi(d.Value); err == nil {
+					form.Port = p
+				}
+			case "user":
+				form.Username = d.Value
+			case "identityfile":
+				keyPath := resolveIdentityFile(d.Value, sshDir)
+				if keyData, err := os.ReadFile(keyPath); err == nil {
+					form.AuthType = models.AuthPrivateKey
+					form.PrivateKey = strings.TrimSpace(string(keyData))
+				}
+			}
+		}
+
+		if err := a.CreateConnection(form); err != nil {
+			return fmt.Errorf("import %s: %w", pattern, err)
+		}
+	}
+	return nil
+}
+
+func resolveIdentityFile(value string, sshDir string) string {
+	if strings.HasPrefix(value, "~") {
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, value[2:])
+	}
+	if filepath.IsAbs(value) {
+		return value
+	}
+	return filepath.Join(sshDir, value)
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

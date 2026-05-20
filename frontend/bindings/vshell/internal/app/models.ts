@@ -110,6 +110,50 @@ export class SSHConfigEntry {
     }
 }
 
+/**
+ * SSHConfigImportCandidate represents a Host entry from ~/.ssh/config that can be imported as a vShell connection.
+ */
+export class SSHConfigImportCandidate {
+    "pattern": string;
+    "hostname": string;
+    "port": number;
+    "user": string;
+    "identity_file": string;
+    "has_key": boolean;
+
+    /** Creates a new SSHConfigImportCandidate instance. */
+    constructor($$source: Partial<SSHConfigImportCandidate> = {}) {
+        if (!("pattern" in $$source)) {
+            this["pattern"] = "";
+        }
+        if (!("hostname" in $$source)) {
+            this["hostname"] = "";
+        }
+        if (!("port" in $$source)) {
+            this["port"] = 0;
+        }
+        if (!("user" in $$source)) {
+            this["user"] = "";
+        }
+        if (!("identity_file" in $$source)) {
+            this["identity_file"] = "";
+        }
+        if (!("has_key" in $$source)) {
+            this["has_key"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SSHConfigImportCandidate instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SSHConfigImportCandidate {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SSHConfigImportCandidate($$parsedSource as Partial<SSHConfigImportCandidate>);
+    }
+}
+
 export class SSHKeyInfo {
     "name": string;
     "type": string;

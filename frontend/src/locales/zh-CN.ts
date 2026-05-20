@@ -46,7 +46,8 @@ export default {
     deleteContent: '确定要删除 "{name}" 吗？',
     deleted: '已删除 "{name}"',
     deleteFailed: '删除失败: {error}',
-    connectFailed: '连接失败: {error}',
+    connectFailed: '连接失败',
+    connectFailedDetail: '无法连接到 {host}，请检查主机地址、端口和认证信息。',
     loadFailed: '加载数据失败',
     keySource: '密钥来源',
     keyFromManaged: '从密钥管理选择',
@@ -67,6 +68,14 @@ export default {
   },
   terminal: {
     empty: '暂无终端会话，点击左侧连接开始。',
+  },
+  tab: {
+    reconnect: '重新连接',
+    disconnect: '断开连接',
+    duplicate: '复制会话',
+    close: '关闭',
+    closeOthers: '关闭其他',
+    closeAll: '关闭所有',
   },
   monitor: {
     noConnection: '无活动连接',
@@ -155,6 +164,12 @@ export default {
     noEntries: '未找到 SSH 配置项',
     deleteConfirm: '确定删除主机 "{name}" 吗？',
     unsavedChanges: '有未保存的更改',
+    importHosts: '导入为连接',
+    importHostsDesc: '选择要导入的 Host 条目，将作为 vShell 连接添加到左侧列表。',
+    importSelectAll: '全选',
+    importDeselectAll: '取消全选',
+    imported: '已导入 {count} 个连接',
+    importNothingSelected: '请选择要导入的主机',
   },
   settings: {
     title: '设置',

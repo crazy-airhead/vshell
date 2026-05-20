@@ -2,10 +2,13 @@
 import { ref, computed, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NTree, NButton, NSpin, NInputGroup, NInput, useMessage, useDialog } from 'naive-ui'
-import type { TreeOption } from 'naive-ui'
+import type { TreeOption, TreeDropInfo } from 'naive-ui'
 import IconFolderPlus from '~icons/lucide/folder-plus'
 import IconPlus from '~icons/lucide/plus'
 import IconFolder from '~icons/lucide/folder'
+import IconPencil from '~icons/lucide/pencil'
+import IconTrash2 from '~icons/lucide/trash-2'
+import IconZap from '~icons/lucide/zap'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
 import ConnectionFormModal from './ConnectionFormModal.vue'
@@ -71,14 +74,9 @@ const treeData = computed<TreeOption[]>(() => {
 
   const ungrouped: TreeOption[] = []
   for (const conn of connections) {
-    const connected = connectionStore.connectedIDs.has(conn.id)
     const node: TreeOption = {
       key: conn.id,
       label: conn.name,
-      prefix: () => h('span', {
-        style: `display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${connected ? 'var(--color-success)' : 'var(--text-secondary)'};flex-shrink:0`
-      }),
-      suffix: () => h('span', { style: 'color:var(--text-secondary);font-size:11px' }, conn.host),
     }
     if (conn.group_id && groupNodeMap.has(conn.group_id)) {
       groupNodeMap.get(conn.group_id)!.children!.push(node)
@@ -94,28 +92,104 @@ const treeData = computed<TreeOption[]>(() => {
   return result
 })
 
-async function handleSelect(keys: string[]) {
+function renderLabel({ option }: { option: TreeOption }) {
+  const key = option.key as string
+  if (isGroupKey(key)) {
+    return option.label as string
+  }
+  const conn = connectionStore.connections.find(c => c.id === key)
+  if (!conn) return option.label as string
+
+  return h('div', { class: 'conn-label' }, [
+    h('span', { class: 'conn-name' }, conn.name),
+    h('span', { class: 'conn-host' }, `${conn.host}:${conn.port}`),
+    h('span', { class: 'conn-actions flex gap-[2px]' }, [
+      h('button', {
+        class: 'conn-hover-btn',
+        title: t('connection.newConnection'),
+        onClick: (e: MouseEvent) => { e.stopPropagation(); handleConnect(conn.id) },
+      }, h(IconZap, { width: 12, height: 12 })),
+      h('button', {
+        class: 'conn-hover-btn',
+        title: t('common.edit'),
+        onClick: (e: MouseEvent) => { e.stopPropagation(); handleEdit(conn.id) },
+      }, h(IconPencil, { width: 12, height: 12 })),
+      h('button', {
+        class: 'conn-hover-btn conn-hover-btn-danger',
+        title: t('common.delete'),
+        onClick: (e: MouseEvent) => { e.stopPropagation(); handleDelete(conn.id) },
+      }, h(IconTrash2, { width: 12, height: 12 })),
+    ]),
+  ])
+}
+
+function nodeProps({ option }: { option: TreeOption }) {
+  if (isGroupKey(option.key as string)) return {}
+  return {
+    onDblclick: () => {
+      handleConnect(option.key as string)
+    },
+  }
+}
+
+function handleSelect(keys: string[]) {
   if (keys.length === 0) return
   const key = keys[0]
   if (isGroupKey(key)) return
 
-  const conn = connectionStore.connections.find(c => c.id === key)
+  // Switch to the first tab belonging to this connection
+  const tab = terminalStore.tabs.find(t => t.connectionID === key && t.type !== 'editor')
+  if (tab) {
+    terminalStore.activeTabID = tab.id
+  }
+}
+
+async function handleConnect(connID: string) {
+  const conn = connectionStore.connections.find(c => c.id === connID)
   if (!conn) return
 
-  if (connectionStore.connectedIDs.has(conn.id)) {
-    terminalStore.activeTabID = conn.id
-    return
-  }
   try {
-    await connectionStore.connect(conn.id)
+    const sessionID = await connectionStore.connect(connID)
     terminalStore.addTab({
-      id: conn.id,
+      id: sessionID,
       connectionID: conn.id,
       title: conn.name || conn.host || conn.id,
+      connected: true,
     })
   } catch (e: any) {
-    message.error(t('connection.connectFailed', { error: e }))
+    dialog.error({
+      title: t('connection.connectFailed'),
+      content: () => h('div', { style: 'line-height:1.6' }, [
+        h('div', { style: 'margin-bottom:8px' }, t('connection.connectFailedDetail', { host: conn.host })),
+        h('div', {
+          style: 'margin-top:8px;padding:8px 12px;background:var(--bg-tertiary);border-radius:4px;font-family:monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto'
+        }, extractErrorMessage(e)),
+      ]),
+      positiveText: t('common.close'),
+    })
   }
+}
+
+function extractErrorMessage(e: any): string {
+  if (!e) return 'Unknown error'
+  if (typeof e === 'string') {
+    // Wails may pass errors as JSON strings; parse and recurse
+    try {
+      const parsed = JSON.parse(e)
+      if (typeof parsed === 'object' && parsed !== null) {
+        return extractErrorMessage(parsed)
+      }
+    } catch { /* not JSON, treat as plain string */ }
+    return e
+  }
+  if (e instanceof Error) return e.message
+  // Common Wails error wrappers — prefer 'message' last since it may be generic
+  if (e.err) return extractErrorMessage(e.err)
+  if (e.error) return extractErrorMessage(e.error)
+  if (e.msg) return extractErrorMessage(e.msg)
+  if (e.message && typeof e.message === 'string') return e.message
+  // Last resort
+  try { return JSON.stringify(e) } catch { return String(e) }
 }
 
 function handleEdit(connID: string) {
@@ -190,17 +264,44 @@ async function confirmNewGroup() {
   }
 }
 
+function allowDrop({ dropPosition, node }: { dropPosition: 'before' | 'inside' | 'after'; node: TreeOption }) {
+  if (isGroupKey(node.key as string)) {
+    return dropPosition === 'inside'
+  }
+  return dropPosition === 'before' || dropPosition === 'after'
+}
+
+async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
+  const connID = dragNode.key as string
+  if (!connID || isGroupKey(connID)) return
+
+  let groupID: string | null = null
+  if (dropPosition === 'inside' && isGroupKey(node.key as string)) {
+    groupID = node.key as string
+  } else {
+    const targetConn = connectionStore.connections.find(c => c.id === node.key)
+    groupID = targetConn?.group_id ?? null
+  }
+
+  try {
+    await connectionStore.moveConnection(connID, groupID)
+  } catch (e: any) {
+    message.error(t('connection.failed', { error: e }))
+  }
+}
+
 function onContextMenu(e: MouseEvent, option: TreeOption) {
   e.preventDefault()
-  contextMenuKey.value = option.key as string
+  if (isGroupKey(option.key as string)) {
+    contextMenuKey.value = option.key as string
+  } else {
+    contextMenuKey.value = null
+  }
 }
 
 function clearContextMenu() {
   contextMenuKey.value = null
 }
-
-const contextIsGroup = computed(() => contextMenuKey.value ? isGroupKey(contextMenuKey.value) : false)
-const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(contextMenuKey.value) : false)
 </script>
 
 <template>
@@ -217,7 +318,6 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
       </div>
     </div>
 
-    <!-- New group inline input -->
     <div v-if="showGroupInput" class="px-3 py-[6px] thin-border-b shrink-0">
       <NInputGroup>
         <NInput
@@ -238,24 +338,22 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
         v-else
         :data="treeData"
         :expanded-keys="expandedKeys"
+        :render-label="renderLabel"
+        :node-props="nodeProps"
         selectable
         block-line
+        draggable
+        :allow-drop="allowDrop"
         @update:expanded-keys="(keys: string[]) => expandedKeys = keys"
         @update:selected-keys="handleSelect"
+        @drop="handleDrop"
         @contextmenu="onContextMenu"
       />
     </div>
 
-    <!-- Context actions -->
     <div v-if="contextMenuKey" class="flex gap-1 px-2 py-1 thin-border-t shrink-0">
-      <template v-if="contextIsConnection">
-        <button class="action-btn" @click="handleEdit(contextMenuKey!)">{{ t('common.edit') }}</button>
-        <button class="action-btn action-btn-danger" @click="handleDelete(contextMenuKey!)">{{ t('common.delete') }}</button>
-      </template>
-      <template v-if="contextIsGroup">
-        <button class="action-btn" @click="startNewGroup(contextMenuKey!)">{{ t('group.newSubGroup') }}</button>
-        <button class="action-btn action-btn-danger" @click="handleDeleteGroup(contextMenuKey!)">{{ t('common.delete') }}</button>
-      </template>
+      <button class="action-btn" @click="startNewGroup(contextMenuKey!)">{{ t('group.newSubGroup') }}</button>
+      <button class="action-btn action-btn-danger" @click="handleDeleteGroup(contextMenuKey!)">{{ t('common.delete') }}</button>
     </div>
 
     <ConnectionFormModal v-model:show="showModal" :edit-connection="editConn" />
@@ -270,8 +368,61 @@ const contextIsConnection = computed(() => contextMenuKey.value ? !isGroupKey(co
   font-size: var(--font-size-base);
 }
 
-.tree-content :deep(.n-tree-node-content__suffix) {
-  margin-left: 8px;
+.tree-content :deep(.conn-label) {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.tree-content :deep(.conn-name) {
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-content :deep(.conn-host) {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-content :deep(.conn-actions) {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.tree-content :deep(.n-tree-node-content:hover .conn-actions),
+.tree-content :deep(.n-tree-node--selected .conn-actions) {
+  opacity: 1;
+}
+
+.tree-content :deep(.conn-hover-btn) {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+}
+.tree-content :deep(.conn-hover-btn:hover) {
+  color: var(--text-primary);
+  background: var(--hover-overlay);
+}
+.tree-content :deep(.conn-hover-btn-danger:hover) {
+  color: var(--color-error);
 }
 
 .action-btn {

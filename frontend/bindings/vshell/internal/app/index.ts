@@ -10,5 +10,6 @@ export {
     LocalFileInfo,
     SSHConfigDirective,
     SSHConfigEntry,
+    SSHConfigImportCandidate,
     SSHKeyInfo
 } from "./models.js";
