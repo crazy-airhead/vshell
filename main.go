@@ -12,6 +12,12 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed internal/app/icons/save.png
+var saveIcon []byte
+
+//go:embed internal/app/icons/close.png
+var closeIcon []byte
+
 func main() {
 	svc := app.New()
 
@@ -31,7 +37,7 @@ func main() {
 
 	svc.SetApp(wailsApp)
 
-	// Set application menu: vShell (with Settings) + Edit + Window
+	// Set application menu: vShell (with Settings) + File + Edit + Window
 	menu := application.NewMenu()
 
 	appMenu := menu.AddSubmenu("vShell")
@@ -50,6 +56,21 @@ func main() {
 	appMenu.AddRole(application.UnHide)
 	appMenu.AddSeparator()
 	appMenu.AddRole(application.Quit)
+
+	fileMenu := menu.AddSubmenu("File")
+	fileMenu.Add("Save").
+		SetBitmap(saveIcon).
+		SetAccelerator("CommandOrControl+S").
+		OnClick(func(ctx *application.Context) {
+			wailsApp.Event.Emit("menu:save", nil)
+		})
+	fileMenu.AddSeparator()
+	fileMenu.Add("Close").
+		SetBitmap(closeIcon).
+		SetAccelerator("CommandOrControl+W").
+		OnClick(func(ctx *application.Context) {
+			wailsApp.Event.Emit("menu:close-tab", nil)
+		})
 
 	editMenu := menu.AddSubmenu("Edit")
 	editMenu.AddRole(application.Undo)

@@ -16,12 +16,16 @@ import DraggableDivider from './components/common/DraggableDivider.vue'
 import SettingsModal from './components/settings/SettingsModal.vue'
 import { useSettingsStore } from './stores/settings'
 import { useLayoutStore } from './stores/layout'
+import { useTerminalStore } from './stores/terminal'
+import { useConnectionStore } from './stores/connection'
 import { useShortcuts } from './composables/useShortcuts'
 import type { LocaleCode } from './stores/settings'
 
 const { locale, t } = useI18n()
 const settings = useSettingsStore()
 const layout = useLayoutStore()
+const terminalStore = useTerminalStore()
+const connectionStore = useConnectionStore()
 
 const sidebarVisible = ref(true)
 const showSettings = ref(false)
@@ -62,6 +66,15 @@ useShortcuts({
 onMounted(() => {
   Events.On('menu:settings', () => {
     showSettings.value = true
+  })
+  Events.On('menu:close-tab', () => {
+    const id = terminalStore.activeTabID
+    if (!id) return
+    const tab = terminalStore.tabs.find(t => t.id === id)
+    if (tab && tab.type !== 'editor' && tab.connectionID) {
+      connectionStore.disconnect(tab.connectionID)
+    }
+    terminalStore.removeTab(id)
   })
 })
 </script>

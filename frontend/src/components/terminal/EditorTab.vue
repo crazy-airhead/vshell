@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as monaco from 'monaco-editor'
+import { Events } from '@wailsio/runtime'
 import { WriteSSHConfigRaw, SFTPWriteFileContent, WriteLocalFileContent } from '../../../bindings/vshell/internal/app/appservice'
 import { useSSHConfigStore } from '../../stores/sshconfig'
 import { useTerminalStore } from '../../stores/terminal'
@@ -60,6 +61,12 @@ onMounted(() => {
     editor?.layout()
   })
   resizeObserver.observe(editorContainer.value)
+
+  Events.On('menu:save', () => {
+    if (terminalStore.activeTabID === props.tab.id) {
+      handleSave()
+    }
+  })
 })
 
 async function handleSave() {
@@ -89,6 +96,7 @@ async function handleSave() {
 }
 
 onUnmounted(() => {
+  Events.Off('menu:save')
   resizeObserver?.disconnect()
   editor?.dispose()
   editor = null
