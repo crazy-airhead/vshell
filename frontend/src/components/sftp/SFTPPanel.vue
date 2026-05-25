@@ -37,6 +37,7 @@ const treeWidth = ref(170)
 const editingRemotePath = ref(false)
 const editRemotePath = ref('')
 const localDir = ref('')
+const loadingFile = ref(false)
 const selectedRemote = ref(new Set<string>())
 const sortKey = ref<'name' | 'size' | 'time'>('name')
 const sortAsc = ref(true)
@@ -212,6 +213,7 @@ async function handleRemoteRowDblClick(file: SFTPFile) {
     return
   }
 
+  loadingFile.value = true
   try {
     const content = await SFTPReadFileContent(props.connectionID, fullPath)
 
@@ -228,6 +230,8 @@ async function handleRemoteRowDblClick(file: SFTPFile) {
     })
   } catch (e: any) {
     message.error(t('sftp.openFileFailed', { name: file.name, error: e instanceof Error ? e.message : String(e) }))
+  } finally {
+    loadingFile.value = false
   }
 }
 
@@ -378,7 +382,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
           <NButton size="tiny" quaternary class="delete-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDeleteRemote" title="Delete selected">
             <IconTrash2 :width="14" :height="14" />
           </NButton>
-          <div v-if="sftpStore.getPanel(props.connectionID).loading" class="loading-bar"></div>
+          <div v-if="sftpStore.getPanel(props.connectionID).loading || loadingFile" class="loading-bar"></div>
         </div>
 
         <div class="flex-1 flex overflow-hidden min-h-0">
@@ -447,6 +451,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 <style scoped>
 .toolbar-wrapper {
   position: relative;
+  overflow: hidden;
   border-bottom: 1px solid rgba(128, 128, 128, 0.12);
 }
 .thin-border-r { border-right: 1px solid rgba(128, 128, 128, 0.12); }

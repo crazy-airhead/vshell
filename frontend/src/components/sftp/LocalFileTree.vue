@@ -36,6 +36,7 @@ const currentPath = ref('')
 const allFiles = ref<LocalEntry[]>([])
 const loading = ref(true)
 const loadingDir = ref(false)
+const loadingFile = ref(false)
 const editing = ref(false)
 const editPath = ref('')
 const selected = ref(new Set<string>())
@@ -182,6 +183,7 @@ async function handleRowDblClick(entry: LocalEntry) {
     return
   }
 
+  loadingFile.value = true
   try {
     const content = await ReadLocalFileContent(entry.path)
 
@@ -192,6 +194,8 @@ async function handleRowDblClick(entry: LocalEntry) {
     })
   } catch (e: any) {
     console.error('Failed to open local file:', e)
+  } finally {
+    loadingFile.value = false
   }
 }
 
@@ -278,7 +282,7 @@ onUnmounted(() => {
       <NButton size="tiny" quaternary class="delete-btn" :class="{ active: selected.size > 0 }" @click="handleDeleteLocal" title="Delete selected">
         <IconTrash2 :width="14" :height="14" />
       </NButton>
-      <div v-if="loading || loadingDir" class="loading-bar"></div>
+      <div v-if="loading || loadingDir || loadingFile" class="loading-bar"></div>
     </div>
 
     <div class="flex-1 overflow-y-auto min-h-0" ref="localBodyRef" :class="{ 'drag-over': localIsDragOver }">
@@ -318,6 +322,7 @@ onUnmounted(() => {
 <style scoped>
 .toolbar-wrapper {
   position: relative;
+  overflow: hidden;
   border-bottom: 1px solid rgba(128, 128, 128, 0.12);
 }
 
