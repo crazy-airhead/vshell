@@ -5,6 +5,8 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { Events } from '@wailsio/runtime'
 import { useTerminalManager } from '../../composables/useTerminalManager'
+import { useTerminalStore } from '../../stores/terminal'
+import { useConnectionStore } from '../../stores/connection'
 import { useSettingsStore } from '../../stores/settings'
 
 import '@xterm/xterm/css/xterm.css'
@@ -14,8 +16,12 @@ const props = defineProps<{
 }>()
 
 const terminalRef = ref<HTMLElement | null>(null)
-const { registerTerminal, unregisterTerminal } = useTerminalManager()
+const { registerTerminal, unregisterTerminal, isDisconnected, clearDisconnected } = useTerminalManager()
+const terminalStore = useTerminalStore()
+const connectionStore = useConnectionStore()
 const settings = useSettingsStore()
+
+let reconnecting = false
 
 let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
@@ -97,22 +103,41 @@ onMounted(() => {
   }
 
   term.open(terminalRef.value)
-  fitAddon.fit()
+
+  // Set up resize observer before initial fit so it can pick up
+  // the correct dimensions once layout settles.
+  resizeObserver = new ResizeObserver(() => {
+    fitAddon?.fit()
+  })
+  resizeObserver.observe(terminalRef.value)
+
+  // Defer initial fit past the first paint to ensure the container
+  // has its final flex layout dimensions. Without this, the first
+  // tab's terminal may get 0 height and the WebGL renderer won't
+  // repaint buffered content until a manual resize.
+  requestAnimationFrame(() => {
+    fitAddon?.fit()
+    if (term && term.rows > 0) {
+      term.refresh(0, term.rows - 1)
+    }
+  })
 
   registerTerminal(props.sessionID, term)
 
   term.onData((data) => {
+    if (isDisconnected(props.sessionID)) {
+      if (data === '\r' && !reconnecting) {
+        reconnecting = true
+        handleReconnect()
+      }
+      return
+    }
     Events.Emit('terminal:stdin', { sessionID: props.sessionID, data })
   })
 
   term.onResize(({ rows, cols }) => {
     Events.Emit('terminal:resize', { sessionID: props.sessionID, rows, cols })
   })
-
-  resizeObserver = new ResizeObserver(() => {
-    fitAddon?.fit()
-  })
-  resizeObserver.observe(terminalRef.value)
 })
 
 watch(() => settings.isDark, () => {
@@ -141,6 +166,32 @@ onUnmounted(() => {
 
 function fit() {
   fitAddon?.fit()
+}
+
+async function handleReconnect() {
+  const tab = terminalStore.tabs.find((t) => t.id === props.sessionID)
+  if (!tab || !tab.connectionID) {
+    reconnecting = false
+    return
+  }
+
+  term?.write('\r\n\x1b[33m--- 正在重连... ---\x1b[0m\r\n')
+
+  try {
+    await connectionStore.disconnectSession(props.sessionID, tab.connectionID)
+    const newSessionID = await connectionStore.connect(tab.connectionID)
+    clearDisconnected(props.sessionID)
+    terminalStore.removeTab(props.sessionID)
+    terminalStore.addTab({
+      id: newSessionID,
+      connectionID: tab.connectionID,
+      title: tab.title,
+      connected: true,
+    })
+  } catch {
+    term?.write('\x1b[31m--- 重连失败，按回车键重试 ---\x1b[0m\r\n')
+    reconnecting = false
+  }
 }
 
 defineExpose({ fit })
