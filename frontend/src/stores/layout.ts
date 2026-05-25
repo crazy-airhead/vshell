@@ -9,7 +9,7 @@ export const useLayoutStore = defineStore('layout', () => {
   const sidebarWidth = ref(280)
 
   const activeBottomTool = ref<BottomTool | null>(null)
-  const bottomPanelHeight = ref(220)
+  const bottomPanelHeight = ref(300)
 
   const bottomAnyVisible = computed(() => activeBottomTool.value !== null)
 
