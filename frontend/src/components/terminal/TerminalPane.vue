@@ -5,12 +5,14 @@ import { NTabs, NTabPane, NEmpty, NTooltip, NDropdown } from 'naive-ui'
 import type { DropdownOption } from 'naive-ui'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
+import { useSFTPStore } from '../../stores/sftp'
 import XTerminal from './XTerminal.vue'
 import EditorTab from './EditorTab.vue'
 
 const { t } = useI18n()
 const terminalStore = useTerminalStore()
 const connectionStore = useConnectionStore()
+const sftpStore = useSFTPStore()
 
 const ctxTabID = ref<string | null>(null)
 const ctxX = ref(0)
@@ -57,6 +59,10 @@ async function handleClose(id: string) {
   const tab = terminalStore.tabs.find((t) => t.id === id)
   if (tab && tab.type !== 'editor' && tab.connectionID) {
     await connectionStore.disconnectSession(tab.id, tab.connectionID)
+    const remaining = terminalStore.tabs.filter(t => t.connectionID === tab.connectionID && t.id !== id)
+    if (remaining.length === 0) {
+      sftpStore.closePanel(tab.connectionID)
+    }
   }
   terminalStore.removeTab(id)
 }
@@ -107,14 +113,25 @@ function handleCloseOthers(id: string) {
       connectionStore.disconnectSession(tab.id, tab.connectionID)
     }
   }
+  const keepTab = terminalStore.tabs.find(t => t.id === id)
+  for (const tab of tabsToClose) {
+    if (tab.connectionID && tab.connectionID !== keepTab?.connectionID) {
+      sftpStore.closePanel(tab.connectionID)
+    }
+  }
   terminalStore.closeOtherTabs(id)
 }
 
 function handleCloseAll() {
+  const connectionIDs = new Set<string>()
   for (const tab of terminalStore.tabs) {
     if (tab.type !== 'editor' && tab.connectionID) {
       connectionStore.disconnectSession(tab.id, tab.connectionID)
+      connectionIDs.add(tab.connectionID)
     }
+  }
+  for (const connID of connectionIDs) {
+    sftpStore.closePanel(connID)
   }
   terminalStore.closeAllTabs()
 }

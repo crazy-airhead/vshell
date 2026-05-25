@@ -4,11 +4,13 @@ import { useI18n } from 'vue-i18n'
 import { NEmpty } from 'naive-ui'
 import { useTerminalStore } from '../../stores/terminal'
 import { useSFTPStore } from '../../stores/sftp'
+import { useLayoutStore } from '../../stores/layout'
 import SFTPPanel from './SFTPPanel.vue'
 
 const { t } = useI18n()
 const terminalStore = useTerminalStore()
 const sftpStore = useSFTPStore()
+const layoutStore = useLayoutStore()
 
 const lastConnectionID = ref<string | null>(null)
 
@@ -18,7 +20,16 @@ const activeConnectionID = computed(() => {
   if (connID) {
     lastConnectionID.value = connID
   }
-  return connID || lastConnectionID.value
+  const resolved = connID || lastConnectionID.value
+  if (resolved && !terminalStore.tabs.some(t => t.connectionID === resolved)) {
+    lastConnectionID.value = null
+    sftpStore.closePanel(resolved)
+    if (layoutStore.activeBottomTool === 'sftp') {
+      layoutStore.activeBottomTool = null
+    }
+    return null
+  }
+  return resolved
 })
 
 watch(activeConnectionID, (newID) => {
