@@ -452,6 +452,8 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 
 .tree-content :deep(.n-tree-node-content) {
   font-size: var(--font-size-base);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tree-content :deep(.conn-label) {
