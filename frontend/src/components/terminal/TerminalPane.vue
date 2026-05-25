@@ -130,10 +130,11 @@ function onTabContextMenu(e: MouseEvent, tab: typeof terminalStore.tabs[number])
 function getContextOptions(): DropdownOption[] {
   const tab = terminalStore.tabs.find(t => t.id === ctxTabID.value)
   if (!tab) return []
+  const disconnected = !tab.connected
   return [
-    { label: t('tab.reconnect'), key: 'reconnect' },
-    { label: t('tab.disconnect'), key: 'disconnect' },
     { label: t('tab.duplicate'), key: 'duplicate' },
+    { label: t('tab.reconnect'), key: 'reconnect', disabled: !disconnected },
+    { label: t('tab.disconnect'), key: 'disconnect', disabled: disconnected },
     { type: 'divider', key: 'd1' },
     { label: t('tab.close'), key: 'close' },
     { label: t('tab.closeOthers'), key: 'closeOthers' },

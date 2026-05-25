@@ -103,7 +103,6 @@ func (s *Session) Close() {
 	s.closeOnce.Do(func() {
 		s.stdinWriter.Close()
 		s.session.Close()
-		s.client.Close()
 	})
 }
 
