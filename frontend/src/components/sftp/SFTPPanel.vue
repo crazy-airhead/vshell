@@ -199,7 +199,10 @@ function handleRemoteRowClick(file: SFTPFile, e: MouseEvent) {
 
 async function handleRemoteRowDblClick(file: SFTPFile) {
   if (file.is_dir) return
-  if (!isEditableFile(file.name, file.size)) return
+  if (!isEditableFile(file.name, file.size)) {
+    message.warning(t('sftp.fileTooLarge', { name: file.name, size: (file.size / 1024 / 1024).toFixed(1) }))
+    return
+  }
 
   const fullPath = remoteFilePath(file.name)
   const tabId = `editor-remote:${props.connectionID}:${fullPath}`
@@ -224,7 +227,7 @@ async function handleRemoteRowDblClick(file: SFTPFile) {
       connectionID: props.connectionID,
     })
   } catch (e: any) {
-    console.error('Failed to open remote file:', e)
+    message.error(t('sftp.openFileFailed', { name: file.name, error: e instanceof Error ? e.message : String(e) }))
   }
 }
 

@@ -109,6 +109,8 @@ export default {
     remotePrefix: '远端',
     localPrefix: '本地',
     fileNotEditable: '该文件类型不支持编辑',
+    fileTooLarge: '"{name}" 文件过大（{size} MB），不支持编辑（最大 5 MB）',
+    openFileFailed: '打开文件 "{name}" 失败: {error}',
   },
   keys: {
     title: '密钥管理',
