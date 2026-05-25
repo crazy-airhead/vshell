@@ -11,6 +11,7 @@ import {
   DeleteConnection,
   MoveConnection,
   CreateGroup,
+  UpdateGroup,
   DeleteGroup,
 } from '../../bindings/vshell/internal/app/appservice'
 import { AuthType, ConnectionForm } from '../../bindings/vshell/internal/models/models'
@@ -192,6 +193,11 @@ export const useConnectionStore = defineStore('connection', () => {
     await loadGroups()
   }
 
+  async function updateGroup(id: string, name: string) {
+    await UpdateGroup(id, name)
+    await loadGroups()
+  }
+
   async function removeGroup(id: string) {
     await DeleteGroup(id)
     await loadGroups()
@@ -214,6 +220,7 @@ export const useConnectionStore = defineStore('connection', () => {
     updateConnection,
     getConnectionsByGroup,
     createGroup,
+    updateGroup,
     removeGroup,
   }
 })

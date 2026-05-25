@@ -61,10 +61,13 @@ export default {
   group: {
     newGroup: 'New Group',
     newSubGroup: 'New Sub-group',
+    renameGroup: 'Rename Group',
     deleteGroup: 'Delete Group',
     deleteContent: 'Delete group "{name}"? Connections in this group will become ungrouped.',
+    deleteDisabled: 'Cannot delete group "{name}" because it still contains connections. Please move the connections out first.',
     namePlaceholder: 'Group name',
     nameRequired: 'Group name is required',
+    renamePlaceholder: 'New group name',
   },
   terminal: {
     empty: 'No active terminal sessions. Click a connection to start.',

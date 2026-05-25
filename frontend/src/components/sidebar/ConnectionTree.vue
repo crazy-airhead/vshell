@@ -22,11 +22,14 @@ const dialog = useDialog()
 const loading = ref(true)
 const showModal = ref(false)
 const editConn = ref<Connection | null>(null)
+const defaultGroupID = ref<string | null>(null)
 const expandedKeys = ref<string[]>([])
 const showGroupInput = ref(false)
 const newGroupName = ref('')
 const newGroupParent = ref<string | null>(null)
-const contextMenuKey = ref<string | null>(null)
+const showRenameInput = ref(false)
+const renameGroupID = ref<string | null>(null)
+const renameGroupName = ref('')
 
 onMounted(async () => {
   try {
@@ -95,7 +98,26 @@ const treeData = computed<TreeOption[]>(() => {
 function renderLabel({ option }: { option: TreeOption }) {
   const key = option.key as string
   if (isGroupKey(key)) {
-    return option.label as string
+    return h('div', { class: 'conn-label group-label' }, [
+      h('span', { class: 'conn-name' }, option.label as string),
+      h('span', { class: 'conn-actions flex gap-[2px]' }, [
+        h('button', {
+          class: 'conn-hover-btn',
+          title: t('connection.newConnection'),
+          onClick: (e: MouseEvent) => { e.stopPropagation(); handleNewInGroup(key) },
+        }, h(IconPlus, { width: 12, height: 12 })),
+        h('button', {
+          class: 'conn-hover-btn',
+          title: t('group.renameGroup'),
+          onClick: (e: MouseEvent) => { e.stopPropagation(); startRenameGroup(key) },
+        }, h(IconPencil, { width: 12, height: 12 })),
+        h('button', {
+          class: 'conn-hover-btn conn-hover-btn-danger',
+          title: t('group.deleteGroup'),
+          onClick: (e: MouseEvent) => { e.stopPropagation(); handleDeleteGroup(key) },
+        }, h(IconTrash2, { width: 12, height: 12 })),
+      ]),
+    ])
   }
   const conn = connectionStore.connections.find(c => c.id === key)
   if (!conn) return option.label as string
@@ -230,6 +252,14 @@ function handleDelete(connID: string) {
 function handleDeleteGroup(groupID: string) {
   const group = connectionStore.groups.find(g => g.id === groupID)
   if (!group) return
+
+  // Check if group has connections
+  const connsInGroup = connectionStore.getConnectionsByGroup(groupID)
+  if (connsInGroup.length > 0) {
+    message.warning(t('group.deleteDisabled', { name: group.name }))
+    return
+  }
+
   dialog.warning({
     title: t('group.deleteGroup'),
     content: t('group.deleteContent', { name: group.name }),
@@ -245,8 +275,36 @@ function handleDeleteGroup(groupID: string) {
   })
 }
 
+function startRenameGroup(groupID: string) {
+  const group = connectionStore.groups.find(g => g.id === groupID)
+  if (!group) return
+  renameGroupID.value = groupID
+  renameGroupName.value = group.name
+  showRenameInput.value = true
+}
+
+async function confirmRenameGroup() {
+  const name = renameGroupName.value.trim()
+  if (!name || !renameGroupID.value) return
+  try {
+    await connectionStore.updateGroup(renameGroupID.value, name)
+    showRenameInput.value = false
+    renameGroupID.value = null
+    renameGroupName.value = ''
+  } catch (e: any) {
+    message.error(t('connection.failed', { error: e }))
+  }
+}
+
 function handleNew() {
   editConn.value = null
+  defaultGroupID.value = null
+  showModal.value = true
+}
+
+function handleNewInGroup(groupID: string) {
+  editConn.value = null
+  defaultGroupID.value = groupID
   showModal.value = true
 }
 
@@ -297,22 +355,10 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
   }
 }
 
-function onContextMenu(e: MouseEvent, option: TreeOption) {
-  e.preventDefault()
-  if (isGroupKey(option.key as string)) {
-    contextMenuKey.value = option.key as string
-  } else {
-    contextMenuKey.value = null
-  }
-}
-
-function clearContextMenu() {
-  contextMenuKey.value = null
-}
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-secondary)]" @click="clearContextMenu">
+  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-secondary)]">
     <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0 relative thin-border-b">
       <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('connection.title') }}</span>
       <div class="flex gap-[2px]">
@@ -340,6 +386,20 @@ function clearContextMenu() {
       </NInputGroup>
     </div>
 
+    <div v-if="showRenameInput" class="px-3 py-[6px] thin-border-b shrink-0">
+      <NInputGroup>
+        <NInput
+          v-model:value="renameGroupName"
+          size="tiny"
+          :placeholder="t('group.renamePlaceholder')"
+          @keyup.enter="confirmRenameGroup"
+          @keyup.escape="showRenameInput = false; renameGroupID = null"
+        />
+        <NButton size="tiny" type="primary" @click="confirmRenameGroup">&#10003;</NButton>
+        <NButton size="tiny" @click="showRenameInput = false; renameGroupID = null">&#10005;</NButton>
+      </NInputGroup>
+    </div>
+
     <div class="flex-1 overflow-y-auto p-2 tree-content">
       <NTree
         v-if="!loading"
@@ -354,16 +414,10 @@ function clearContextMenu() {
         @update:expanded-keys="(keys: string[]) => expandedKeys = keys"
         @update:selected-keys="handleSelect"
         @drop="handleDrop"
-        @contextmenu="onContextMenu"
       />
     </div>
 
-    <div v-if="contextMenuKey" class="flex gap-1 px-2 py-1 thin-border-t shrink-0">
-      <button class="action-btn" @click="startNewGroup(contextMenuKey!)">{{ t('group.newSubGroup') }}</button>
-      <button class="action-btn action-btn-danger" @click="handleDeleteGroup(contextMenuKey!)">{{ t('common.delete') }}</button>
-    </div>
-
-    <ConnectionFormModal v-model:show="showModal" :edit-connection="editConn" />
+    <ConnectionFormModal v-model:show="showModal" :edit-connection="editConn" :defaultGroupID="defaultGroupID" />
   </div>
 </template>
 

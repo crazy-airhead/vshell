@@ -91,6 +91,10 @@ export function GetHomeDir(): $CancellablePromise<string> {
     return $Call.ByID(2930168599);
 }
 
+export function GetPassword(id: string): $CancellablePromise<string> {
+    return $Call.ByID(2249946754, id);
+}
+
 /**
  * GetSSHConfigImportCandidates parses ~/.ssh/config and returns Host blocks as importable connection candidates.
  */
@@ -258,6 +262,10 @@ export function StopPortForward(id: string): $CancellablePromise<void> {
 
 export function UpdateConnection(form: models$0.ConnectionForm): $CancellablePromise<void> {
     return $Call.ByID(3356068760, form);
+}
+
+export function UpdateGroup(id: string, name: string): $CancellablePromise<void> {
+    return $Call.ByID(905940643, id, name);
 }
 
 export function UpdatePortForward(id: string, name: string, connectionID: string, fwdType: string, localHost: string, localPort: number, remoteHost: string, remotePort: number, autoStart: boolean): $CancellablePromise<void> {

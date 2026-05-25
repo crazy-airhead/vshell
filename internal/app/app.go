@@ -348,6 +348,14 @@ func (a *AppService) getConnectionByID(id string) (*models.Connection, error) {
 	return &c, nil
 }
 
+func (a *AppService) GetPassword(id string) (string, error) {
+	var encrypted string
+	if err := a.db.QueryRow("SELECT password FROM connections WHERE id = ?", id).Scan(&encrypted); err != nil {
+		return "", err
+	}
+	return a.db.Crypto().Decrypt(encrypted)
+}
+
 // --- Group CRUD ---
 
 func (a *AppService) ListGroups() ([]models.Group, error) {
@@ -373,8 +381,31 @@ func (a *AppService) CreateGroup(id, name string, parentID *string, sortOrder in
 	return err
 }
 
+func (a *AppService) UpdateGroup(id, name string) error {
+	_, err := a.db.Exec("UPDATE groups SET name = ? WHERE id = ?", name, id)
+	return err
+}
+
 func (a *AppService) DeleteGroup(id string) error {
-	_, err := a.db.Exec("DELETE FROM groups WHERE id = ?", id)
+	var count int
+	if err := a.db.QueryRow("SELECT COUNT(*) FROM connections WHERE group_id = ?", id).Scan(&count); err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("cannot delete group: %d connection(s) still belong to this group", count)
+	}
+
+	// Reassign child groups to this group's parent
+	var parentID *string
+	if err := a.db.QueryRow("SELECT parent_id FROM groups WHERE id = ?", id).Scan(&parentID); err != nil {
+		return err
+	}
+	_, err := a.db.Exec("UPDATE groups SET parent_id = ? WHERE parent_id = ?", parentID, id)
+	if err != nil {
+		return err
+	}
+
+	_, err = a.db.Exec("DELETE FROM groups WHERE id = ?", id)
 	return err
 }
 

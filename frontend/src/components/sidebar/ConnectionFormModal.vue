@@ -17,12 +17,15 @@ import {
 } from 'naive-ui'
 import { useConnectionStore, newFormData, AuthType } from '../../stores/connection'
 import { useSSHKeyStore } from '../../stores/sshkey'
+import { GetPassword } from '../../../bindings/vshell/internal/app/appservice'
+import IconKey from '~icons/lucide/key'
 import type { ConnectionFormData } from '../../stores/connection'
 import type { Connection } from '../../types'
 
 const props = defineProps<{
   show: boolean
   editConnection?: Connection | null
+  defaultGroupID?: string | null
 }>()
 const emit = defineEmits<{ (e: 'update:show', val: boolean): void }>()
 
@@ -38,6 +41,8 @@ const saving = ref(false)
 const keySource = ref<'managed' | 'manual'>('managed')
 const selectedKeyName = ref<string | null>(null)
 const loadingKey = ref(false)
+const revealingPassword = ref(false)
+const passwordVisible = ref(false)
 
 const showModal = computed({
   get: () => props.show,
@@ -95,6 +100,9 @@ watch(
         selectedKeyName.value = null
       } else {
         form.value = newFormData()
+        if (props.defaultGroupID) {
+          form.value.groupID = props.defaultGroupID
+        }
         keySource.value = 'managed'
         selectedKeyName.value = null
       }
@@ -121,7 +129,26 @@ async function onManagedKeyChange(name: string | null) {
   }
 }
 
+async function toggleRevealPassword() {
+  if (passwordVisible.value) {
+    form.value.password = ''
+    passwordVisible.value = false
+    return
+  }
+  revealingPassword.value = true
+  try {
+    form.value.password = await GetPassword(form.value.id)
+    passwordVisible.value = true
+  } catch (e: any) {
+    message.error(t('connection.failed', { error: e }))
+  } finally {
+    revealingPassword.value = false
+  }
+}
+
 function handleClose() {
+  passwordVisible.value = false
+  form.value.password = ''
   showModal.value = false
 }
 
@@ -175,7 +202,14 @@ async function handleSave() {
         <NSelect v-model:value="form.authType" :options="authTypeOptions" />
       </NFormItem>
       <NFormItem v-if="form.authType === 'password' || form.authType === 'interactive'" :label="isEdit ? t('connection.newPassword') : t('common.password')">
-        <NInput v-model:value="form.password" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passwordEditPlaceholder') : t('connection.passwordPlaceholder')" />
+        <div style="display: flex; align-items: center; gap: 4px; width: 100%">
+          <NInput v-model:value="form.password" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passwordEditPlaceholder') : t('connection.passwordPlaceholder')" style="flex: 1" />
+          <NButton v-if="isEdit" :type="passwordVisible ? 'primary' : 'default'" :ghost="true" :loading="revealingPassword" @click="toggleRevealPassword" style="flex-shrink: 0; height: 34px; width: 34px">
+            <template #icon>
+              <IconKey :width="16" :height="16" />
+            </template>
+          </NButton>
+        </div>
       </NFormItem>
       <template v-if="form.authType === 'private_key'">
         <NFormItem :label="t('connection.keySource')">

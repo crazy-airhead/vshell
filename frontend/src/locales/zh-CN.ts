@@ -61,10 +61,13 @@ export default {
   group: {
     newGroup: '新建分组',
     newSubGroup: '新建子分组',
+    renameGroup: '重命名分组',
     deleteGroup: '删除分组',
     deleteContent: '确定删除分组 "{name}" 吗？分组内的连接将变为未分组。',
+    deleteDisabled: '分组 "{name}" 下存在连接，无法删除。请先将连接移出后再删除。',
     namePlaceholder: '分组名称',
     nameRequired: '分组名称不能为空',
+    renamePlaceholder: '新分组名称',
   },
   terminal: {
     empty: '暂无终端会话，点击左侧连接开始。',
