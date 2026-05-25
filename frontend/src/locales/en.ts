@@ -109,6 +109,8 @@ export default {
     remotePrefix: 'Remote',
     localPrefix: 'Local',
     fileNotEditable: 'This file type cannot be edited',
+    fileTooLarge: '"{name}" is too large ({size} MB) to edit (max 5 MB)',
+    openFileFailed: 'Failed to open "{name}": {error}',
   },
   keys: {
     title: 'SSH Keys',
