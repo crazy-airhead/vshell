@@ -9,3 +9,4 @@ build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 *.swp
 *.swo
 *~
+/vshell

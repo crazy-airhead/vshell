@@ -66,16 +66,38 @@ export interface PortForward {
   auto_start: boolean
 }
 
+export interface CPUCoreStat {
+  core: number
+  percent: number
+}
+
+export interface ProcessInfo {
+  pid: number
+  user: string
+  name: string
+  cpu_percent: number
+  mem_percent: number
+  mem_bytes: number
+  command: string
+  exe_path: string
+}
+
 export interface SystemStats {
   cpu_percent: number
   mem_percent: number
   mem_total: number
   mem_used: number
+  swap_total: number
+  swap_used: number
   net_interfaces: Record<string, NetIO>
   load_avg: [number, number, number]
   disk_stats: DiskStat[]
   uptime_seconds: number
   os: string
+  cpu_cores: CPUCoreStat[]
+  top_processes: ProcessInfo[]
+  hostname: string
+  ip_addresses: string[]
 }
 
 export interface NetIO {
@@ -91,6 +113,20 @@ export interface DiskStat {
   total: number
   used: number
   percent: number
+}
+
+export interface NetConnProcess {
+  pid: number
+  name: string
+  listen_addrs: string[]
+  ports: string[]
+  conn_count: number
+}
+
+export interface NetHistoryPoint {
+  ts: number
+  rx: number
+  tx: number
 }
 
 export interface SFTPFileInfo {
