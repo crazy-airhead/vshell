@@ -4,8 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { NEmpty, NDataTable } from 'naive-ui'
 import * as echarts from 'echarts'
 import IconCopy from '~icons/lucide/copy'
-import IconWifi from '~icons/lucide/wifi'
-import IconCpu from '~icons/lucide/cpu'
+import IconNetwork from '~icons/lucide/network'
+import IconListTree from '~icons/lucide/list-tree'
 import { useMonitorStore } from '../../stores/monitor'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
@@ -681,7 +681,7 @@ const swapPercent = computed(() => {
                   @click="netTab = 'interface'"
                   :title="t('monitor.byInterface')"
                 >
-                  <IconWifi :width="18" :height="18" />
+                  <IconNetwork :width="18" :height="18" />
                   <span v-if="netTab === 'interface'" class="absolute right-0 top-2 bottom-2 w-[2px] bg-[var(--color-primary)] rounded-l-[2px]" />
                 </button>
                 <button
@@ -690,7 +690,7 @@ const swapPercent = computed(() => {
                   @click="netTab = 'process'"
                   :title="t('monitor.byProcess')"
                 >
-                  <IconCpu :width="18" :height="18" />
+                  <IconListTree :width="18" :height="18" />
                   <span v-if="netTab === 'process'" class="absolute right-0 top-2 bottom-2 w-[2px] bg-[var(--color-primary)] rounded-l-[2px]" />
                 </button>
               </div>
