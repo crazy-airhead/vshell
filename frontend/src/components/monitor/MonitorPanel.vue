@@ -1,19 +1,33 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NEmpty } from 'naive-ui'
 import { useMonitorStore } from '../../stores/monitor'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
+import { useLayoutStore } from '../../stores/layout'
 
 const { t } = useI18n()
 const monitorStore = useMonitorStore()
 const connectionStore = useConnectionStore()
 const terminalStore = useTerminalStore()
+const layoutStore = useLayoutStore()
+
+const lastConnID = ref<string | null>(null)
 
 const activeConnectionID = computed(() => {
   const tab = terminalStore.tabs.find(t => t.id === terminalStore.activeTabID)
-  return tab?.connectionID ?? null
+  const connID = tab?.connectionID ?? null
+  if (connID) lastConnID.value = connID
+  const resolved = connID || lastConnID.value
+  if (resolved && !terminalStore.tabs.some(t => t.connectionID === resolved)) {
+    lastConnID.value = null
+    if (layoutStore.activeBottomTool === 'monitor') {
+      layoutStore.activeBottomTool = null
+    }
+    return null
+  }
+  return resolved
 })
 
 const connName = computed(() => {
