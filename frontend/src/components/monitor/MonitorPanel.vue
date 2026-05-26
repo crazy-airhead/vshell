@@ -328,8 +328,8 @@ function formatKbps(kbps: number): string {
 }
 
 function toggleDetail(type: DetailType) {
-  activeDetail.value = activeDetail.value === type ? null : type
-  if (type === 'network' && activeDetail.value === 'network') {
+  activeDetail.value = type
+  if (type === 'network') {
     selectedIface.value = firstPhysicalIface.value ?? null
   }
 }
@@ -418,13 +418,16 @@ watch(netTab, (tab) => {
   nextTick(() => recalcTableHeight())
 })
 
-watch(activeDetail, () => {
+watch(activeDetail, (val) => {
   nextTick(() => recalcTableHeight())
-  if (activeDetail.value !== 'network') {
+  if (val !== 'network') {
     if (chartInstance) {
       chartInstance.dispose()
       chartInstance = null
     }
+  } else {
+    // Re-enter network: ensure chart renders after DOM is ready
+    nextTick(() => renderChart())
   }
 })
 
