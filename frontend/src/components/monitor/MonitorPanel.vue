@@ -1,15 +1,25 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick, onBeforeUnmount, h } from 'vue'
+import { computed, ref, watch, nextTick, onBeforeUnmount, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NEmpty, NTabs, NTabPane, NDataTable } from 'naive-ui'
+import { NEmpty, NDataTable } from 'naive-ui'
 import * as echarts from 'echarts'
 import IconCopy from '~icons/lucide/copy'
+import IconWifi from '~icons/lucide/wifi'
+import IconCpu from '~icons/lucide/cpu'
 import { useMonitorStore } from '../../stores/monitor'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
 import { useLayoutStore } from '../../stores/layout'
-import type { ProcessInfo, NetConnProcess, NetHistoryPoint } from '../../types'
+import type { ProcessInfo, NetConnProcess, NetHistoryPoint, NetIO } from '../../types'
 import type { DataTableColumns } from 'naive-ui'
+
+interface NetIfaceRow {
+  name: string
+  receive_kbps: number
+  transmit_kbps: number
+  receive_bytes: number
+  transmit_bytes: number
+}
 
 const { t } = useI18n()
 const monitorStore = useMonitorStore()
@@ -21,17 +31,45 @@ const lastConnID = ref<string | null>(null)
 type DetailType = 'cpu' | 'memory' | 'disk' | 'network' | 'processes' | null
 const activeDetail = ref<DetailType>(null)
 
-// Sort state for tables
-type SortField = string
-type SortDir = 'asc' | 'desc'
-const netIfaceSort = ref<{ field: SortField, dir: SortDir }>({ field: 'receive_kbps', dir: 'desc' })
-const netProcSort = ref<{ field: SortField, dir: SortDir }>({ field: 'conn_count', dir: 'desc' })
-
-// Network detail tab
+// Network tab state
 const netTab = ref<'interface' | 'process'>('interface')
 const selectedIface = ref<string | null>(null)
+const prevSelectedIface = ref<string | null>(null)
 const chartRef = ref<HTMLElement | null>(null)
 let chartInstance: echarts.ECharts | null = null
+
+// Dynamic table height via ResizeObserver
+const netContentRef = ref<HTMLElement | null>(null)
+const rightPanelRef = ref<HTMLElement | null>(null)
+const netTableHeight = ref(300)
+const processTableHeight = ref(400)
+let resizeObserver: ResizeObserver | null = null
+
+function recalcTableHeight() {
+  if (netContentRef.value) {
+    const h = netContentRef.value.clientHeight
+    const chartH = netTab.value === 'interface' ? 142 : 0
+    const gapH = 8
+    netTableHeight.value = Math.max(h - chartH - gapH, 100)
+  }
+  if (rightPanelRef.value) {
+    // Right panel padding py-2 = 8px * 2 = 16px
+    processTableHeight.value = Math.max(rightPanelRef.value.clientHeight - 16, 100)
+  }
+}
+
+onMounted(() => {
+  resizeObserver = new ResizeObserver(() => recalcTableHeight())
+})
+
+watch(netContentRef, (el) => {
+  if (resizeObserver) resizeObserver.disconnect()
+  if (el) resizeObserver?.observe(el)
+})
+
+watch(rightPanelRef, (el) => {
+  if (el) resizeObserver?.observe(el)
+})
 
 const activeConnectionID = computed(() => {
   const tab = terminalStore.tabs.find(t => t.id === terminalStore.activeTabID)
@@ -184,57 +222,92 @@ const processData = computed(() => {
   return stats.value.top_processes
 })
 
-// Sorted network interface list
-interface NetIfaceRow {
-  name: string
-  receive_kbps: number
-  transmit_kbps: number
-  receive_bytes: number
-  transmit_bytes: number
-}
+// Network interface table columns
+const netIfaceColumns = computed<DataTableColumns<NetIfaceRow>>(() => [
+  {
+    title: t('monitor.interface'),
+    key: 'name',
+    sorter: (a, b) => a.name.localeCompare(b.name),
+    defaultSortOrder: 'ascend',
+    render: (row) => h('span', { class: 'font-mono cursor-pointer' }, row.name),
+  },
+  {
+    title: t('monitor.receive'),
+    key: 'receive_kbps',
+    sorter: (a, b) => a.receive_kbps - b.receive_kbps,
+    render: (row) => h('span', { class: 'font-mono' }, formatKbps(row.receive_kbps)),
+  },
+  {
+    title: t('monitor.transmit'),
+    key: 'transmit_kbps',
+    sorter: (a, b) => a.transmit_kbps - b.transmit_kbps,
+    render: (row) => h('span', { class: 'font-mono' }, formatKbps(row.transmit_kbps)),
+  },
+  {
+    title: t('monitor.totalReceived'),
+    key: 'receive_bytes',
+    sorter: (a, b) => a.receive_bytes - b.receive_bytes,
+    render: (row) => h('span', { class: 'font-mono text-[var(--text-secondary)]' }, formatBytes(row.receive_bytes)),
+  },
+  {
+    title: t('monitor.totalSent'),
+    key: 'transmit_bytes',
+    sorter: (a, b) => a.transmit_bytes - b.transmit_bytes,
+    render: (row) => h('span', { class: 'font-mono text-[var(--text-secondary)]' }, formatBytes(row.transmit_bytes)),
+  },
+])
 
-const sortedNetIfaces = computed<NetIfaceRow[]>(() => {
+const netIfaceData = computed<NetIfaceRow[]>(() => {
   if (!stats.value) return []
-  const rows: NetIfaceRow[] = Object.entries(stats.value.net_interfaces).map(([name, io]) => ({
+  return Object.entries(stats.value.net_interfaces).map(([name, io]) => ({
     name,
     receive_kbps: io.receive_kbps,
     transmit_kbps: io.transmit_kbps,
     receive_bytes: io.receive_bytes,
     transmit_bytes: io.transmit_bytes,
   }))
-  const { field, dir } = netIfaceSort.value
-  rows.sort((a, b) => {
-    const va = (a as any)[field] ?? 0
-    const vb = (b as any)[field] ?? 0
-    if (typeof va === 'string') {
-      return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-    }
-    return dir === 'asc' ? va - vb : vb - va
-  })
-  return rows
 })
 
-// Sorted network process list
-const sortedNetProcs = computed(() => {
-  const list = [...netConns.value]
-  const { field, dir } = netProcSort.value
-  list.sort((a, b) => {
-    let va: number | string = 0, vb: number | string = 0
-    switch (field) {
-      case 'pid': va = a.pid; vb = b.pid; break
-      case 'name': va = a.name; vb = b.name; break
-      case 'listen_addrs': va = a.listen_addrs.join(','); vb = b.listen_addrs.join(','); break
-      case 'ports': va = a.ports.join(','); vb = b.ports.join(','); break
-      case 'conn_count': va = a.conn_count; vb = b.conn_count; break
-      default: va = a.conn_count; vb = b.conn_count
-    }
-    if (typeof va === 'string') {
-      return dir === 'asc' ? va.localeCompare(vb as string) : (vb as string).localeCompare(va)
-    }
-    return dir === 'asc' ? (va as number) - (vb as number) : (vb as number) - (va as number)
-  })
-  return list
+// Default selected interface: first physical nic
+const firstPhysicalIface = computed(() => {
+  if (!stats.value) return null
+  const names = Object.keys(stats.value.net_interfaces).filter(n => !n.startsWith('lo'))
+  return names.length > 0 ? names[0] : null
 })
+
+// Network process table columns
+const netProcColumns = computed<DataTableColumns<NetConnProcess>>(() => [
+  {
+    title: 'PID',
+    key: 'pid',
+    sorter: (a, b) => a.pid - b.pid,
+    render: (row) => h('span', { class: 'font-mono' }, String(row.pid)),
+  },
+  {
+    title: t('monitor.processName'),
+    key: 'name',
+    sorter: (a, b) => a.name.localeCompare(b.name),
+    ellipsis: { tooltip: true },
+  },
+  {
+    title: t('monitor.listenAddr'),
+    key: 'listen_addrs',
+    sorter: (a, b) => (a.listen_addrs || []).join(',').localeCompare((b.listen_addrs || []).join(',')),
+    render: (row) => h('span', { class: 'font-mono text-[var(--text-secondary)]' }, (row.listen_addrs || []).join(', ') || '-'),
+  },
+  {
+    title: t('monitor.port'),
+    key: 'ports',
+    sorter: (a, b) => (a.ports || []).join(',').localeCompare((b.ports || []).join(',')),
+    render: (row) => h('span', { class: 'font-mono text-[var(--text-secondary)]' }, (row.ports || []).join(', ') || '-'),
+  },
+  {
+    title: t('monitor.connCount'),
+    key: 'conn_count',
+    sorter: (a, b) => a.conn_count - b.conn_count,
+    render: (row) => h('span', { class: 'font-mono' }, String(row.conn_count)),
+  },
+])
 
 function barColor(pct: number): string {
   if (pct < 60) return 'var(--color-success)'
@@ -257,28 +330,36 @@ function formatKbps(kbps: number): string {
 function toggleDetail(type: DetailType) {
   activeDetail.value = activeDetail.value === type ? null : type
   if (type === 'network' && activeDetail.value === 'network') {
-    selectedIface.value = null
+    selectedIface.value = firstPhysicalIface.value ?? null
   }
 }
 
-function toggleSort(current: { field: string; dir: SortDir }, field: string): { field: string; dir: SortDir } {
-  if (current.field === field) {
-    return { field, dir: current.dir === 'asc' ? 'desc' : 'asc' }
+// Ensure selectedIface stays in sync with available interfaces
+watch(firstPhysicalIface, (val) => {
+  if (activeDetail.value === 'network' && netTab.value === 'interface' && val) {
+    if (!selectedIface.value || !stats.value?.net_interfaces[selectedIface.value]) {
+      selectedIface.value = val
+    }
   }
-  return { field, dir: 'desc' }
-}
+})
 
-function sortIcon(current: { field: string; dir: SortDir }, field: string): string {
-  if (current.field !== field) return ''
-  return current.dir === 'asc' ? ' ↑' : ' ↓'
-}
+const hasChartData = computed(() => {
+  if (!selectedIface.value || !netHistoryMap.value) return false
+  const points = netHistoryMap.value.get(selectedIface.value)
+  return !!points && points.length >= 2
+})
 
 // ECharts trend chart
 function renderChart() {
   if (!chartRef.value || !selectedIface.value || !netHistoryMap.value) return
+  if (!hasChartData.value) {
+    if (chartInstance) {
+      chartInstance.clear()
+    }
+    return
+  }
 
-  const points = netHistoryMap.value.get(selectedIface.value)
-  if (!points || points.length < 2) return
+  const points = netHistoryMap.value.get(selectedIface.value)!
 
   if (!chartInstance) {
     chartInstance = echarts.init(chartRef.value)
@@ -321,8 +402,25 @@ watch([selectedIface, netHistoryMap], () => {
   nextTick(() => renderChart())
 })
 
-watch(activeDetail, (val) => {
-  if (val !== 'network') {
+// Save/restore selectedIface when switching net tabs
+watch(netTab, (tab) => {
+  if (tab === 'process') {
+    prevSelectedIface.value = selectedIface.value
+    selectedIface.value = null
+    if (chartInstance) {
+      chartInstance.dispose()
+      chartInstance = null
+    }
+  } else {
+    selectedIface.value = prevSelectedIface.value ?? firstPhysicalIface.value ?? null
+  }
+  // Recalculate table height after tab switch (chart area changes)
+  nextTick(() => recalcTableHeight())
+})
+
+watch(activeDetail, () => {
+  nextTick(() => recalcTableHeight())
+  if (activeDetail.value !== 'network') {
     if (chartInstance) {
       chartInstance.dispose()
       chartInstance = null
@@ -334,6 +432,10 @@ onBeforeUnmount(() => {
   if (chartInstance) {
     chartInstance.dispose()
     chartInstance = null
+  }
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
   }
 })
 
@@ -402,22 +504,6 @@ const swapPercent = computed(() => {
             </div>
           </div>
 
-          <!-- Disk -->
-          <div
-            v-if="diskTotal"
-            class="flex flex-col gap-[3px] cursor-pointer rounded px-2 py-1 -mx-2 transition-colors duration-150"
-            :class="activeDetail === 'disk' ? 'bg-[var(--hover-overlay)]' : 'hover:bg-[var(--hover-overlay)]'"
-            @click="toggleDetail('disk')"
-          >
-            <div class="flex justify-between items-center text-[var(--text-secondary)]">
-              <span>{{ t('monitor.disk') }}</span>
-              <span class="font-mono">{{ formatBytes(diskTotal.used) }} / {{ formatBytes(diskTotal.total) }}</span>
-            </div>
-            <div class="h-[5px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
-              <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: diskTotal.pct + '%', background: barColor(diskTotal.pct) }"></div>
-            </div>
-          </div>
-
           <!-- Processes -->
           <div
             class="mt-1 border-t border-[var(--border-color)] pt-2 cursor-pointer rounded px-2 -mx-2 transition-colors duration-150"
@@ -436,6 +522,22 @@ const swapPercent = computed(() => {
             </div>
           </div>
 
+          <!-- Disk -->
+          <div
+            v-if="diskTotal"
+            class="flex flex-col gap-[3px] cursor-pointer rounded px-2 py-1 -mx-2 transition-colors duration-150"
+            :class="activeDetail === 'disk' ? 'bg-[var(--hover-overlay)]' : 'hover:bg-[var(--hover-overlay)]'"
+            @click="toggleDetail('disk')"
+          >
+            <div class="flex justify-between items-center text-[var(--text-secondary)]">
+              <span>{{ t('monitor.disk') }}</span>
+              <span class="font-mono">{{ formatBytes(diskTotal.used) }} / {{ formatBytes(diskTotal.total) }}</span>
+            </div>
+            <div class="h-[5px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+              <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: diskTotal.pct + '%', background: barColor(diskTotal.pct) }"></div>
+            </div>
+          </div>
+
           <!-- Network -->
           <div
             v-if="netTotal"
@@ -451,7 +553,7 @@ const swapPercent = computed(() => {
         </div>
 
         <!-- ===== Right Panel ===== -->
-        <div class="flex-1 min-w-0 px-3 py-2 overflow-y-auto">
+        <div ref="rightPanelRef" class="flex-1 min-w-0 px-3 py-2" :class="activeDetail === 'processes' ? 'overflow-hidden' : 'overflow-y-auto'">
           <!-- No selection -->
           <template v-if="!activeDetail">
             <div class="h-full flex-center">
@@ -531,60 +633,65 @@ const swapPercent = computed(() => {
 
           <!-- Network Detail -->
           <template v-else-if="activeDetail === 'network'">
-            <NTabs v-model:value="netTab" type="segment" size="small">
-              <NTabPane :name="'interface'" :tab="t('monitor.byInterface')">
-                <div class="flex flex-col gap-1 mt-2">
-                  <!-- Table header -->
-                  <div class="grid grid-cols-[1fr_70px_70px_70px_70px] gap-1 text-[var(--text-secondary)] pb-1 border-b border-[var(--border-color)]">
-                    <span class="cursor-pointer hover:text-[var(--text-primary)]" @click="netIfaceSort = toggleSort(netIfaceSort, 'name')">{{ t('monitor.interface') }}{{ sortIcon(netIfaceSort, 'name') }}</span>
-                    <span class="text-right cursor-pointer hover:text-[var(--text-primary)]" @click="netIfaceSort = toggleSort(netIfaceSort, 'receive_kbps')">{{ t('monitor.receive') }}{{ sortIcon(netIfaceSort, 'receive_kbps') }}</span>
-                    <span class="text-right cursor-pointer hover:text-[var(--text-primary)]" @click="netIfaceSort = toggleSort(netIfaceSort, 'transmit_kbps')">{{ t('monitor.transmit') }}{{ sortIcon(netIfaceSort, 'transmit_kbps') }}</span>
-                    <span class="text-right cursor-pointer hover:text-[var(--text-primary)]" @click="netIfaceSort = toggleSort(netIfaceSort, 'receive_bytes')">{{ t('monitor.totalReceived') }}{{ sortIcon(netIfaceSort, 'receive_bytes') }}</span>
-                    <span class="text-right cursor-pointer hover:text-[var(--text-primary)]" @click="netIfaceSort = toggleSort(netIfaceSort, 'transmit_bytes')">{{ t('monitor.totalSent') }}{{ sortIcon(netIfaceSort, 'transmit_bytes') }}</span>
-                  </div>
-                  <!-- Table rows -->
-                  <div
-                    v-for="row in sortedNetIfaces"
-                    :key="row.name"
-                    class="grid grid-cols-[1fr_70px_70px_70px_70px] gap-1 py-[3px] border-b border-[var(--border-color)] last:border-b-0 cursor-pointer hover:bg-[var(--hover-overlay)] rounded px-1 -mx-1"
-                    :class="selectedIface === row.name ? 'bg-[var(--hover-overlay)]' : ''"
-                    @click="selectedIface = selectedIface === row.name ? null : row.name"
-                  >
-                    <span class="font-mono text-[var(--text-primary)]">{{ row.name }}</span>
-                    <span class="font-mono text-right">{{ formatKbps(row.receive_kbps) }}</span>
-                    <span class="font-mono text-right">{{ formatKbps(row.transmit_kbps) }}</span>
-                    <span class="font-mono text-right text-[var(--text-secondary)]">{{ formatBytes(row.receive_bytes) }}</span>
-                    <span class="font-mono text-right text-[var(--text-secondary)]">{{ formatBytes(row.transmit_bytes) }}</span>
-                  </div>
-                  <!-- Trend chart -->
-                  <div v-if="selectedIface" class="mt-2">
-                    <div class="text-[var(--text-secondary)] mb-1">{{ selectedIface }} - {{ t('monitor.trend') }}</div>
-                    <div ref="chartRef" class="w-full h-[120px]"></div>
+            <div class="flex h-full overflow-hidden">
+              <!-- Left: content -->
+              <div ref="netContentRef" class="flex-1 min-w-0 flex flex-col gap-2">
+                <!-- Trend chart (top) — always show when on interface tab -->
+                <div v-if="netTab === 'interface'" class="shrink-0">
+                  <div class="text-[var(--text-secondary)] mb-1">{{ selectedIface || '-' }} - {{ t('monitor.trend') }}</div>
+                  <div class="w-full h-[120px] relative">
+                    <div ref="chartRef" class="w-full h-full"></div>
+                    <div v-if="!hasChartData" class="absolute inset-0 flex-center text-[var(--text-secondary)] text-xs">{{ t('monitor.noConnection') }}</div>
                   </div>
                 </div>
-              </NTabPane>
-              <NTabPane :name="'process'" :tab="t('monitor.byProcess')">
-                <div class="flex flex-col gap-1 mt-2">
-                  <!-- Table header -->
-                  <div class="grid grid-cols-[40px_1fr_80px_50px_50px] gap-1 text-[var(--text-secondary)] pb-1 border-b border-[var(--border-color)]">
-                    <span class="cursor-pointer hover:text-[var(--text-primary)]" @click="netProcSort = toggleSort(netProcSort, 'pid')">{{ t('monitor.pid') }}{{ sortIcon(netProcSort, 'pid') }}</span>
-                    <span class="cursor-pointer hover:text-[var(--text-primary)]" @click="netProcSort = toggleSort(netProcSort, 'name')">{{ t('monitor.processName') }}{{ sortIcon(netProcSort, 'name') }}</span>
-                    <span class="cursor-pointer hover:text-[var(--text-primary)]" @click="netProcSort = toggleSort(netProcSort, 'listen_addrs')">{{ t('monitor.listenAddr') }}{{ sortIcon(netProcSort, 'listen_addrs') }}</span>
-                    <span class="cursor-pointer hover:text-[var(--text-primary)]" @click="netProcSort = toggleSort(netProcSort, 'ports')">{{ t('monitor.port') }}{{ sortIcon(netProcSort, 'ports') }}</span>
-                    <span class="text-right cursor-pointer hover:text-[var(--text-primary)]" @click="netProcSort = toggleSort(netProcSort, 'conn_count')">{{ t('monitor.connCount') }}{{ sortIcon(netProcSort, 'conn_count') }}</span>
-                  </div>
-                  <!-- Table rows -->
-                  <div v-for="p in sortedNetProcs" :key="p.pid" class="grid grid-cols-[40px_1fr_80px_50px_50px] gap-1 py-[3px] border-b border-[var(--border-color)] last:border-b-0">
-                    <span class="font-mono text-[var(--text-secondary)]">{{ p.pid }}</span>
-                    <span class="truncate text-[var(--text-primary)]">{{ p.name }}</span>
-                    <span class="truncate text-[var(--text-secondary)] font-mono text-xs">{{ p.listen_addrs.join(', ') || '-' }}</span>
-                    <span class="truncate text-[var(--text-secondary)] font-mono text-xs">{{ p.ports.join(', ') || '-' }}</span>
-                    <span class="font-mono text-right">{{ p.conn_count }}</span>
-                  </div>
-                  <NEmpty v-if="sortedNetProcs.length === 0" :description="t('monitor.waitingStats')" size="small" />
-                </div>
-              </NTabPane>
-            </NTabs>
+                <!-- Table -->
+                <NDataTable
+                  v-if="netTab === 'interface'"
+                  :columns="netIfaceColumns"
+                  :data="netIfaceData"
+                  :row-props="(row: NetIfaceRow) => ({ style: 'font-size: 11px; cursor: pointer', onClick: () => { selectedIface = row.name } })"
+                  :pagination="false"
+                  :bordered="false"
+                  :single-line="false"
+                  size="small"
+                  :row-class-name="(row: NetIfaceRow) => selectedIface === row.name ? 'bg-[var(--hover-overlay)]' : ''"
+                  :max-height="netTableHeight"
+                />
+                <NDataTable
+                  v-else
+                  :columns="netProcColumns"
+                  :data="netConns"
+                  :row-props="() => ({ style: 'font-size: 11px' })"
+                  :pagination="false"
+                  :bordered="false"
+                  :single-line="false"
+                  size="small"
+                  striped
+                  :max-height="netTableHeight"
+                />
+              </div>
+              <!-- Right: icon tabs (ActivityBar style) -->
+              <div class="shrink-0 flex flex-col items-center border-l border-[var(--border-color)] ml-2">
+                <button
+                  class="w-9 h-9 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
+                  :class="{ '!text-[var(--color-primary)]': netTab === 'interface' }"
+                  @click="netTab = 'interface'"
+                  :title="t('monitor.byInterface')"
+                >
+                  <IconWifi :width="18" :height="18" />
+                  <span v-if="netTab === 'interface'" class="absolute right-0 top-2 bottom-2 w-[2px] bg-[var(--color-primary)] rounded-l-[2px]" />
+                </button>
+                <button
+                  class="w-9 h-9 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
+                  :class="{ '!text-[var(--color-primary)]': netTab === 'process' }"
+                  @click="netTab = 'process'"
+                  :title="t('monitor.byProcess')"
+                >
+                  <IconCpu :width="18" :height="18" />
+                  <span v-if="netTab === 'process'" class="absolute right-0 top-2 bottom-2 w-[2px] bg-[var(--color-primary)] rounded-l-[2px]" />
+                </button>
+              </div>
+            </div>
           </template>
 
           <!-- Process Detail -->
@@ -598,7 +705,7 @@ const swapPercent = computed(() => {
               :single-line="false"
               size="small"
               striped
-              :max-height="400"
+              :max-height="processTableHeight"
             />
           </template>
         </div>

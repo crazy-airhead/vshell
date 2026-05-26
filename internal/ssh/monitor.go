@@ -13,6 +13,11 @@ type CPUSample struct {
 	Idle  uint64
 }
 
+type NetSample struct {
+	RxBytes uint64
+	TxBytes uint64
+}
+
 type Monitor struct {
 	manager      *Manager
 	connectionID string
@@ -20,6 +25,7 @@ type Monitor struct {
 	stopCh       chan struct{}
 	prevCPU      CPUSample
 	prevCPUCores map[int]CPUSample
+	prevNet      map[string]NetSample
 	osType       string
 	osDetected   bool
 	hostname     string
@@ -89,6 +95,7 @@ func NewMonitor(manager *Manager, connectionID string) *Monitor {
 		connectionID: connectionID,
 		stopCh:       make(chan struct{}),
 		prevCPUCores: make(map[int]CPUSample),
+		prevNet:      make(map[string]NetSample),
 	}
 }
 
@@ -366,6 +373,7 @@ func (m *Monitor) parseMem(procMeminfo string, stats *SystemStats) {
 
 func (m *Monitor) parseNet(procNetDev string, stats *SystemStats) {
 	stats.NetInterfaces = make(map[string]NetIO)
+	const intervalSec = 2.0
 
 	for _, line := range strings.Split(procNetDev, "\n") {
 		idx := strings.Index(line, ":")
@@ -382,9 +390,20 @@ func (m *Monitor) parseNet(procNetDev string, stats *SystemStats) {
 		rxBytes, _ := strconv.ParseUint(fields[0], 10, 64)
 		txBytes, _ := strconv.ParseUint(fields[8], 10, 64)
 
+		var rxKBps, txKBps float64
+		if prev, ok := m.prevNet[iface]; ok {
+			rxDiff := float64(rxBytes - prev.RxBytes)
+			txDiff := float64(txBytes - prev.TxBytes)
+			rxKBps = rxDiff / intervalSec / 1024
+			txKBps = txDiff / intervalSec / 1024
+		}
+		m.prevNet[iface] = NetSample{RxBytes: rxBytes, TxBytes: txBytes}
+
 		stats.NetInterfaces[iface] = NetIO{
 			ReceiveBytes:  rxBytes,
 			TransmitBytes: txBytes,
+			ReceiveKBps:   rxKBps,
+			TransmitKBps:  txKBps,
 		}
 	}
 }
