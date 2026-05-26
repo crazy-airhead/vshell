@@ -159,3 +159,14 @@ html, body {
   border-radius: 8px;
   padding: 1px 5px;
 }
+
+/* ── Title bar connecting progress bar ── */
+@keyframes connecting-slide {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+.animate-connecting-bar {
+  animation: connecting-slide 1.2s linear infinite;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  background-size: 200% 100%;
+}

@@ -53,6 +53,7 @@ export const useConnectionStore = defineStore('connection', () => {
   const groups = ref<Group[]>([])
   const activeConnectionID = ref<string | null>(null)
   const connectedIDs = ref<Set<string>>(new Set())
+  const connecting = ref(false)
 
   async function loadConnections() {
     try {
@@ -96,6 +97,7 @@ export const useConnectionStore = defineStore('connection', () => {
   }
 
   async function connect(id: string): Promise<string> {
+    connecting.value = true
     try {
       const sessionID = await ConnectSSH(id) as unknown as string
       connectedIDs.value.add(id)
@@ -106,6 +108,8 @@ export const useConnectionStore = defineStore('connection', () => {
     } catch (e) {
       console.error('Failed to connect:', e)
       throw e
+    } finally {
+      connecting.value = false
     }
   }
 
@@ -209,6 +213,7 @@ export const useConnectionStore = defineStore('connection', () => {
     groups,
     activeConnectionID,
     connectedIDs,
+    connecting,
     loadConnections,
     loadGroups,
     connect,

@@ -110,7 +110,7 @@ onMounted(() => {
         <div class="flex flex-col w-screen h-screen overflow-hidden bg-[var(--bg-primary)]">
           <!-- Title bar -->
           <div
-            class="h-[30px] flex items-center justify-center px-2 bg-[var(--bg-tertiary)] shrink-0 relative"
+            class="h-[30px] flex items-center justify-center px-2 bg-[var(--bg-tertiary)] shrink-0 relative overflow-hidden"
             style="-webkit-app-region: drag"
             @dblclick="Window.ToggleMaximise()"
           >
@@ -127,6 +127,12 @@ onMounted(() => {
                 @click="handleLocaleSelect(settings.localeCode === 'zh-CN' ? 'en' : 'zh-CN')"
               >{{ localeLabel }}</button>
             </div>
+            <!-- Connection progress bar -->
+            <div
+              v-if="connectionStore.connecting"
+              class="absolute bottom-0 h-[2px] animate-connecting-bar"
+              style="left: 48px; right: 0; width: auto;"
+            />
           </div>
 
           <div class="flex flex-1 min-h-0">
