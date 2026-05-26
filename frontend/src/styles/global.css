@@ -166,7 +166,18 @@ html, body {
   100% { background-position: 200% 0%; }
 }
 .animate-connecting-bar {
-  animation: connecting-slide 1.2s linear infinite;
+  animation: connecting-slide 0.8s ease-in-out infinite;
   background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
   background-size: 200% 100%;
+}
+.animate-connecting-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  background-size: 200% 100%;
+  animation: connecting-slide 1.6s ease-in-out 0.4s infinite;
 }
