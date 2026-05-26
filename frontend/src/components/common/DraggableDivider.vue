@@ -41,7 +41,7 @@ function onMouseUp() {
 <template>
   <div
     class="shrink-0 bg-transparent transition-colors duration-150 hover:bg-[var(--color-primary)]"
-    :class="direction === 'horizontal' ? 'h-[6px] w-full cursor-ns-resize rounded-[3px]' : 'w-[6px] h-full cursor-ew-resize rounded-[3px]'"
+    :class="direction === 'horizontal' ? 'h-[3px] w-full cursor-ns-resize rounded-[1.5px]' : 'w-[3px] h-full cursor-ew-resize rounded-[1.5px]'"
     @mousedown="onMouseDown"
   ></div>
 </template>
