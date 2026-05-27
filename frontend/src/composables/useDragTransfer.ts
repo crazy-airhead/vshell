@@ -116,7 +116,7 @@ function resetHighlights() {
   }
 }
 
-// --- Safety net: cleanup on blur / escape ---
+// --- Safety net: cleanup on blur / escape / mouse leaving window ---
 function onWindowBlur() {
   if (active) cleanupDrag()
 }
@@ -125,6 +125,10 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape' && active) {
     cleanupDrag()
   }
+}
+
+function onDocumentLeave() {
+  if (active) cleanupDrag()
 }
 
 // --- Global mouse handlers ---
@@ -212,6 +216,7 @@ function cleanupDrag() {
   window.removeEventListener('blur', onWindowBlur)
   window.removeEventListener('keydown', onKeyDown, true)
   window.removeEventListener('click', suppressClick, true)
+  document.documentElement.removeEventListener('mouseleave', onDocumentLeave)
   dragging = false
   payload = null
   sourceItem = null
@@ -238,6 +243,7 @@ export function useDragSource(options: SourceOptions) {
     window.addEventListener('mouseup', onGlobalMouseUp, true)
     window.addEventListener('blur', onWindowBlur)
     window.addEventListener('keydown', onKeyDown, true)
+    document.documentElement.addEventListener('mouseleave', onDocumentLeave)
   }
 
   function cleanup() {
