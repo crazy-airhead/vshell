@@ -1,26 +1,25 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, onUpdated } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NTree, NButton, useDialog, useMessage } from 'naive-ui'
 import type { TreeOption } from 'naive-ui'
 import { Events } from '@wailsio/runtime'
 import IconRefreshCw from '~icons/lucide/refresh-cw'
 import IconDownload from '~icons/lucide/download'
+import IconUpload from '~icons/lucide/upload'
 import IconTrash2 from '~icons/lucide/trash-2'
 import IconFolder from '~icons/lucide/folder'
 import IconFile from '~icons/lucide/file'
+import IconFolderOpen from '~icons/lucide/folder-open'
 import { useSFTPStore } from '../../stores/sftp'
 import { useTransferStore } from '../../stores/transfers'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
 import type { SFTPFile } from '../../stores/sftp'
 import type { TransferProgress } from '../../stores/transfers'
-import LocalFileTree from './LocalFileTree.vue'
-import { SFTPUpload, SFTPDownload, SFTPDelete, SFTPReadFileContent } from '../../../bindings/vshell/internal/app/appservice'
+import { SFTPUpload, SFTPDownload, SFTPDelete, SFTPReadFileContent, GetHomeDir, ListLocalDir, DeleteLocalFile, ReadLocalFileContent, OpenInFileManager } from '../../../bindings/vshell/internal/app/appservice'
 import { useDragSource, useDropTarget } from '../../composables/useDragTransfer'
 import { isEditableFile } from '../../utils/fileType'
-
-const localTreeRef = ref<InstanceType<typeof LocalFileTree> | null>(null)
 
 const props = defineProps<{ connectionID: string }>()
 const { t } = useI18n()
@@ -31,22 +30,25 @@ const connectionStore = useConnectionStore()
 const dialog = useDialog()
 const message = useMessage()
 
+// ===========================
+// Remote side state & methods
+// ===========================
 const treeData = ref<TreeOption[]>([])
 const expandedKeys = ref<string[]>([])
 const treeWidth = ref(170)
 const editingRemotePath = ref(false)
 const editRemotePath = ref('')
-const localDir = ref('')
-const loadingFile = ref(false)
+const loadingRemoteFile = ref(false)
 const selectedRemote = ref(new Set<string>())
-const sortKey = ref<'name' | 'size' | 'time'>('name')
-const sortAsc = ref(true)
+const remoteSortKey = ref<'name' | 'size' | 'time'>('name')
+const remoteSortAsc = ref(true)
+const remoteDir = ref('')
 
 const sortedRemoteFiles = computed(() => {
   const p = sftpStore.getPanel(props.connectionID)
   const files = [...p.files]
-  const key = sortKey.value
-  const asc = sortAsc.value
+  const key = remoteSortKey.value
+  const asc = remoteSortAsc.value
   files.sort((a: SFTPFile, b: SFTPFile) => {
     if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1
     let cmp = 0
@@ -58,12 +60,12 @@ const sortedRemoteFiles = computed(() => {
   return files
 })
 
-function toggleSort(key: 'name' | 'size' | 'time') {
-  if (sortKey.value === key) sortAsc.value = !sortAsc.value
-  else { sortKey.value = key; sortAsc.value = true }
+function toggleRemoteSort(key: 'name' | 'size' | 'time') {
+  if (remoteSortKey.value === key) remoteSortAsc.value = !remoteSortAsc.value
+  else { remoteSortKey.value = key; remoteSortAsc.value = true }
 }
 
-// --- Drag & Drop ---
+// Remote drag source
 const { onRowMouseDown: onRemoteRowMouseDown, cleanup: cleanupRemoteDrag } = useDragSource({
   source: 'remote',
   getSelectedPaths: () => selectedRemote.value,
@@ -71,34 +73,13 @@ const { onRowMouseDown: onRemoteRowMouseDown, cleanup: cleanupRemoteDrag } = use
   getFileLabel: (file: SFTPFile) => file.name,
 })
 
+// Remote drop target (accepts local→remote uploads)
 const { targetRef: remoteDropRef, isDragOver: remoteIsDragOver, register: registerRemoteDrop, unregister: unregisterRemoteDrop } = useDropTarget({
   acceptedSource: 'local',
-  onDrop: (paths: string[]) => handleUpload(paths),
+  onDrop: (paths: string[]) => handleUploadDrop(paths),
 })
 
-const { targetRef: localDropRef, isDragOver: localIsDragOver, register: registerLocalDrop, unregister: unregisterLocalDrop } = useDropTarget({
-  acceptedSource: 'remote',
-  onDrop: (paths: string[]) => handleLocalDrop(paths),
-})
-
-// Wails native file drop from OS file browser
-function handleNativeFileDrop(ev: any) {
-  const data = ev?.data
-  if (!data?.files || !data?.targetId) return
-  if (data.targetId !== 'remote-drop-zone-' + props.connectionID) return
-  const paths: string[] = data.files as string[]
-  if (paths.length > 0) handleUpload(paths)
-}
-
-function handleLocalDrop(paths: string[]) {
-  for (const remotePath of paths) {
-    const fileName = remotePath.split('/').pop() || remotePath
-    const localPath = localDir.value ? `${localDir.value}/${fileName}` : fileName
-    SFTPDownload(props.connectionID, remotePath, localPath).catch(console.error)
-  }
-}
-
-// --- Remote path ---
+// Remote path
 const remotePathParts = computed(() => {
   const p = sftpStore.getPanel(props.connectionID)
   const parts = p.currentPath.split('/').filter(Boolean)
@@ -124,7 +105,7 @@ function commitRemoteEdit() {
   navigateRemoteTo(editRemotePath.value)
 }
 
-// --- Tree ---
+// Remote tree
 function buildTreeNodes(parentPath: string, cache: Record<string, SFTPFile[]>): TreeOption[] {
   const items = cache[parentPath]
   if (!items) return []
@@ -156,26 +137,10 @@ function handleTreeSelect(keys: string[]) {
   navigateRemoteTo(keys[0])
 }
 
-// --- Remote file list ---
+// Remote file list
 function remoteFilePath(name: string): string {
   const p = sftpStore.getPanel(props.connectionID)
   return p.currentPath === '/' ? `/${name}` : `${p.currentPath}/${name}`
-}
-
-function handleRemoteNameClick(file: SFTPFile, e: MouseEvent) {
-  if (checkRemoteDblClick(file)) {
-    if (file.is_dir) {
-      const newPath = remoteFilePath(file.name)
-      if (!expandedKeys.value.includes(sftpStore.getPanel(props.connectionID).currentPath)) {
-        expandedKeys.value = [...expandedKeys.value, sftpStore.getPanel(props.connectionID).currentPath]
-      }
-      sftpStore.navigateToDir(props.connectionID, newPath)
-    } else {
-      handleRemoteRowDblClick(file)
-    }
-    return
-  }
-  toggleRemoteSelect(file, e)
 }
 
 function toggleRemoteSelect(file: SFTPFile, e: MouseEvent) {
@@ -188,7 +153,6 @@ function toggleRemoteSelect(file: SFTPFile, e: MouseEvent) {
   }
 }
 
-// Manual dblclick detection because drag overlay suppresses native dblclick
 let lastRemoteClickTime = 0
 let lastRemoteClickName = ''
 
@@ -204,20 +168,30 @@ function checkRemoteDblClick(file: SFTPFile): boolean {
   return false
 }
 
-function handleRemoteRowClick(file: SFTPFile, e: MouseEvent) {
+function handleRemoteNameClick(file: SFTPFile, e: MouseEvent) {
   if (checkRemoteDblClick(file)) {
-    if (file.is_dir) {
-      const newPath = remoteFilePath(file.name)
-      if (!expandedKeys.value.includes(sftpStore.getPanel(props.connectionID).currentPath)) {
-        expandedKeys.value = [...expandedKeys.value, sftpStore.getPanel(props.connectionID).currentPath]
-      }
-      sftpStore.navigateToDir(props.connectionID, newPath)
-    } else {
-      handleRemoteRowDblClick(file)
-    }
+    if (file.is_dir) navigateToRemoteDir(file)
+    else handleRemoteRowDblClick(file)
     return
   }
   toggleRemoteSelect(file, e)
+}
+
+function handleRemoteRowClick(file: SFTPFile, e: MouseEvent) {
+  if (checkRemoteDblClick(file)) {
+    if (file.is_dir) navigateToRemoteDir(file)
+    else handleRemoteRowDblClick(file)
+    return
+  }
+  toggleRemoteSelect(file, e)
+}
+
+function navigateToRemoteDir(file: SFTPFile) {
+  const newPath = remoteFilePath(file.name)
+  if (!expandedKeys.value.includes(sftpStore.getPanel(props.connectionID).currentPath)) {
+    expandedKeys.value = [...expandedKeys.value, sftpStore.getPanel(props.connectionID).currentPath]
+  }
+  sftpStore.navigateToDir(props.connectionID, newPath)
 }
 
 async function handleRemoteRowDblClick(file: SFTPFile) {
@@ -235,49 +209,23 @@ async function handleRemoteRowDblClick(file: SFTPFile) {
     return
   }
 
-  loadingFile.value = true
+  loadingRemoteFile.value = true
   try {
     const content = await SFTPReadFileContent(props.connectionID, fullPath)
-
     const conn = connectionStore.connections.find(c => c.id === props.connectionID)
     const username = conn?.username || 'user'
     const host = conn?.host || 'unknown'
-    const tooltip = `${username}@${host}:${fullPath}`
-
     terminalStore.addEditorTab(tabId, file.name, content, fullPath, {
       isRemote: true,
       editorMode: 'remote-sftp',
-      tooltip,
+      tooltip: `${username}@${host}:${fullPath}`,
       connectionID: props.connectionID,
     })
   } catch (e: any) {
     message.error(t('sftp.openFileFailed', { name: file.name, error: e instanceof Error ? e.message : String(e) }))
   } finally {
-    loadingFile.value = false
+    loadingRemoteFile.value = false
   }
-}
-
-// --- Transfer ---
-function handleDownload() {
-  if (selectedRemote.value.size === 0) return
-  for (const remotePath of selectedRemote.value) {
-    const fileName = remotePath.split('/').pop() || remotePath
-    const localPath = localDir.value ? `${localDir.value}/${fileName}` : fileName
-    SFTPDownload(props.connectionID, remotePath, localPath).catch(console.error)
-  }
-}
-
-function handleUpload(localPaths: string[]) {
-  const p = sftpStore.getPanel(props.connectionID)
-  for (const localPath of localPaths) {
-    const fileName = localPath.split('/').pop() || localPath
-    const remotePath = p.currentPath === '/' ? `/${fileName}` : `${p.currentPath}/${fileName}`
-    SFTPUpload(props.connectionID, localPath, remotePath).catch(console.error)
-  }
-}
-
-function handleLocalPathChange(path: string) {
-  localDir.value = path
 }
 
 function handleDeleteRemote() {
@@ -290,65 +238,271 @@ function handleDeleteRemote() {
     negativeText: t('common.cancel'),
     onPositiveClick: async () => {
       for (const remotePath of selectedRemote.value) {
-        try { await SFTPDelete(props.connectionID, remotePath) }
-        catch { /* handled via event */ }
+        try { await SFTPDelete(props.connectionID, remotePath) } catch { /* handled via event */ }
       }
       setTimeout(refreshRemote, 300)
     },
   })
 }
 
-// --- Progress & Refresh ---
 async function refreshRemote() {
   const p = sftpStore.getPanel(props.connectionID)
   p.treeCache = {}
   selectedRemote.value = new Set()
   await sftpStore.navigateToDir(props.connectionID, p.currentPath)
-  // Reload root so the tree has data
   await sftpStore.loadTreeDir(props.connectionID, '/')
   rebuildTree()
 }
 
-function refreshLocal() {
-  localTreeRef.value?.refresh()
+// ===========================
+// Local side state & methods
+// ===========================
+const showHidden = ref(false)
+const localCurrentPath = ref('')
+const localAllFiles = ref<LocalEntry[]>([])
+const localLoading = ref(true)
+const localLoadingDir = ref(false)
+const localLoadingFile = ref(false)
+const localEditing = ref(false)
+const localEditPath = ref('')
+const localSelected = ref(new Set<string>())
+const localSortKey = ref<'name' | 'size' | 'time'>('name')
+const localSortAsc = ref(true)
+
+interface LocalEntry {
+  name: string
+  path: string
+  size: number
+  is_dir: boolean
+  mod_time: number
 }
 
-onMounted(() => {
-  registerRemoteDrop()
-  registerLocalDrop()
-  Events.On('sftp:progress', (ev: any) => {
-    const d = ev?.data
-    if (d) transferStore.addOrUpdateTransfer(d as TransferProgress)
+const localFiles = computed(() => {
+  const raw = showHidden.value ? localAllFiles.value : localAllFiles.value.filter(f => !f.name.startsWith('.'))
+  const key = localSortKey.value
+  const asc = localSortAsc.value
+  return [...raw].sort((a, b) => {
+    if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1
+    let cmp = 0
+    if (key === 'name') cmp = a.name.localeCompare(b.name)
+    else if (key === 'size') cmp = a.size - b.size
+    else cmp = a.mod_time - b.mod_time
+    return asc ? cmp : -cmp
   })
-  Events.On('sftp:transfer-done', (ev: any) => {
-    const d = ev?.data
-    if (d?.direction === 'upload' || d?.direction === 'delete') {
-      refreshRemote()
-    } else {
+})
+
+function toggleLocalSort(key: 'name' | 'size' | 'time') {
+  if (localSortKey.value === key) localSortAsc.value = !localSortAsc.value
+  else { localSortKey.value = key; localSortAsc.value = true }
+}
+
+// Local drag source
+const { onRowMouseDown: onLocalRowMouseDown, cleanup: cleanupLocalDrag } = useDragSource({
+  source: 'local',
+  getSelectedPaths: () => localSelected.value,
+  getFilePath: (entry: LocalEntry) => entry.path,
+  getFileLabel: (entry: LocalEntry) => entry.name,
+})
+
+// Local drop target (accepts remote→local downloads)
+const { targetRef: localDropRef, isDragOver: localIsDragOver, register: registerLocalDrop, unregister: unregisterLocalDrop } = useDropTarget({
+  acceptedSource: 'remote',
+  onDrop: (paths: string[]) => handleLocalDrop(paths),
+})
+
+const localDirCache = ref<Record<string, LocalEntry[]>>({})
+
+async function loadLocalDir(dirPath: string): Promise<LocalEntry[]> {
+  if (localDirCache.value[dirPath]) return localDirCache.value[dirPath]
+  try {
+    const result = await ListLocalDir(dirPath)
+    const entries: LocalEntry[] = (result || []).map((e: any) => ({
+      name: e.name || '',
+      path: e.path || '',
+      size: e.size || 0,
+      is_dir: e.is_dir || false,
+      mod_time: e.mod_time || 0,
+    }))
+    localDirCache.value[dirPath] = entries
+    return entries
+  } catch {
+    localDirCache.value[dirPath] = []
+    return []
+  }
+}
+
+async function navigateLocalTo(dirPath: string) {
+  localLoadingDir.value = true
+  localSelected.value = new Set()
+  try {
+    localAllFiles.value = await loadLocalDir(dirPath)
+    localCurrentPath.value = dirPath
+    remoteDir.value = dirPath
+  } finally {
+    localLoadingDir.value = false
+  }
+}
+
+const localPathParts = computed(() => {
+  const parts = localCurrentPath.value.split('/').filter(Boolean)
+  return parts.map((name, i) => ({
+    name,
+    path: '/' + parts.slice(0, i + 1).join('/'),
+  }))
+})
+
+function startLocalEdit() {
+  localEditPath.value = localCurrentPath.value
+  localEditing.value = true
+}
+
+function commitLocalEdit() {
+  localEditing.value = false
+  navigateLocalTo(localEditPath.value)
+}
+
+let lastLocalClickTime = 0
+let lastLocalClickName = ''
+
+function checkLocalDblClick(entry: LocalEntry): boolean {
+  const now = Date.now()
+  if (now - lastLocalClickTime < 400 && lastLocalClickName === entry.name) {
+    lastLocalClickTime = 0
+    lastLocalClickName = ''
+    return true
+  }
+  lastLocalClickTime = now
+  lastLocalClickName = entry.name
+  return false
+}
+
+function handleLocalNameClick(entry: LocalEntry, e: MouseEvent) {
+  if (checkLocalDblClick(entry)) {
+    if (entry.is_dir) navigateLocalTo(entry.path)
+    else handleLocalRowDblClick(entry)
+    return
+  }
+  toggleLocalSelect(entry, e)
+}
+
+function handleLocalRowClick(entry: LocalEntry, e: MouseEvent) {
+  if (checkLocalDblClick(entry)) {
+    if (entry.is_dir) navigateLocalTo(entry.path)
+    else handleLocalRowDblClick(entry)
+    return
+  }
+  toggleLocalSelect(entry, e)
+}
+
+function toggleLocalSelect(entry: LocalEntry, e: MouseEvent) {
+  if (e.ctrlKey || e.metaKey) {
+    if (localSelected.value.has(entry.path)) localSelected.value.delete(entry.path)
+    else localSelected.value.add(entry.path)
+  } else {
+    localSelected.value = new Set([entry.path])
+  }
+}
+
+function handleLocalUploadClick() {
+  if (localSelected.value.size === 0) return
+  handleUploadDrop(Array.from(localSelected.value))
+}
+
+function handleOpenInFileManager() {
+  if (!localCurrentPath.value) return
+  OpenInFileManager(localCurrentPath.value).catch(() => {})
+}
+
+function handleDeleteLocal() {
+  if (localSelected.value.size === 0) return
+  const names = Array.from(localSelected.value).map(p => p.split('/').pop() || p)
+  dialog.warning({
+    title: t('sftp.deleteTitle'),
+    content: t('sftp.deleteContent', { name: names.length === 1 ? names[0] : `${names.length} items` }),
+    positiveText: t('common.delete'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      for (const p of localSelected.value) {
+        try { await DeleteLocalFile(p) } catch { /* ignore */ }
+      }
+      localSelected.value = new Set()
       refreshLocal()
-    }
-    setTimeout(() => transferStore.clearDone(), 500)
+    },
   })
-  Events.On('sftp:download:error', (ev: any) => {
-    message.error(t('sftp.downloadFailed', { error: ev?.data || '' }))
-  })
-  Events.On('sftp:upload:error', (ev: any) => {
-    message.error(t('sftp.uploadFailed', { error: ev?.data || '' }))
-  })
-  Events.On('native:file-drop', handleNativeFileDrop)
-})
+}
 
-onUnmounted(() => {
-  Events.Off('sftp:progress')
-  Events.Off('sftp:transfer-done')
-  Events.Off('sftp:download:error')
-  Events.Off('sftp:upload:error')
-  Events.Off('native:file-drop')
-  cleanupRemoteDrag()
-  unregisterRemoteDrop()
-  unregisterLocalDrop()
-})
+async function handleLocalRowDblClick(entry: LocalEntry) {
+  if (entry.is_dir) return
+  if (!isEditableFile(entry.name, entry.size)) return
 
+  const tabId = `editor-local:${entry.path}`
+
+  if (terminalStore.tabs.find(t => t.id === tabId)) {
+    terminalStore.activeTabID = tabId
+    return
+  }
+
+  localLoadingFile.value = true
+  try {
+    const content = await ReadLocalFileContent(entry.path)
+    terminalStore.addEditorTab(tabId, entry.name, content, entry.path, {
+      isRemote: false,
+      editorMode: 'local-file',
+      tooltip: entry.path,
+    })
+  } catch (e: any) {
+    console.error('Failed to open local file:', e)
+  } finally {
+    localLoadingFile.value = false
+  }
+}
+
+function refreshLocal() {
+  localDirCache.value = {}
+  navigateLocalTo(localCurrentPath.value)
+}
+
+// ===========================
+// Transfer (shared)
+// ===========================
+function handleDownload() {
+  if (selectedRemote.value.size === 0) return
+  for (const remotePath of selectedRemote.value) {
+    const fileName = remotePath.split('/').pop() || remotePath
+    const localPath = remoteDir.value ? `${remoteDir.value}/${fileName}` : fileName
+    SFTPDownload(props.connectionID, remotePath, localPath).catch(console.error)
+  }
+}
+
+function handleUploadDrop(localPaths: string[]) {
+  const p = sftpStore.getPanel(props.connectionID)
+  for (const localPath of localPaths) {
+    const fileName = localPath.split('/').pop() || localPath
+    const remotePath = p.currentPath === '/' ? `/${fileName}` : `${p.currentPath}/${fileName}`
+    SFTPUpload(props.connectionID, localPath, remotePath).catch(console.error)
+  }
+}
+
+function handleLocalDrop(paths: string[]) {
+  for (const remotePath of paths) {
+    const fileName = remotePath.split('/').pop() || remotePath
+    const localPath = remoteDir.value ? `${remoteDir.value}/${fileName}` : fileName
+    SFTPDownload(props.connectionID, remotePath, localPath).catch(console.error)
+  }
+}
+
+// Wails native file drop from OS file browser
+function handleNativeFileDrop(ev: any) {
+  const data = ev?.data
+  if (!data?.files || !data?.targetId) return
+  if (data.targetId !== 'remote-drop-zone-' + props.connectionID) return
+  const paths: string[] = data.files as string[]
+  if (paths.length > 0) handleUploadDrop(paths)
+}
+
+// ===========================
+// Formatting utilities
+// ===========================
 function formatSize(bytes: number): string {
   if (bytes === 0) return '-'
   if (bytes < 1024) return bytes + 'B'
@@ -391,6 +545,64 @@ function transferSummary(transfers: TransferProgress[]) {
   return { path: currentPath, percent: Math.min(100, percent), speed }
 }
 
+// ===========================
+// Lifecycle
+// ===========================
+onMounted(async () => {
+  registerRemoteDrop()
+  registerLocalDrop()
+
+  Events.On('sftp:progress', (ev: any) => {
+    const d = ev?.data
+    if (d) transferStore.addOrUpdateTransfer(d as TransferProgress)
+  })
+  Events.On('sftp:transfer-done', (ev: any) => {
+    const d = ev?.data
+    if (d?.direction === 'upload' || d?.direction === 'delete') {
+      refreshRemote()
+    } else {
+      refreshLocal()
+    }
+    setTimeout(() => transferStore.clearDone(), 500)
+  })
+  Events.On('sftp:download:error', (ev: any) => {
+    message.error(t('sftp.downloadFailed', { error: ev?.data || '' }))
+  })
+  Events.On('sftp:upload:error', (ev: any) => {
+    message.error(t('sftp.uploadFailed', { error: ev?.data || '' }))
+  })
+  Events.On('native:file-drop', handleNativeFileDrop)
+
+  // Load local home dir
+  try {
+    const home = await GetHomeDir()
+    await navigateLocalTo(home)
+  } catch {
+    try { await navigateLocalTo('/') } catch { /* empty */ }
+  } finally {
+    localLoading.value = false
+  }
+})
+
+onUpdated(() => {
+  unregisterRemoteDrop()
+  registerRemoteDrop()
+  unregisterLocalDrop()
+  registerLocalDrop()
+})
+
+onUnmounted(() => {
+  Events.Off('sftp:progress')
+  Events.Off('sftp:transfer-done')
+  Events.Off('sftp:download:error')
+  Events.Off('sftp:upload:error')
+  Events.Off('native:file-drop')
+  cleanupRemoteDrag()
+  cleanupLocalDrag()
+  unregisterRemoteDrop()
+  unregisterLocalDrop()
+})
+
 watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 </script>
 
@@ -412,13 +624,13 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
           <input v-else v-model="editRemotePath" class="flex-1 bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
             @keyup.enter="commitRemoteEdit" @keyup.escape="editingRemotePath = false" @blur="commitRemoteEdit" />
           <NButton size="tiny" quaternary @click="refreshRemote" title="Refresh"><IconRefreshCw :width="14" :height="14" /></NButton>
-          <NButton size="tiny" quaternary class="download-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDownload" title="Download selected">
+          <NButton size="tiny" quaternary class="action-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDownload" title="Download selected">
             <IconDownload :width="14" :height="14" />
           </NButton>
-          <NButton size="tiny" quaternary class="delete-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDeleteRemote" title="Delete selected">
+          <NButton size="tiny" quaternary class="action-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDeleteRemote" title="Delete selected">
             <IconTrash2 :width="14" :height="14" />
           </NButton>
-          <div v-if="sftpStore.getPanel(props.connectionID).loading || loadingFile" class="loading-bar"></div>
+          <div v-if="sftpStore.getPanel(props.connectionID).loading || loadingRemoteFile" class="loading-bar"></div>
         </div>
 
         <div class="flex-1 flex overflow-hidden min-h-0">
@@ -432,18 +644,18 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 
           <div class="flex-1 overflow-y-auto" ref="remoteDropRef" :id="'remote-drop-zone-' + props.connectionID" data-file-drop-target :class="{ 'drag-over': remoteIsDragOver }">
             <div v-if="sftpStore.getPanel(props.connectionID).error" class="h-full flex-center text-[var(--color-error)] px-4">{{ sftpStore.getPanel(props.connectionID).error }}</div>
-            <table v-else-if="!sftpStore.getPanel(props.connectionID).loading" class="w-full border-collapse sftp-table">
+            <table v-else-if="!sftpStore.getPanel(props.connectionID).loading" class="w-full border-collapse file-table">
               <thead>
                 <tr>
-                  <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] max-w-[300px]" @click="toggleSort('name')">{{ t('sftp.name') }} <span class="ml-[2px] text-[10px]" v-if="sortKey === 'name'">{{ sortAsc ? '↑' : '↓' }}</span></th>
-                  <th class="text-right py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] w-[70px]" @click="toggleSort('size')">{{ t('sftp.size') }} <span class="ml-[2px] text-[10px]" v-if="sortKey === 'size'">{{ sortAsc ? '↑' : '↓' }}</span></th>
-                  <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] w-[100px]" @click="toggleSort('time')">{{ t('sftp.modified') }} <span class="ml-[2px] text-[10px]" v-if="sortKey === 'time'">{{ sortAsc ? '↑' : '↓' }}</span></th>
+                  <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] max-w-[300px]" @click="toggleRemoteSort('name')">{{ t('sftp.name') }} <span class="ml-[2px] text-[10px]" v-if="remoteSortKey === 'name'">{{ remoteSortAsc ? '↑' : '↓' }}</span></th>
+                  <th class="text-right py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] w-[70px]" @click="toggleRemoteSort('size')">{{ t('sftp.size') }} <span class="ml-[2px] text-[10px]" v-if="remoteSortKey === 'size'">{{ remoteSortAsc ? '↑' : '↓' }}</span></th>
+                  <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] w-[100px]" @click="toggleRemoteSort('time')">{{ t('sftp.modified') }} <span class="ml-[2px] text-[10px]" v-if="remoteSortKey === 'time'">{{ remoteSortAsc ? '↑' : '↓' }}</span></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="f in sortedRemoteFiles" :key="f.name"
-                  class="sftp-row"
-                  :class="{ 'sftp-dir': f.is_dir, selected: selectedRemote.has(remoteFilePath(f.name)) }"
+                  class="file-row"
+                  :class="{ 'dir-row': f.is_dir, selected: selectedRemote.has(remoteFilePath(f.name)) }"
                   @mousedown="onRemoteRowMouseDown($event, f)"
                   @click="handleRemoteRowClick(f, $event)"
                 >
@@ -472,9 +684,62 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 
       <!-- Local side -->
       <div class="min-w-0 flex flex-col" :style="{ flex: 4 }">
-        <div class="flex-1 min-h-0" ref="localDropRef" :class="{ 'drag-over': localIsDragOver }">
-          <LocalFileTree ref="localTreeRef" @upload="handleUpload" @path-change="handleLocalPathChange" />
+        <div class="flex items-center px-2 py-1 gap-1 shrink-0 toolbar-wrapper">
+          <template v-if="!localEditing">
+            <span class="flex-1 overflow-hidden whitespace-nowrap text-[var(--font-size-sm)] select-none cursor-default" @dblclick="startLocalEdit">
+              <span class="text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] hover:underline" @click="navigateLocalTo('/')">/</span>
+              <template v-for="p in localPathParts" :key="p.path">
+                <span class="text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] hover:underline" @click="navigateLocalTo(p.path)">{{ p.name }}</span>
+                <span class="text-[var(--text-secondary)]">/</span>
+              </template>
+            </span>
+          </template>
+          <input v-else v-model="localEditPath" class="flex-1 bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
+            @keyup.enter="commitLocalEdit" @keyup.escape="localEditing = false" @blur="commitLocalEdit" />
+          <NButton size="tiny" quaternary @click="refreshLocal" title="Refresh"><IconRefreshCw :width="14" :height="14" /></NButton>
+          <NButton size="tiny" quaternary @click="handleOpenInFileManager" :title="t('sftp.openInFileManager')"><IconFolderOpen :width="14" :height="14" /></NButton>
+          <NButton size="tiny" quaternary :type="showHidden ? 'primary' : 'default'" @click="showHidden = !showHidden">.*</NButton>
+          <NButton size="tiny" quaternary class="action-btn" :class="{ active: localSelected.size > 0 }" @click="handleLocalUploadClick" title="Upload selected">
+            <IconUpload :width="14" :height="14" />
+          </NButton>
+          <NButton size="tiny" quaternary class="action-btn" :class="{ active: localSelected.size > 0 }" @click="handleDeleteLocal" title="Delete selected">
+            <IconTrash2 :width="14" :height="14" />
+          </NButton>
+          <div v-if="localLoading || localLoadingDir || localLoadingFile" class="loading-bar"></div>
         </div>
+
+        <div class="flex-1 overflow-y-auto min-h-0" ref="localDropRef" :class="{ 'drag-over': localIsDragOver }">
+          <table v-if="!localLoading && !localLoadingDir" class="w-full border-collapse file-table">
+            <thead>
+              <tr>
+                <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] max-w-[160px]" @click="toggleLocalSort('name')">Name <span class="ml-[2px] text-[10px]" v-if="localSortKey === 'name'">{{ localSortAsc ? '↑' : '↓' }}</span></th>
+                <th class="text-right py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] w-[60px]" @click="toggleLocalSort('size')">Size <span class="ml-[2px] text-[10px]" v-if="localSortKey === 'size'">{{ localSortAsc ? '↑' : '↓' }}</span></th>
+                <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] w-[85px] text-[11px]" @click="toggleLocalSort('time')">Modified <span class="ml-[2px] text-[10px]" v-if="localSortKey === 'time'">{{ localSortAsc ? '↑' : '↓' }}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in localFiles" :key="f.name"
+                class="file-row"
+                :class="{ 'dir-row': f.is_dir, selected: localSelected.has(f.path) }"
+                @mousedown="onLocalRowMouseDown($event, f)"
+                @click="handleLocalRowClick(f, $event)"
+              >
+                <td class="py-[3px] px-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[160px]">
+                  <span class="dir-name" @click.stop="handleLocalNameClick(f, $event)">
+                    <component :is="f.is_dir ? IconFolder : IconFile" :width="14" :height="14" class="mr-1 inline-block align-[-2px]" />
+                    {{ f.name }}
+                  </span>
+                </td>
+                <td class="py-[3px] px-2 whitespace-nowrap text-right w-[60px]">{{ f.is_dir ? '-' : formatSize(f.size) }}</td>
+                <td class="py-[3px] px-2 whitespace-nowrap w-[85px] text-[11px]">{{ formatTime(f.mod_time) }}</td>
+              </tr>
+              <tr v-if="localFiles.length === 0">
+                <td colspan="3" class="text-center text-[var(--text-secondary)] p-4">Empty directory</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         <!-- Download status bar -->
         <div v-if="hasActiveDownloads" class="status-bar">
           <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(downloadTransfers).percent + '%' }"></div></div>
@@ -519,16 +784,14 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
   100% { transform: translateX(100%); }
 }
 
-.sftp-row { cursor: default; }
-.sftp-row:nth-child(even) { background: var(--hover-overlay-strong); }
-.sftp-row.sftp-dir .dir-name { cursor: default; }
-.sftp-row:hover { background: var(--hover-overlay); }
-.sftp-row.selected { background: var(--action-hover-bg); }
+.file-row { cursor: default; }
+.file-row:nth-child(even) { background: var(--hover-overlay-strong); }
+.file-row.dir-row .dir-name { cursor: default; }
+.file-row:hover { background: var(--hover-overlay); }
+.file-row.selected { background: var(--action-hover-bg); }
 
-.download-btn { color: var(--text-secondary); }
-.download-btn.active { color: var(--color-primary); }
-.delete-btn { color: var(--text-secondary); }
-.delete-btn.active { color: var(--delete-hover-color); }
+.action-btn { color: var(--text-secondary); }
+.action-btn.active { color: var(--color-primary); }
 
 .drag-over, :global(.file-drop-target-active) {
   outline: 2px dashed rgba(100, 108, 255, 0.5);

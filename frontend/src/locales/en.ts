@@ -148,6 +148,8 @@ export default {
     localPrefix: 'Local',
     fileNotEditable: 'This file type cannot be edited',
     fileTooLarge: '"{name}" is too large ({size} MB) to edit (max 5 MB)',
+    downloadFailed: 'Download failed: {error}',
+    uploadFailed: 'Upload failed: {error}',
     openFileFailed: 'Failed to open "{name}": {error}',
     openInFileManager: 'Open in File Manager',
   },

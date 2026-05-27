@@ -148,6 +148,8 @@ export default {
     localPrefix: '本地',
     fileNotEditable: '该文件类型不支持编辑',
     fileTooLarge: '"{name}" 文件过大（{size} MB），不支持编辑（最大 5 MB）',
+    downloadFailed: '下载失败: {error}',
+    uploadFailed: '上传失败: {error}',
     openFileFailed: '打开文件 "{name}" 失败: {error}',
     openInFileManager: '在文件管理器中打开',
   },

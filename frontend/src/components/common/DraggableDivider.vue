@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { onUnmounted } from 'vue'
+
 const props = withDefaults(defineProps<{
   modelValue: number
   min?: number
@@ -16,16 +18,42 @@ const emit = defineEmits<{ (e: 'update:modelValue', val: number): void }>()
 
 let startPos = 0
 let startSize = 0
+let active = false
+
+function onNextMouseDown() {
+  cleanup()
+}
+
+function cleanup() {
+  if (!active) return
+  active = false
+  document.removeEventListener('mousemove', onMouseMove)
+  document.removeEventListener('mouseup', onMouseUp)
+  window.removeEventListener('mouseup', onWindowMouseUp, true)
+  window.removeEventListener('blur', onWindowBlur)
+  window.removeEventListener('mousedown', onNextMouseDown, true)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
 
 function onMouseDown(e: MouseEvent) {
   e.preventDefault()
+  // Clean up stale listeners from a previous interrupted drag
+  cleanup()
+  active = true
   startPos = props.direction === 'horizontal' ? e.clientY : e.clientX
   startSize = props.modelValue
   document.addEventListener('mousemove', onMouseMove)
   document.addEventListener('mouseup', onMouseUp)
+  window.addEventListener('mouseup', onWindowMouseUp, true)
+  window.addEventListener('blur', onWindowBlur)
+  window.addEventListener('mousedown', onNextMouseDown, { once: true, capture: true })
+  document.body.style.cursor = props.direction === 'horizontal' ? 'ns-resize' : 'ew-resize'
+  document.body.style.userSelect = 'none'
 }
 
 function onMouseMove(e: MouseEvent) {
+  if (!active) return
   const current = props.direction === 'horizontal' ? e.clientY : e.clientX
   const delta = (current - startPos) * (props.invert ? -1 : 1)
   const s = Math.max(props.min, Math.min(props.max, startSize + delta))
@@ -33,9 +61,20 @@ function onMouseMove(e: MouseEvent) {
 }
 
 function onMouseUp() {
-  document.removeEventListener('mousemove', onMouseMove)
-  document.removeEventListener('mouseup', onMouseUp)
+  cleanup()
 }
+
+function onWindowMouseUp() {
+  cleanup()
+}
+
+function onWindowBlur() {
+  cleanup()
+}
+
+onUnmounted(() => {
+  cleanup()
+})
 </script>
 
 <template>

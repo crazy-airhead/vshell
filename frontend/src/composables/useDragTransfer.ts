@@ -38,6 +38,9 @@ const dropTargets = new Map<HTMLElement, DropConfig>()
 function createOverlay(): HTMLElement {
   const el = document.createElement('div')
   el.style.cssText = 'position:fixed;inset:0;z-index:99998;'
+  el.addEventListener('click', () => {
+    cleanupDrag()
+  })
   document.body.appendChild(el)
   return el
 }
@@ -102,7 +105,7 @@ function resetHighlights() {
   }
 }
 
-// --- Safety net: cleanup on blur / escape / next mousedown ---
+// --- Safety net: cleanup on blur / escape ---
 function onWindowBlur() {
   if (active) cleanupDrag()
 }
@@ -111,10 +114,6 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape' && active) {
     cleanupDrag()
   }
-}
-
-function onSafetyMouseDown() {
-  if (active) cleanupDrag()
 }
 
 // --- Global mouse handlers ---
@@ -199,12 +198,12 @@ function cleanupDrag() {
   window.removeEventListener('mouseup', onGlobalMouseUp, true)
   window.removeEventListener('blur', onWindowBlur)
   window.removeEventListener('keydown', onKeyDown, true)
-  window.removeEventListener('mousedown', onSafetyMouseDown, true)
   window.removeEventListener('click', suppressClick, true)
   active = false
   dragging = false
   payload = null
   sourceItem = null
+  sourceOptions = null
 }
 
 // --- Exported hooks ---
@@ -227,7 +226,6 @@ export function useDragSource(options: SourceOptions) {
     window.addEventListener('mouseup', onGlobalMouseUp, true)
     window.addEventListener('blur', onWindowBlur)
     window.addEventListener('keydown', onKeyDown, true)
-    window.addEventListener('mousedown', onSafetyMouseDown, true)
   }
 
   function cleanup() {
