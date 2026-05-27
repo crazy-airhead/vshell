@@ -329,12 +329,20 @@ onMounted(() => {
     }
     setTimeout(() => transferStore.clearDone(), 500)
   })
+  Events.On('sftp:download:error', (ev: any) => {
+    message.error(t('sftp.downloadFailed', { error: ev?.data || '' }))
+  })
+  Events.On('sftp:upload:error', (ev: any) => {
+    message.error(t('sftp.uploadFailed', { error: ev?.data || '' }))
+  })
   Events.On('native:file-drop', handleNativeFileDrop)
 })
 
 onUnmounted(() => {
   Events.Off('sftp:progress')
   Events.Off('sftp:transfer-done')
+  Events.Off('sftp:download:error')
+  Events.Off('sftp:upload:error')
   Events.Off('native:file-drop')
   cleanupRemoteDrag()
   unregisterRemoteDrop()
@@ -361,6 +369,8 @@ function formatSpeed(kbps: number): string {
 
 const downloadTransfers = computed(() => transferStore.transfers.filter(t => t.direction === 'download'))
 const uploadTransfers = computed(() => transferStore.transfers.filter(t => t.direction === 'upload'))
+const hasActiveUploads = computed(() => uploadTransfers.value.some(t => !t.done))
+const hasActiveDownloads = computed(() => downloadTransfers.value.some(t => !t.done))
 
 function transferSummary(transfers: TransferProgress[]) {
   if (transfers.length === 0) return { path: '', percent: 0, speed: 0 }
@@ -453,7 +463,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
           </div>
         </div>
         <!-- Upload status bar -->
-        <div class="status-bar">
+        <div v-if="hasActiveUploads" class="status-bar">
           <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(uploadTransfers).percent + '%' }"></div></div>
           <span class="status-path">{{ transferSummary(uploadTransfers).path }}</span>
           <span class="status-speed">{{ transferSummary(uploadTransfers).speed > 0 ? formatSpeed(transferSummary(uploadTransfers).speed) : '' }}</span>
@@ -466,7 +476,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
           <LocalFileTree ref="localTreeRef" @upload="handleUpload" @path-change="handleLocalPathChange" />
         </div>
         <!-- Download status bar -->
-        <div class="status-bar">
+        <div v-if="hasActiveDownloads" class="status-bar">
           <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(downloadTransfers).percent + '%' }"></div></div>
           <span class="status-path">{{ transferSummary(downloadTransfers).path }}</span>
           <span class="status-speed">{{ transferSummary(downloadTransfers).speed > 0 ? formatSpeed(transferSummary(downloadTransfers).speed) : '' }}</span>
