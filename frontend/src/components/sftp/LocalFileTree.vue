@@ -120,20 +120,18 @@ function checkLocalDblClick(entry: LocalEntry): boolean {
 }
 
 function handleNameClick(entry: LocalEntry, e: MouseEvent) {
-  if (entry.is_dir && !e.ctrlKey && !e.metaKey) {
-    navigateTo(entry.path)
-    return
-  }
-  if (!entry.is_dir && checkLocalDblClick(entry)) {
-    handleRowDblClick(entry)
+  if (checkLocalDblClick(entry)) {
+    if (entry.is_dir) navigateTo(entry.path)
+    else handleRowDblClick(entry)
     return
   }
   toggleSelect(entry, e)
 }
 
 function handleRowClick(entry: LocalEntry, e: MouseEvent) {
-  if (!entry.is_dir && checkLocalDblClick(entry)) {
-    handleRowDblClick(entry)
+  if (checkLocalDblClick(entry)) {
+    if (entry.is_dir) navigateTo(entry.path)
+    else handleRowDblClick(entry)
     return
   }
   toggleSelect(entry, e)
@@ -351,9 +349,8 @@ onUnmounted(() => {
 
 .local-row { cursor: default; }
 .local-row:nth-child(even) { background: var(--hover-overlay-strong); }
-.local-row.dir-row .dir-name { cursor: pointer; }
+.local-row.dir-row .dir-name { cursor: default; }
 .local-row:hover { background: var(--hover-overlay); }
-.dir-row:hover .dir-name:hover { color: var(--color-info); }
 .local-row.selected { background: var(--action-hover-bg); }
 
 .upload-btn { color: var(--text-secondary); }

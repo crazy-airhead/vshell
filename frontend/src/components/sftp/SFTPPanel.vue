@@ -163,16 +163,16 @@ function remoteFilePath(name: string): string {
 }
 
 function handleRemoteNameClick(file: SFTPFile, e: MouseEvent) {
-  if (file.is_dir && !e.ctrlKey && !e.metaKey) {
-    const newPath = remoteFilePath(file.name)
-    if (!expandedKeys.value.includes(sftpStore.getPanel(props.connectionID).currentPath)) {
-      expandedKeys.value = [...expandedKeys.value, sftpStore.getPanel(props.connectionID).currentPath]
+  if (checkRemoteDblClick(file)) {
+    if (file.is_dir) {
+      const newPath = remoteFilePath(file.name)
+      if (!expandedKeys.value.includes(sftpStore.getPanel(props.connectionID).currentPath)) {
+        expandedKeys.value = [...expandedKeys.value, sftpStore.getPanel(props.connectionID).currentPath]
+      }
+      sftpStore.navigateToDir(props.connectionID, newPath)
+    } else {
+      handleRemoteRowDblClick(file)
     }
-    sftpStore.navigateToDir(props.connectionID, newPath)
-    return
-  }
-  if (!file.is_dir && checkRemoteDblClick(file)) {
-    handleRemoteRowDblClick(file)
     return
   }
   toggleRemoteSelect(file, e)
@@ -205,8 +205,16 @@ function checkRemoteDblClick(file: SFTPFile): boolean {
 }
 
 function handleRemoteRowClick(file: SFTPFile, e: MouseEvent) {
-  if (!file.is_dir && checkRemoteDblClick(file)) {
-    handleRemoteRowDblClick(file)
+  if (checkRemoteDblClick(file)) {
+    if (file.is_dir) {
+      const newPath = remoteFilePath(file.name)
+      if (!expandedKeys.value.includes(sftpStore.getPanel(props.connectionID).currentPath)) {
+        expandedKeys.value = [...expandedKeys.value, sftpStore.getPanel(props.connectionID).currentPath]
+      }
+      sftpStore.navigateToDir(props.connectionID, newPath)
+    } else {
+      handleRemoteRowDblClick(file)
+    }
     return
   }
   toggleRemoteSelect(file, e)
@@ -503,9 +511,8 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 
 .sftp-row { cursor: default; }
 .sftp-row:nth-child(even) { background: var(--hover-overlay-strong); }
-.sftp-row.sftp-dir .dir-name { cursor: pointer; }
+.sftp-row.sftp-dir .dir-name { cursor: default; }
 .sftp-row:hover { background: var(--hover-overlay); }
-.sftp-dir:hover .dir-name:hover { color: var(--color-info); }
 .sftp-row.selected { background: var(--action-hover-bg); }
 
 .download-btn { color: var(--text-secondary); }
