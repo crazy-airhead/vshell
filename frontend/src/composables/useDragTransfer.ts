@@ -36,6 +36,11 @@ const dropTargets = new Map<HTMLElement, DropConfig>()
 
 // --- Overlay (blocks all interaction from mousedown) ---
 function createOverlay(): HTMLElement {
+  // Remove any stale overlay from a previous stuck drag
+  if (overlayEl) {
+    overlayEl.remove()
+    overlayEl = null
+  }
   const el = document.createElement('div')
   el.style.cssText = 'position:fixed;inset:0;z-index:99998;'
   el.addEventListener('click', () => {
@@ -189,6 +194,8 @@ function suppressClick(e: MouseEvent) {
 }
 
 function cleanupDrag() {
+  if (!active) return
+  active = false
   removeGhost()
   removeOverlay()
   resetHighlights()
@@ -199,7 +206,6 @@ function cleanupDrag() {
   window.removeEventListener('blur', onWindowBlur)
   window.removeEventListener('keydown', onKeyDown, true)
   window.removeEventListener('click', suppressClick, true)
-  active = false
   dragging = false
   payload = null
   sourceItem = null

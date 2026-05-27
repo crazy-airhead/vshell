@@ -705,8 +705,9 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
           <div v-if="localLoading || localLoadingDir || localLoadingFile" class="loading-bar"></div>
         </div>
 
-        <div class="flex-1 overflow-y-auto min-h-0" ref="localDropRef" :class="{ 'drag-over': localIsDragOver }">
-          <table v-if="!localLoading && !localLoadingDir" class="w-full border-collapse file-table">
+        <div class="flex-1 flex overflow-hidden min-h-0">
+          <div class="flex-1 overflow-y-auto" ref="localDropRef" :class="{ 'drag-over': localIsDragOver }">
+            <table class="w-full border-collapse file-table">
             <thead>
               <tr>
                 <th class="text-left py-1 px-2 text-[var(--text-secondary)] font-medium text-[var(--font-size-sm)] select-none cursor-pointer hover:text-[var(--text-primary)] max-w-[160px]" @click="toggleLocalSort('name')">Name <span class="ml-[2px] text-[10px]" v-if="localSortKey === 'name'">{{ localSortAsc ? '↑' : '↓' }}</span></th>
@@ -735,6 +736,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
               </tr>
             </tbody>
           </table>
+        </div>
         </div>
 
         <!-- Download status bar -->
