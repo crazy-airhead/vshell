@@ -614,10 +614,10 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
           <input v-else v-model="editRemotePath" class="flex-1 bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
             @keyup.enter="commitRemoteEdit" @keyup.escape="editingRemotePath = false" @blur="commitRemoteEdit" />
           <NButton size="tiny" quaternary @click="refreshRemote" title="Refresh"><IconRefreshCw :width="14" :height="14" /></NButton>
-          <NButton size="tiny" quaternary class="action-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDownload" title="Download selected">
+          <NButton size="tiny" quaternary :type="selectedRemote.size > 0 ? 'primary' : 'default'" @click="handleDownload" title="Download selected">
             <IconDownload :width="14" :height="14" />
           </NButton>
-          <NButton size="tiny" quaternary class="action-btn" :class="{ active: selectedRemote.size > 0 }" @click="handleDeleteRemote" title="Delete selected">
+          <NButton size="tiny" quaternary :type="selectedRemote.size > 0 ? 'primary' : 'default'" @click="handleDeleteRemote" title="Delete selected">
             <IconTrash2 :width="14" :height="14" />
           </NButton>
           <div v-if="sftpStore.getPanel(props.connectionID).loading || loadingRemoteFile" class="loading-bar"></div>
@@ -689,10 +689,10 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
           <NButton size="tiny" quaternary @click="refreshLocal" title="Refresh"><IconRefreshCw :width="14" :height="14" /></NButton>
           <NButton size="tiny" quaternary @click="handleOpenInFileManager" :title="t('sftp.openInFileManager')"><IconFolderOpen :width="14" :height="14" /></NButton>
           <NButton size="tiny" quaternary :type="showHidden ? 'primary' : 'default'" @click="showHidden = !showHidden">.*</NButton>
-          <NButton size="tiny" quaternary class="action-btn" :class="{ active: localSelected.size > 0 }" @click="handleLocalUploadClick" title="Upload selected">
+          <NButton size="tiny" quaternary :type="localSelected.size > 0 ? 'primary' : 'default'" @click="handleLocalUploadClick" title="Upload selected">
             <IconUpload :width="14" :height="14" />
           </NButton>
-          <NButton size="tiny" quaternary class="action-btn" :class="{ active: localSelected.size > 0 }" @click="handleDeleteLocal" title="Delete selected">
+          <NButton size="tiny" quaternary :type="localSelected.size > 0 ? 'primary' : 'default'" @click="handleDeleteLocal" title="Delete selected">
             <IconTrash2 :width="14" :height="14" />
           </NButton>
           <div v-if="localLoading || localLoadingDir || localLoadingFile" class="loading-bar"></div>
@@ -781,9 +781,6 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 .file-row.dir-row .dir-name { cursor: default; }
 .file-row:hover { background: var(--hover-overlay); }
 .file-row.selected { background: var(--action-hover-bg); }
-
-.action-btn { color: var(--text-secondary); }
-.action-btn.active { color: var(--color-primary); }
 
 .drag-over, :global(.file-drop-target-active) {
   outline: 2px dashed rgba(100, 108, 255, 0.5);
