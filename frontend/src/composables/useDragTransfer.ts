@@ -43,7 +43,13 @@ function createOverlay(): HTMLElement {
   }
   const el = document.createElement('div')
   el.style.cssText = 'position:fixed;inset:0;z-index:99998;'
-  el.addEventListener('click', () => {
+  el.addEventListener('click', (e: MouseEvent) => {
+    if (dragging && payload) {
+      const hit = hitTest(e.clientX, e.clientY)
+      if (hit && hit.acceptedSource === payload.source) {
+        hit.onDrop(payload.paths)
+      }
+    }
     cleanupDrag()
   })
   document.body.appendChild(el)
