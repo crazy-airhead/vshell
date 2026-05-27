@@ -102,6 +102,21 @@ function resetHighlights() {
   }
 }
 
+// --- Safety net: cleanup on blur / escape / next mousedown ---
+function onWindowBlur() {
+  if (active) cleanupDrag()
+}
+
+function onKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && active) {
+    cleanupDrag()
+  }
+}
+
+function onSafetyMouseDown() {
+  if (active) cleanupDrag()
+}
+
 // --- Global mouse handlers ---
 function onGlobalMouseMove(e: MouseEvent) {
   if (!active) return
@@ -141,25 +156,30 @@ function onGlobalMouseMove(e: MouseEvent) {
 }
 
 function onGlobalMouseUp(e: MouseEvent) {
-  if (dragging && payload) {
-    const hit = hitTest(e.clientX, e.clientY)
-    if (hit && hit.acceptedSource === payload.source) {
-      hit.onDrop(payload.paths)
+  try {
+    if (dragging && payload) {
+      const hit = hitTest(e.clientX, e.clientY)
+      if (hit && hit.acceptedSource === payload.source) {
+        hit.onDrop(payload.paths)
+      }
+      window.addEventListener('click', suppressClick, true)
     }
-    window.addEventListener('click', suppressClick, true)
-  }
 
-  const wasDrag = dragging
+    const wasDrag = dragging
 
-  cleanupDrag()
+    cleanupDrag()
 
-  // If was a plain click (no drag), re-dispatch click on whatever element
-  // was under the cursor at mousedown (overlay blocked original click)
-  if (!wasDrag) {
-    const el = document.elementFromPoint(startX, startY)
-    if (el) {
-      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    // If was a plain click (no drag), re-dispatch click on whatever element
+    // was under the cursor at mousedown (overlay blocked original click)
+    if (!wasDrag) {
+      const el = document.elementFromPoint(startX, startY)
+      if (el) {
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      }
     }
+  } catch (err) {
+    console.error('[useDragTransfer] onGlobalMouseUp error:', err)
+    cleanupDrag()
   }
 }
 
@@ -177,6 +197,10 @@ function cleanupDrag() {
   document.body.style.userSelect = ''
   window.removeEventListener('mousemove', onGlobalMouseMove, true)
   window.removeEventListener('mouseup', onGlobalMouseUp, true)
+  window.removeEventListener('blur', onWindowBlur)
+  window.removeEventListener('keydown', onKeyDown, true)
+  window.removeEventListener('mousedown', onSafetyMouseDown, true)
+  window.removeEventListener('click', suppressClick, true)
   active = false
   dragging = false
   payload = null
@@ -201,6 +225,9 @@ export function useDragSource(options: SourceOptions) {
     // Use window capture phase for reliable event delivery in WKWebView
     window.addEventListener('mousemove', onGlobalMouseMove, true)
     window.addEventListener('mouseup', onGlobalMouseUp, true)
+    window.addEventListener('blur', onWindowBlur)
+    window.addEventListener('keydown', onKeyDown, true)
+    window.addEventListener('mousedown', onSafetyMouseDown, true)
   }
 
   function cleanup() {
