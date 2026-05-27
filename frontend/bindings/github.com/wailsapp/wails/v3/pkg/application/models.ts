@@ -7,6 +7,9 @@ import { Create as $Create } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as updater$0 from "../updater/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as slog$0 from "../../../../../../log/slog/models.js";
 
 export class App {
@@ -25,6 +28,7 @@ export class App {
     "Clipboard": ClipboardManager | null;
     "SystemTray": SystemTrayManager | null;
     "Autostart": AutostartManager | null;
+    "Updater": updater$0.Updater | null;
     "Logger": slog$0.Logger | null;
 
     /** Creates a new App instance. */
@@ -65,6 +69,9 @@ export class App {
         if (!("Autostart" in $$source)) {
             this["Autostart"] = null;
         }
+        if (!("Updater" in $$source)) {
+            this["Updater"] = null;
+        }
         if (!("Logger" in $$source)) {
             this["Logger"] = null;
         }
@@ -89,6 +96,7 @@ export class App {
         const $$createField10_0 = $$createType21;
         const $$createField11_0 = $$createType23;
         const $$createField12_0 = $$createType25;
+        const $$createField13_0 = $$createType27;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("Window" in $$parsedSource) {
             $$parsedSource["Window"] = $$createField0_0($$parsedSource["Window"]);
@@ -126,8 +134,11 @@ export class App {
         if ("Autostart" in $$parsedSource) {
             $$parsedSource["Autostart"] = $$createField11_0($$parsedSource["Autostart"]);
         }
+        if ("Updater" in $$parsedSource) {
+            $$parsedSource["Updater"] = $$createField12_0($$parsedSource["Updater"]);
+        }
         if ("Logger" in $$parsedSource) {
-            $$parsedSource["Logger"] = $$createField12_0($$parsedSource["Logger"]);
+            $$parsedSource["Logger"] = $$createField13_0($$parsedSource["Logger"]);
         }
         return new App($$parsedSource as Partial<App>);
     }
@@ -410,5 +421,7 @@ const $$createType20 = SystemTrayManager.createFrom;
 const $$createType21 = $Create.Nullable($$createType20);
 const $$createType22 = AutostartManager.createFrom;
 const $$createType23 = $Create.Nullable($$createType22);
-const $$createType24 = slog$0.Logger.createFrom;
+const $$createType24 = updater$0.Updater.createFrom;
 const $$createType25 = $Create.Nullable($$createType24);
+const $$createType26 = slog$0.Logger.createFrom;
+const $$createType27 = $Create.Nullable($$createType26);

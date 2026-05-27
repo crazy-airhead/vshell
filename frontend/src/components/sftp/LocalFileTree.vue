@@ -7,15 +7,15 @@ import IconUpload from '~icons/lucide/upload'
 import IconTrash2 from '~icons/lucide/trash-2'
 import IconFolder from '~icons/lucide/folder'
 import IconFile from '~icons/lucide/file'
-import { GetHomeDir, ListLocalDir, DeleteLocalFile, ReadLocalFileContent } from '../../../bindings/vshell/internal/app/appservice'
-import { useDragSource, useDropTarget } from '../../composables/useDragTransfer'
+import IconFolderOpen from '~icons/lucide/folder-open'
+import { GetHomeDir, ListLocalDir, DeleteLocalFile, ReadLocalFileContent, OpenInFileManager } from '../../../bindings/vshell/internal/app/appservice'
+import { useDragSource } from '../../composables/useDragTransfer'
 import { isEditableFile } from '../../utils/fileType'
 import { useTerminalStore } from '../../stores/terminal'
 
 const emit = defineEmits<{
   (e: 'upload', paths: string[], targetDir: string): void
   (e: 'pathChange', path: string): void
-  (e: 'drop-files', paths: string[]): void
 }>()
 
 interface LocalEntry {
@@ -68,12 +68,6 @@ const { onRowMouseDown: onLocalRowMouseDown, cleanup: cleanupLocalDrag } = useDr
   getSelectedPaths: () => selected.value,
   getFilePath: (entry: LocalEntry) => entry.path,
   getFileLabel: (entry: LocalEntry) => entry.name,
-})
-
-// --- Drop target ---
-const { targetRef: localBodyRef, isDragOver: localIsDragOver, register: registerLocalDrop, unregister: unregisterLocalDrop } = useDropTarget({
-  acceptedSource: 'remote',
-  onDrop: (paths: string[]) => emit('drop-files', paths),
 })
 
 const dirCache = ref<Record<string, LocalEntry[]>>({})
@@ -211,6 +205,11 @@ function handleUpload() {
   emit('upload', Array.from(selected.value), currentPath.value)
 }
 
+function handleOpenInFileManager() {
+  if (!currentPath.value) return
+  OpenInFileManager(currentPath.value).catch(() => {})
+}
+
 const pathParts = computed(() => {
   const parts = currentPath.value.split('/').filter(Boolean)
   return parts.map((name, i) => ({
@@ -251,12 +250,10 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-  registerLocalDrop()
 })
 
 onUnmounted(() => {
   cleanupLocalDrag()
-  unregisterLocalDrop()
 })
 </script>
 
@@ -275,6 +272,7 @@ onUnmounted(() => {
       <input v-else v-model="editPath" class="flex-1 bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
         @keyup.enter="commitEdit" @keyup.escape="editing = false" @blur="commitEdit" />
       <NButton size="tiny" quaternary @click="handleRefresh" title="Refresh"><IconRefreshCw :width="14" :height="14" /></NButton>
+      <NButton size="tiny" quaternary @click="handleOpenInFileManager" :title="t('sftp.openInFileManager')"><IconFolderOpen :width="14" :height="14" /></NButton>
       <NButton size="tiny" quaternary :type="showHidden ? 'primary' : 'default'" @click="showHidden = !showHidden">.*</NButton>
       <NButton size="tiny" quaternary class="upload-btn" :class="{ active: selected.size > 0 }" @click="handleUpload" title="Upload selected">
         <IconUpload :width="14" :height="14" />
@@ -285,7 +283,7 @@ onUnmounted(() => {
       <div v-if="loading || loadingDir || loadingFile" class="loading-bar"></div>
     </div>
 
-    <div class="flex-1 overflow-y-auto min-h-0" ref="localBodyRef" :class="{ 'drag-over': localIsDragOver }">
+    <div class="flex-1 overflow-y-auto min-h-0">
       <table v-if="!loading && !loadingDir" class="w-full border-collapse local-table">
         <thead>
           <tr>
@@ -362,11 +360,4 @@ onUnmounted(() => {
 .upload-btn.active { color: var(--color-primary); }
 .delete-btn { color: var(--text-secondary); }
 .delete-btn.active { color: var(--delete-hover-color); }
-
-.drag-over {
-  outline: 2px dashed rgba(100, 108, 255, 0.5);
-  outline-offset: -2px;
-  background: rgba(100, 108, 255, 0.06) !important;
-  transition: outline 0.15s, background 0.15s;
-}
 </style>

@@ -53,6 +53,7 @@ function removeOverlay() {
 function createGhost(label: string, count: number): HTMLElement {
   const el = document.createElement('div')
   el.className = 'drag-ghost'
+  el.style.pointerEvents = 'none'
   const icon = document.createElement('span')
   icon.className = 'drag-ghost-icon'
   icon.textContent = '\u{1F4C4}'
@@ -145,7 +146,7 @@ function onGlobalMouseUp(e: MouseEvent) {
     if (hit && hit.acceptedSource === payload.source) {
       hit.onDrop(payload.paths)
     }
-    document.addEventListener('click', suppressClick, true)
+    window.addEventListener('click', suppressClick, true)
   }
 
   const wasDrag = dragging
@@ -165,7 +166,7 @@ function onGlobalMouseUp(e: MouseEvent) {
 function suppressClick(e: MouseEvent) {
   e.stopPropagation()
   e.preventDefault()
-  document.removeEventListener('click', suppressClick, true)
+  window.removeEventListener('click', suppressClick, true)
 }
 
 function cleanupDrag() {
@@ -174,8 +175,8 @@ function cleanupDrag() {
   resetHighlights()
   document.body.style.cursor = ''
   document.body.style.userSelect = ''
-  document.removeEventListener('mousemove', onGlobalMouseMove)
-  document.removeEventListener('mouseup', onGlobalMouseUp)
+  window.removeEventListener('mousemove', onGlobalMouseMove, true)
+  window.removeEventListener('mouseup', onGlobalMouseUp, true)
   active = false
   dragging = false
   payload = null
@@ -187,7 +188,6 @@ function cleanupDrag() {
 export function useDragSource(options: SourceOptions) {
   function onRowMouseDown(e: MouseEvent, item: any) {
     if (e.button !== 0) return
-    e.preventDefault()
     startX = e.clientX
     startY = e.clientY
     active = true
@@ -198,8 +198,9 @@ export function useDragSource(options: SourceOptions) {
     // Overlay immediately to block ALL interaction during potential drag
     overlayEl = createOverlay()
 
-    document.addEventListener('mousemove', onGlobalMouseMove)
-    document.addEventListener('mouseup', onGlobalMouseUp)
+    // Use window capture phase for reliable event delivery in WKWebView
+    window.addEventListener('mousemove', onGlobalMouseMove, true)
+    window.addEventListener('mouseup', onGlobalMouseUp, true)
   }
 
   function cleanup() {

@@ -76,6 +76,20 @@ const { targetRef: remoteDropRef, isDragOver: remoteIsDragOver, register: regist
   onDrop: (paths: string[]) => handleUpload(paths),
 })
 
+const { targetRef: localDropRef, isDragOver: localIsDragOver, register: registerLocalDrop, unregister: unregisterLocalDrop } = useDropTarget({
+  acceptedSource: 'remote',
+  onDrop: (paths: string[]) => handleLocalDrop(paths),
+})
+
+// Wails native file drop from OS file browser
+function handleNativeFileDrop(ev: any) {
+  const data = ev?.data
+  if (!data?.files || !data?.targetId) return
+  if (data.targetId !== 'remote-drop-zone-' + props.connectionID) return
+  const paths: string[] = data.files as string[]
+  if (paths.length > 0) handleUpload(paths)
+}
+
 function handleLocalDrop(paths: string[]) {
   for (const remotePath of paths) {
     const fileName = remotePath.split('/').pop() || remotePath
@@ -293,6 +307,7 @@ function refreshLocal() {
 
 onMounted(() => {
   registerRemoteDrop()
+  registerLocalDrop()
   Events.On('sftp:progress', (ev: any) => {
     const d = ev?.data
     if (d) transferStore.addOrUpdateTransfer(d as TransferProgress)
@@ -306,13 +321,16 @@ onMounted(() => {
     }
     setTimeout(() => transferStore.clearDone(), 2000)
   })
+  Events.On('native:file-drop', handleNativeFileDrop)
 })
 
 onUnmounted(() => {
   Events.Off('sftp:progress')
   Events.Off('sftp:transfer-done')
+  Events.Off('native:file-drop')
   cleanupRemoteDrag()
   unregisterRemoteDrop()
+  unregisterLocalDrop()
 })
 
 function formatSize(bytes: number): string {
@@ -394,7 +412,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
             <div v-else-if="!sftpStore.getPanel(props.connectionID).loading" class="h-full flex-center text-[var(--text-secondary)] text-[var(--font-size-sm)] px-2 text-center">{{ t('sftp.treeEmpty') }}</div>
           </div>
 
-          <div class="flex-1 overflow-y-auto" ref="remoteDropRef" :class="{ 'drag-over': remoteIsDragOver }">
+          <div class="flex-1 overflow-y-auto" ref="remoteDropRef" :id="'remote-drop-zone-' + props.connectionID" data-file-drop-target :class="{ 'drag-over': remoteIsDragOver }">
             <div v-if="sftpStore.getPanel(props.connectionID).error" class="h-full flex-center text-[var(--color-error)] px-4">{{ sftpStore.getPanel(props.connectionID).error }}</div>
             <table v-else-if="!sftpStore.getPanel(props.connectionID).loading" class="w-full border-collapse sftp-table">
               <thead>
@@ -426,22 +444,24 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
             </table>
           </div>
         </div>
-        <!-- Download status bar -->
-        <div class="status-bar">
-          <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(downloadTransfers).percent + '%' }"></div></div>
-          <span class="status-path">{{ transferSummary(downloadTransfers).path }}</span>
-          <span class="status-speed">{{ transferSummary(downloadTransfers).speed > 0 ? formatSpeed(transferSummary(downloadTransfers).speed) : '' }}</span>
-        </div>
-      </div>
-
-      <!-- Local side -->
-      <div class="min-w-0 flex flex-col" :style="{ flex: 4 }">
-        <LocalFileTree ref="localTreeRef" @upload="handleUpload" @path-change="handleLocalPathChange" @drop-files="handleLocalDrop" />
         <!-- Upload status bar -->
         <div class="status-bar">
           <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(uploadTransfers).percent + '%' }"></div></div>
           <span class="status-path">{{ transferSummary(uploadTransfers).path }}</span>
           <span class="status-speed">{{ transferSummary(uploadTransfers).speed > 0 ? formatSpeed(transferSummary(uploadTransfers).speed) : '' }}</span>
+        </div>
+      </div>
+
+      <!-- Local side -->
+      <div class="min-w-0 flex flex-col" :style="{ flex: 4 }">
+        <div class="flex-1 min-h-0" ref="localDropRef" :class="{ 'drag-over': localIsDragOver }">
+          <LocalFileTree ref="localTreeRef" @upload="handleUpload" @path-change="handleLocalPathChange" />
+        </div>
+        <!-- Download status bar -->
+        <div class="status-bar">
+          <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(downloadTransfers).percent + '%' }"></div></div>
+          <span class="status-path">{{ transferSummary(downloadTransfers).path }}</span>
+          <span class="status-speed">{{ transferSummary(downloadTransfers).speed > 0 ? formatSpeed(transferSummary(downloadTransfers).speed) : '' }}</span>
         </div>
       </div>
     </div>
@@ -493,7 +513,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 .delete-btn { color: var(--text-secondary); }
 .delete-btn.active { color: var(--delete-hover-color); }
 
-.drag-over {
+.drag-over, :global(.file-drop-target-active) {
   outline: 2px dashed rgba(100, 108, 255, 0.5);
   outline-offset: -2px;
   background: rgba(100, 108, 255, 0.06) !important;

@@ -11,7 +11,9 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/google/uuid"
@@ -663,6 +665,19 @@ type LocalFileInfo struct {
 
 func (a *AppService) GetHomeDir() (string, error) {
 	return os.UserHomeDir()
+}
+
+func (a *AppService) OpenInFileManager(path string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", path)
+	case "windows":
+		cmd = exec.Command("explorer", path)
+	default: // linux
+		cmd = exec.Command("xdg-open", path)
+	}
+	return cmd.Start()
 }
 
 func (a *AppService) ListLocalDir(dirPath string) ([]LocalFileInfo, error) {

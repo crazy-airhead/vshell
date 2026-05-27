@@ -169,6 +169,10 @@ export function MoveConnection(connectionID: string, groupID: string | null): $C
     return $Call.ByID(2001249400, connectionID, groupID);
 }
 
+export function OpenInFileManager(path: string): $CancellablePromise<void> {
+    return $Call.ByID(1212571871, path);
+}
+
 export function ReadLocalFileContent(localPath: string): $CancellablePromise<string> {
     return $Call.ByID(183856699, localPath);
 }

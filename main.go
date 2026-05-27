@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"vshell/internal/app"
 )
@@ -84,8 +85,9 @@ func main() {
 	menu.AddRole(application.WindowMenu)
 	wailsApp.Menu.Set(menu)
 
-	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "vShell",
+	win := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:          "vShell",
+		EnableFileDrop: true,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 30,
 			TitleBar:                application.MacTitleBarHidden,
@@ -96,6 +98,18 @@ func main() {
 		MinWidth:         960,
 		MinHeight:        600,
 		URL:              "/",
+	})
+
+	win.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
+		files := event.Context().DroppedFiles()
+		details := event.Context().DropTargetDetails()
+		if len(files) == 0 || details == nil {
+			return
+		}
+		wailsApp.Event.Emit("native:file-drop", map[string]any{
+			"files":    files,
+			"targetId": details.ElementID,
+		})
 	})
 
 	if err := wailsApp.Run(); err != nil {
