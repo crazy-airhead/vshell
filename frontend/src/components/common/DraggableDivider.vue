@@ -79,8 +79,27 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="shrink-0 bg-transparent transition-colors duration-150 hover:bg-[var(--color-primary)]"
-    :class="direction === 'horizontal' ? 'h-[3px] w-full cursor-ns-resize rounded-[1.5px]' : 'w-[3px] h-full cursor-ew-resize rounded-[1.5px]'"
+    class="shrink-0 relative bg-transparent transition-colors duration-150 hover:bg-[var(--color-primary)] resize-handle"
+    :class="direction === 'horizontal' ? 'h-[3px] w-full cursor-ns-resize rounded-[1.5px] resize-handle-h' : 'w-[3px] h-full cursor-ew-resize rounded-[1.5px] resize-handle-v'"
     @mousedown="onMouseDown"
   ></div>
 </template>
+
+<style scoped>
+.resize-handle::before {
+  content: '';
+  position: absolute;
+}
+.resize-handle-h::before {
+  left: 0;
+  right: 0;
+  top: -3px;
+  bottom: -3px;
+}
+.resize-handle-v::before {
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  right: -3px;
+}
+</style>

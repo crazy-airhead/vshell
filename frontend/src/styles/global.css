@@ -136,7 +136,7 @@ html, body {
 .drag-ghost {
   position: fixed;
   pointer-events: none;
-  z-index: 99999;
+  z-index: 99997;
   display: flex;
   align-items: center;
   gap: 6px;

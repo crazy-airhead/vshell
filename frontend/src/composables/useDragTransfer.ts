@@ -31,18 +31,26 @@ let startX = 0
 let startY = 0
 let sourceItem: any = null
 let sourceOptions: SourceOptions | null = null
+let capturedPointerId: number | null = null
 
 const dropTargets = new Map<HTMLElement, DropConfig>()
 
 // --- Overlay (blocks all interaction from mousedown) ---
 function createOverlay(): HTMLElement {
-  // Remove any stale overlay from a previous stuck drag
   if (overlayEl) {
     overlayEl.remove()
     overlayEl = null
   }
   const el = document.createElement('div')
-  el.style.cssText = 'position:fixed;inset:0;z-index:99998;'
+  el.style.cssText = 'position:fixed;inset:0;z-index:99998;touch-action:none;'
+
+  // Primary drop handler — pointerup fires reliably on the overlay
+  // because setPointerCapture redirects all pointer events to it
+  el.addEventListener('pointerup', onPointerUp)
+  el.addEventListener('pointermove', onPointerMove)
+
+  // Fallback: if pointer capture is lost without pointerup (rare WKWebView edge case),
+  // a subsequent click on the overlay still triggers the drop
   el.addEventListener('click', (e: MouseEvent) => {
     if (dragging && payload) {
       const hit = hitTest(e.clientX, e.clientY)
@@ -52,18 +60,26 @@ function createOverlay(): HTMLElement {
     }
     cleanupDrag()
   })
+
+  // Safety: cleanup if pointer capture is lost unexpectedly
+  el.addEventListener('lostpointercapture', () => {
+    if (active) cleanupDrag()
+  })
+
   document.body.appendChild(el)
   return el
 }
 
 function removeOverlay() {
   if (overlayEl) {
+    overlayEl.removeEventListener('pointerup', onPointerUp)
+    overlayEl.removeEventListener('pointermove', onPointerMove)
     overlayEl.remove()
     overlayEl = null
   }
 }
 
-// --- Ghost (created on drag threshold) ---
+// --- Ghost (created on drag threshold, placed BELOW overlay so it never blocks events) ---
 function createGhost(label: string, count: number): HTMLElement {
   const el = document.createElement('div')
   el.className = 'drag-ghost'
@@ -116,23 +132,8 @@ function resetHighlights() {
   }
 }
 
-// --- Safety net: cleanup on blur / escape / mouse leaving window ---
-function onWindowBlur() {
-  if (active) cleanupDrag()
-}
-
-function onKeyDown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && active) {
-    cleanupDrag()
-  }
-}
-
-function onDocumentLeave() {
-  if (active) cleanupDrag()
-}
-
-// --- Global mouse handlers ---
-function onGlobalMouseMove(e: MouseEvent) {
+// --- Pointer event handlers (on overlay, via pointer capture) ---
+function onPointerMove(e: PointerEvent) {
   if (!active) return
   const dx = e.clientX - startX
   const dy = e.clientY - startY
@@ -169,7 +170,7 @@ function onGlobalMouseMove(e: MouseEvent) {
   }
 }
 
-function onGlobalMouseUp(e: MouseEvent) {
+function onPointerUp(e: PointerEvent) {
   try {
     if (dragging && payload) {
       const hit = hitTest(e.clientX, e.clientY)
@@ -181,10 +182,12 @@ function onGlobalMouseUp(e: MouseEvent) {
 
     const wasDrag = dragging
 
+    if (overlayEl && capturedPointerId !== null) {
+      try { overlayEl.releasePointerCapture(capturedPointerId) } catch { /* ignore */ }
+    }
     cleanupDrag()
 
-    // If was a plain click (no drag), re-dispatch click on whatever element
-    // was under the cursor at mousedown (overlay blocked original click)
+    // Plain click re-dispatch (no drag happened)
     if (!wasDrag) {
       const el = document.elementFromPoint(startX, startY)
       if (el) {
@@ -192,31 +195,55 @@ function onGlobalMouseUp(e: MouseEvent) {
       }
     }
   } catch (err) {
-    console.error('[useDragTransfer] onGlobalMouseUp error:', err)
+    console.error('[useDragTransfer] onPointerUp error:', err)
     cleanupDrag()
   }
 }
 
 function suppressClick(e: MouseEvent) {
   e.stopPropagation()
-  e.preventDefault()
+  e.stopImmediatePropagation()
   window.removeEventListener('click', suppressClick, true)
+}
+
+// --- Safety: keyboard / blur cleanup ---
+function onWindowBlur() {
+  if (active) cleanupDrag()
+}
+
+function onKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && active) {
+    cleanupDrag()
+  }
+}
+
+// --- Fallback mouseup on window capture (safety net for WKWebView) ---
+function onWindowMouseUp(e: MouseEvent) {
+  if (!active) return
+  if (dragging && payload) {
+    const hit = hitTest(e.clientX, e.clientY)
+    if (hit && hit.acceptedSource === payload.source) {
+      hit.onDrop(payload.paths)
+    }
+  }
+  cleanupDrag()
 }
 
 function cleanupDrag() {
   if (!active) return
   active = false
+  capturedPointerId = null
   removeGhost()
   removeOverlay()
   resetHighlights()
   document.body.style.cursor = ''
   document.body.style.userSelect = ''
-  window.removeEventListener('mousemove', onGlobalMouseMove, true)
-  window.removeEventListener('mouseup', onGlobalMouseUp, true)
+  window.removeEventListener('mouseup', onWindowMouseUp, true)
   window.removeEventListener('blur', onWindowBlur)
   window.removeEventListener('keydown', onKeyDown, true)
   window.removeEventListener('click', suppressClick, true)
-  document.documentElement.removeEventListener('mouseleave', onDocumentLeave)
+  document.removeEventListener('pointermove', onDocumentPointerMove, true)
+  document.removeEventListener('pointerup', onDocumentPointerUp, true)
   dragging = false
   payload = null
   sourceItem = null
@@ -225,25 +252,48 @@ function cleanupDrag() {
 
 // --- Exported hooks ---
 
+function onDocumentPointerMove(e: PointerEvent) {
+  onPointerMove(e)
+}
+
+function onDocumentPointerUp(e: PointerEvent) {
+  onPointerUp(e)
+}
+
 export function useDragSource(options: SourceOptions) {
-  function onRowMouseDown(e: MouseEvent, item: any) {
+  function onRowPointerDown(e: PointerEvent, item: any) {
     if (e.button !== 0) return
+    if (e.pointerType !== 'mouse') return
+
+    // Prevent WKWebView from interpreting the drag as a native gesture
+    // (swipe, force-click, etc.) which would swallow subsequent events.
+    e.preventDefault()
+
     startX = e.clientX
     startY = e.clientY
     active = true
     dragging = false
     sourceItem = item
     sourceOptions = options
+    capturedPointerId = e.pointerId
 
-    // Overlay immediately to block ALL interaction during potential drag
     overlayEl = createOverlay()
+    overlayEl.setPointerCapture(e.pointerId)
 
-    // Use window capture phase for reliable event delivery in WKWebView
-    window.addEventListener('mousemove', onGlobalMouseMove, true)
-    window.addEventListener('mouseup', onGlobalMouseUp, true)
+    // Verify pointer capture was granted. In some WKWebView configurations
+    // (secondary displays, certain macOS versions), setPointerCapture may
+    // silently fail. Fall back to document-level pointer listeners.
+    const captureOk = overlayEl.hasPointerCapture(e.pointerId)
+    if (!captureOk) {
+      console.warn('[useDragTransfer] setPointerCapture failed — using document-level fallback')
+      document.addEventListener('pointermove', onDocumentPointerMove, true)
+      document.addEventListener('pointerup', onDocumentPointerUp, true)
+    }
+
+    // Safety nets for WKWebView edge cases
+    window.addEventListener('mouseup', onWindowMouseUp, true)
     window.addEventListener('blur', onWindowBlur)
     window.addEventListener('keydown', onKeyDown, true)
-    document.documentElement.addEventListener('mouseleave', onDocumentLeave)
   }
 
   function cleanup() {
@@ -252,7 +302,7 @@ export function useDragSource(options: SourceOptions) {
     }
   }
 
-  return { onRowMouseDown, cleanup }
+  return { onRowPointerDown, cleanup }
 }
 
 export function useDropTarget(options: {

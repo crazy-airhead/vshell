@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, onUpdated } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NTree, NButton, useDialog, useMessage } from 'naive-ui'
 import type { TreeOption } from 'naive-ui'
@@ -66,7 +66,7 @@ function toggleRemoteSort(key: 'name' | 'size' | 'time') {
 }
 
 // Remote drag source
-const { onRowMouseDown: onRemoteRowMouseDown, cleanup: cleanupRemoteDrag } = useDragSource({
+const { onRowPointerDown: onRemoteRowPointerDown, cleanup: cleanupRemoteDrag } = useDragSource({
   source: 'remote',
   getSelectedPaths: () => selectedRemote.value,
   getFilePath: (file: SFTPFile) => remoteFilePath(file.name),
@@ -297,7 +297,7 @@ function toggleLocalSort(key: 'name' | 'size' | 'time') {
 }
 
 // Local drag source
-const { onRowMouseDown: onLocalRowMouseDown, cleanup: cleanupLocalDrag } = useDragSource({
+const { onRowPointerDown: onLocalRowPointerDown, cleanup: cleanupLocalDrag } = useDragSource({
   source: 'local',
   getSelectedPaths: () => localSelected.value,
   getFilePath: (entry: LocalEntry) => entry.path,
@@ -581,13 +581,6 @@ onMounted(async () => {
   }
 })
 
-onUpdated(() => {
-  unregisterRemoteDrop()
-  registerRemoteDrop()
-  unregisterLocalDrop()
-  registerLocalDrop()
-})
-
 onUnmounted(() => {
   Events.Off('sftp:progress')
   Events.Off('sftp:transfer-done')
@@ -653,7 +646,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
                 <tr v-for="f in sortedRemoteFiles" :key="f.name"
                   class="file-row"
                   :class="{ 'dir-row': f.is_dir, selected: selectedRemote.has(remoteFilePath(f.name)) }"
-                  @mousedown="onRemoteRowMouseDown($event, f)"
+                  @pointerdown="onRemoteRowPointerDown($event, f)"
                   @click="handleRemoteRowClick(f, $event)"
                 >
                   <td class="py-[3px] px-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px]">
@@ -719,7 +712,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
               <tr v-for="f in localFiles" :key="f.name"
                 class="file-row"
                 :class="{ 'dir-row': f.is_dir, selected: localSelected.has(f.path) }"
-                @mousedown="onLocalRowMouseDown($event, f)"
+                @pointerdown="onLocalRowPointerDown($event, f)"
                 @click="handleLocalRowClick(f, $event)"
               >
                 <td class="py-[3px] px-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[160px]">
@@ -796,7 +789,6 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
   outline: 2px dashed rgba(100, 108, 255, 0.5);
   outline-offset: -2px;
   background: rgba(100, 108, 255, 0.06) !important;
-  transition: outline 0.15s, background 0.15s;
 }
 
 .status-bar {
