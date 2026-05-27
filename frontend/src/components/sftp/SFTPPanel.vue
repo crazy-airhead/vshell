@@ -327,7 +327,7 @@ onMounted(() => {
     } else {
       refreshLocal()
     }
-    setTimeout(() => transferStore.clearDone(), 2000)
+    setTimeout(() => transferStore.clearDone(), 500)
   })
   Events.On('native:file-drop', handleNativeFileDrop)
 })
