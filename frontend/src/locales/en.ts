@@ -75,6 +75,8 @@ export default {
   tab: {
     reconnect: 'Reconnect',
     disconnectedNotice: '--- Connection lost, press Enter to reconnect ---',
+    reconnectingNotice: '--- Reconnecting... ---',
+    reconnectFailedNotice: '--- Reconnect failed, press Enter to retry ---',
     disconnect: 'Disconnect',
     duplicate: 'Duplicate Session',
     close: 'Close',

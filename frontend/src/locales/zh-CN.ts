@@ -75,6 +75,8 @@ export default {
   tab: {
     reconnect: '重新连接',
     disconnectedNotice: '--- 连接已断开，按回车键重连 ---',
+    reconnectingNotice: '--- 正在重连... ---',
+    reconnectFailedNotice: '--- 重连失败，按回车键重试 ---',
     disconnect: '断开连接',
     duplicate: '复制会话',
     close: '关闭',

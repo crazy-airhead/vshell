@@ -8,6 +8,7 @@ import { useTerminalManager } from '../../composables/useTerminalManager'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
 import { useSettingsStore } from '../../stores/settings'
+import { useI18n } from 'vue-i18n'
 
 import '@xterm/xterm/css/xterm.css'
 
@@ -20,6 +21,7 @@ const { registerTerminal, unregisterTerminal, isDisconnected, clearDisconnected 
 const terminalStore = useTerminalStore()
 const connectionStore = useConnectionStore()
 const settings = useSettingsStore()
+const { t } = useI18n()
 
 let reconnecting = false
 
@@ -175,7 +177,7 @@ async function handleReconnect() {
     return
   }
 
-  term?.write('\r\n\x1b[33m--- 正在重连... ---\x1b[0m\r\n')
+  term?.write(`\r\n\x1b[33m${t('tab.reconnectingNotice')}\x1b[0m\r\n`)
 
   try {
     await connectionStore.disconnectSession(props.sessionID, tab.connectionID)
@@ -189,7 +191,7 @@ async function handleReconnect() {
       connected: true,
     })
   } catch {
-    term?.write('\x1b[31m--- 重连失败，按回车键重试 ---\x1b[0m\r\n')
+    term?.write(`\x1b[31m${t('tab.reconnectFailedNotice')}\x1b[0m\r\n`)
     reconnecting = false
   }
 }
