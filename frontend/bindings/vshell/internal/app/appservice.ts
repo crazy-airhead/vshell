@@ -208,6 +208,10 @@ export function RenameSSHKey(oldName: string, newName: string): $CancellableProm
     return $Call.ByID(867475454, oldName, newName);
 }
 
+export function SFTPCancelTransfers(): $CancellablePromise<void> {
+    return $Call.ByID(2767088298);
+}
+
 export function SFTPDelete(connectionID: string, remotePath: string): $CancellablePromise<void> {
     return $Call.ByID(1494492831, connectionID, remotePath);
 }

@@ -74,6 +74,7 @@ export default {
   },
   tab: {
     reconnect: '重新连接',
+    disconnectedNotice: '--- 连接已断开，按回车键重连 ---',
     disconnect: '断开连接',
     duplicate: '复制会话',
     close: '关闭',
@@ -152,6 +153,10 @@ export default {
     uploadFailed: '上传失败: {error}',
     openFileFailed: '打开文件 "{name}" 失败: {error}',
     openInFileManager: '在文件管理器中打开',
+    cancelAll: '取消所有传输',
+    transferDetails: '传输详情',
+    cancelled: '已取消',
+    noActiveTransfers: '无活动传输',
   },
   keys: {
     title: '密钥管理',

@@ -1,6 +1,7 @@
 package sftp
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -8,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 
@@ -59,15 +59,15 @@ func (c *Client) Close() error {
 	return c.sftpClient.Close()
 }
 
-func (c *Client) Upload(localPath, remotePath string) error {
+func (c *Client) Upload(ctx context.Context, transferID, localPath, remotePath string) error {
 	stat, err := os.Stat(localPath)
 	if err != nil {
 		return fmt.Errorf("stat %s: %w", localPath, err)
 	}
 	if stat.IsDir() {
-		return c.uploadDir(localPath, remotePath)
+		return c.uploadDir(ctx, transferID, localPath, remotePath)
 	}
-	return c.UploadFile(localPath, remotePath)
+	return c.uploadFile(ctx, transferID, localPath, remotePath)
 }
 
 // localTotalSize walks a local directory and returns the total file size.
@@ -107,33 +107,16 @@ func (c *Client) remoteTotalSize(dir string) (int64, error) {
 	return total, nil
 }
 
-func (c *Client) uploadDir(localDir, remoteDir string) error {
+func (c *Client) uploadDir(ctx context.Context, transferID, localDir, remoteDir string) error {
 	totalSize, err := localTotalSize(localDir)
 	if err != nil {
 		return fmt.Errorf("scan local dir: %w", err)
 	}
-	id := uuid.New().String()
 	dirName := filepath.Base(localDir)
 	start := time.Now()
-	dp := &dirProgress{onEvent: c.onEvent, total: totalSize, startTime: start, id: id, fileName: dirName, direction: DirUpload}
-	err = c.uploadDirRecursive(localDir, remoteDir, id, dirName, totalSize, dp)
-	pct := float64(100)
-	dp.onEvent("sftp:progress", TransferProgress{
-		ID:          dp.id,
-		FileName:    dp.fileName,
-		TotalBytes:  dp.total,
-		Transferred: dp.transferred,
-		Percent:     pct,
-		SpeedKBps:   float64(dp.transferred) / 1024 / time.Since(dp.startTime).Seconds(),
-		Done:        true,
-		Error: func() string {
-			if err != nil {
-				return err.Error()
-			}
-			return ""
-		}(),
-		Direction: dp.direction,
-	})
+	dp := &dirProgress{onEvent: c.onEvent, total: totalSize, startTime: start, id: transferID, fileName: dirName, direction: DirUpload, ctx: ctx}
+	err = c.uploadDirRecursive(ctx, localDir, remoteDir, dp)
+	emitDone(dp, err)
 	return err
 }
 
@@ -145,6 +128,7 @@ type dirProgress struct {
 	id          string
 	fileName    string
 	direction   Direction
+	ctx         context.Context
 }
 
 func (d *dirProgress) add(n int64, currentFile string) {
@@ -169,7 +153,29 @@ func (d *dirProgress) add(n int64, currentFile string) {
 	})
 }
 
-func (c *Client) uploadDirRecursive(localDir, remoteDir string, id string, dirName string, totalSize int64, dp *dirProgress) error {
+func emitDone(dp *dirProgress, err error) {
+	pct := float64(100)
+	errStr := ""
+	if err != nil {
+		errStr = err.Error()
+	}
+	dp.onEvent("sftp:progress", TransferProgress{
+		ID:          dp.id,
+		FileName:    dp.fileName,
+		TotalBytes:  dp.total,
+		Transferred: dp.transferred,
+		Percent:     pct,
+		SpeedKBps:   float64(dp.transferred) / 1024 / time.Since(dp.startTime).Seconds(),
+		Done:        true,
+		Error:       errStr,
+		Direction:   dp.direction,
+	})
+}
+
+func (c *Client) uploadDirRecursive(ctx context.Context, localDir, remoteDir string, dp *dirProgress) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := c.sftpClient.MkdirAll(remoteDir); err != nil {
 		return fmt.Errorf("mkdir remote %s: %w", remoteDir, err)
 	}
@@ -178,14 +184,17 @@ func (c *Client) uploadDirRecursive(localDir, remoteDir string, id string, dirNa
 		return fmt.Errorf("read local dir %s: %w", localDir, err)
 	}
 	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		localPath := filepath.Join(localDir, entry.Name())
 		remotePath := remoteDir + "/" + entry.Name()
 		if entry.IsDir() {
-			if err := c.uploadDirRecursive(localPath, remotePath, id, dirName, totalSize, dp); err != nil {
+			if err := c.uploadDirRecursive(ctx, localPath, remotePath, dp); err != nil {
 				return err
 			}
 		} else {
-			if err := c.uploadSingleFile(localPath, remotePath, dp); err != nil {
+			if err := c.uploadSingleFile(ctx, localPath, remotePath, dp); err != nil {
 				return err
 			}
 		}
@@ -193,7 +202,7 @@ func (c *Client) uploadDirRecursive(localDir, remoteDir string, id string, dirNa
 	return nil
 }
 
-func (c *Client) uploadSingleFile(localPath, remotePath string, dp *dirProgress) error {
+func (c *Client) uploadSingleFile(ctx context.Context, localPath, remotePath string, dp *dirProgress) error {
 	f, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("open local file: %w", err)
@@ -208,6 +217,9 @@ func (c *Client) uploadSingleFile(localPath, remotePath string, dp *dirProgress)
 
 	buf := make([]byte, 32*1024)
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		n, readErr := f.Read(buf)
 		if n > 0 {
 			if _, writeErr := remoteFile.Write(buf[:n]); writeErr != nil {
@@ -225,49 +237,34 @@ func (c *Client) uploadSingleFile(localPath, remotePath string, dp *dirProgress)
 	return nil
 }
 
-func (c *Client) Download(remotePath, localPath string) error {
+func (c *Client) Download(ctx context.Context, transferID, remotePath, localPath string) error {
 	stat, err := c.sftpClient.Stat(remotePath)
 	if err != nil {
 		return fmt.Errorf("stat %s: %w", remotePath, err)
 	}
 	if stat.IsDir() {
-		return c.downloadDir(remotePath, localPath)
+		return c.downloadDir(ctx, transferID, remotePath, localPath)
 	}
-	return c.DownloadFile(remotePath, localPath)
+	return c.downloadFile(ctx, transferID, remotePath, localPath)
 }
 
-func (c *Client) downloadDir(remoteDir, localDir string) error {
+func (c *Client) downloadDir(ctx context.Context, transferID, remoteDir, localDir string) error {
 	totalSize, err := c.remoteTotalSize(remoteDir)
 	if err != nil {
 		return fmt.Errorf("scan remote dir: %w", err)
 	}
-	id := uuid.New().String()
 	dirName := filepath.Base(remoteDir)
 	start := time.Now()
-	dp := &dirProgress{onEvent: c.onEvent, total: totalSize, startTime: start, id: id, fileName: dirName, direction: DirDownload}
-	err = c.downloadDirRecursive(remoteDir, localDir, dp)
-	// emit final done event
-	pct := float64(100)
-	dp.onEvent("sftp:progress", TransferProgress{
-		ID:          dp.id,
-		FileName:    dp.fileName,
-		TotalBytes:  dp.total,
-		Transferred: dp.transferred,
-		Percent:     pct,
-		SpeedKBps:   float64(dp.transferred) / 1024 / time.Since(dp.startTime).Seconds(),
-		Done:        true,
-		Error: func() string {
-			if err != nil {
-				return err.Error()
-			}
-			return ""
-		}(),
-		Direction: dp.direction,
-	})
+	dp := &dirProgress{onEvent: c.onEvent, total: totalSize, startTime: start, id: transferID, fileName: dirName, direction: DirDownload, ctx: ctx}
+	err = c.downloadDirRecursive(ctx, remoteDir, localDir, dp)
+	emitDone(dp, err)
 	return err
 }
 
-func (c *Client) downloadDirRecursive(remoteDir, localDir string, dp *dirProgress) error {
+func (c *Client) downloadDirRecursive(ctx context.Context, remoteDir, localDir string, dp *dirProgress) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(localDir, 0755); err != nil {
 		return fmt.Errorf("mkdir local %s: %w", localDir, err)
 	}
@@ -276,14 +273,17 @@ func (c *Client) downloadDirRecursive(remoteDir, localDir string, dp *dirProgres
 		return fmt.Errorf("read remote dir %s: %w", remoteDir, err)
 	}
 	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		remotePath := remoteDir + "/" + entry.Name()
 		localPath := filepath.Join(localDir, entry.Name())
 		if entry.IsDir() {
-			if err := c.downloadDirRecursive(remotePath, localPath, dp); err != nil {
+			if err := c.downloadDirRecursive(ctx, remotePath, localPath, dp); err != nil {
 				return err
 			}
 		} else {
-			if err := c.downloadSingleFile(remotePath, localPath, dp); err != nil {
+			if err := c.downloadSingleFile(ctx, remotePath, localPath, dp); err != nil {
 				return err
 			}
 		}
@@ -291,7 +291,7 @@ func (c *Client) downloadDirRecursive(remoteDir, localDir string, dp *dirProgres
 	return nil
 }
 
-func (c *Client) downloadSingleFile(remotePath, localPath string, dp *dirProgress) error {
+func (c *Client) downloadSingleFile(ctx context.Context, remotePath, localPath string, dp *dirProgress) error {
 	remoteFile, err := c.sftpClient.Open(remotePath)
 	if err != nil {
 		return fmt.Errorf("open remote file: %w", err)
@@ -310,6 +310,9 @@ func (c *Client) downloadSingleFile(remotePath, localPath string, dp *dirProgres
 
 	buf := make([]byte, 32*1024)
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		n, readErr := remoteFile.Read(buf)
 		if n > 0 {
 			if _, writeErr := localFile.Write(buf[:n]); writeErr != nil {
@@ -327,7 +330,7 @@ func (c *Client) downloadSingleFile(remotePath, localPath string, dp *dirProgres
 	return nil
 }
 
-func (c *Client) UploadFile(localPath, remotePath string) error {
+func (c *Client) uploadFile(ctx context.Context, transferID, localPath, remotePath string) error {
 	f, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("open local file: %w", err)
@@ -345,21 +348,22 @@ func (c *Client) UploadFile(localPath, remotePath string) error {
 	}
 	defer remoteFile.Close()
 
-	id := uuid.New().String()
+	start := time.Now()
 	pr := &progressReader{
-		reader:     f,
-		total:      stat.Size(),
-		transferID: id,
-		fileName:   filepath.Base(localPath),
-		direction:  DirUpload,
-		onEvent:    c.onEvent,
-		startTime:  time.Now(),
+		reader:    f,
+		total:     stat.Size(),
+		id:        transferID,
+		fileName:  filepath.Base(localPath),
+		direction: DirUpload,
+		onEvent:   c.onEvent,
+		startTime: start,
+		ctx:       ctx,
 	}
 
 	_, err = io.Copy(remoteFile, pr)
 
 	c.onEvent("sftp:progress", TransferProgress{
-		ID:          id,
+		ID:          transferID,
 		FileName:    filepath.Base(localPath),
 		TotalBytes:  stat.Size(),
 		Transferred: pr.read,
@@ -377,7 +381,7 @@ func (c *Client) UploadFile(localPath, remotePath string) error {
 	return err
 }
 
-func (c *Client) DownloadFile(remotePath, localPath string) error {
+func (c *Client) downloadFile(ctx context.Context, transferID, remotePath, localPath string) error {
 	remoteFile, err := c.sftpClient.Open(remotePath)
 	if err != nil {
 		return fmt.Errorf("open remote file: %w", err)
@@ -399,21 +403,22 @@ func (c *Client) DownloadFile(remotePath, localPath string) error {
 	}
 	defer localFile.Close()
 
-	id := uuid.New().String()
+	start := time.Now()
 	pw := &progressWriter{
-		writer:     localFile,
-		total:      stat.Size(),
-		transferID: id,
-		fileName:   filepath.Base(remotePath),
-		direction:  DirDownload,
-		onEvent:    c.onEvent,
-		startTime:  time.Now(),
+		writer:    localFile,
+		total:     stat.Size(),
+		id:        transferID,
+		fileName:  filepath.Base(remotePath),
+		direction: DirDownload,
+		onEvent:   c.onEvent,
+		startTime: start,
+		ctx:       ctx,
 	}
 
 	_, err = io.Copy(pw, remoteFile)
 
 	c.onEvent("sftp:progress", TransferProgress{
-		ID:          id,
+		ID:          transferID,
 		FileName:    filepath.Base(remotePath),
 		TotalBytes:  stat.Size(),
 		Transferred: pw.written,
@@ -526,17 +531,24 @@ type FileInfo struct {
 
 // progressReader wraps io.Reader to track transfer progress.
 type progressReader struct {
-	reader     io.Reader
-	total      int64
-	read       int64
-	transferID string
-	fileName   string
-	direction  Direction
-	onEvent    func(string, any)
-	startTime  time.Time
+	reader    io.Reader
+	total     int64
+	read      int64
+	id        string
+	fileName  string
+	direction Direction
+	onEvent   func(string, any)
+	startTime time.Time
+	ctx       context.Context
 }
 
 func (r *progressReader) Read(p []byte) (int, error) {
+	select {
+	case <-r.ctx.Done():
+		return 0, r.ctx.Err()
+	default:
+	}
+
 	n, err := r.reader.Read(p)
 	r.read += int64(n)
 
@@ -547,7 +559,7 @@ func (r *progressReader) Read(p []byte) (int, error) {
 	percent := float64(r.read) / float64(r.total) * 100
 
 	r.onEvent("sftp:progress", TransferProgress{
-		ID:          r.transferID,
+		ID:          r.id,
 		FileName:    r.fileName,
 		TotalBytes:  r.total,
 		Transferred: r.read,
@@ -562,17 +574,24 @@ func (r *progressReader) Read(p []byte) (int, error) {
 
 // progressWriter wraps io.Writer to track transfer progress.
 type progressWriter struct {
-	writer     io.Writer
-	total      int64
-	written    int64
-	transferID string
-	fileName   string
-	direction  Direction
-	onEvent    func(string, any)
-	startTime  time.Time
+	writer    io.Writer
+	total     int64
+	written   int64
+	id        string
+	fileName  string
+	direction Direction
+	onEvent   func(string, any)
+	startTime time.Time
+	ctx       context.Context
 }
 
 func (w *progressWriter) Write(p []byte) (int, error) {
+	select {
+	case <-w.ctx.Done():
+		return 0, w.ctx.Err()
+	default:
+	}
+
 	n, err := w.writer.Write(p)
 	w.written += int64(n)
 
@@ -583,7 +602,7 @@ func (w *progressWriter) Write(p []byte) (int, error) {
 	percent := float64(w.written) / float64(w.total) * 100
 
 	w.onEvent("sftp:progress", TransferProgress{
-		ID:          w.transferID,
+		ID:          w.id,
 		FileName:    w.fileName,
 		TotalBytes:  w.total,
 		Transferred: w.written,

@@ -74,6 +74,7 @@ export default {
   },
   tab: {
     reconnect: 'Reconnect',
+    disconnectedNotice: '--- Connection lost, press Enter to reconnect ---',
     disconnect: 'Disconnect',
     duplicate: 'Duplicate Session',
     close: 'Close',
@@ -152,6 +153,10 @@ export default {
     uploadFailed: 'Upload failed: {error}',
     openFileFailed: 'Failed to open "{name}": {error}',
     openInFileManager: 'Open in File Manager',
+    cancelAll: 'Cancel all transfers',
+    transferDetails: 'Transfer details',
+    cancelled: 'Cancelled',
+    noActiveTransfers: 'No active transfers',
   },
   keys: {
     title: 'SSH Keys',

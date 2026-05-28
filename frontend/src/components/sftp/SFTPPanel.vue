@@ -11,13 +11,14 @@ import IconTrash2 from '~icons/lucide/trash-2'
 import IconFolder from '~icons/lucide/folder'
 import IconFile from '~icons/lucide/file'
 import IconFolderOpen from '~icons/lucide/folder-open'
+import IconX from '~icons/lucide/x'
 import { useSFTPStore } from '../../stores/sftp'
 import { useTransferStore } from '../../stores/transfers'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
 import type { SFTPFile } from '../../stores/sftp'
 import type { TransferProgress } from '../../stores/transfers'
-import { SFTPUpload, SFTPDownload, SFTPDelete, SFTPReadFileContent, GetHomeDir, ListLocalDir, DeleteLocalFile, ReadLocalFileContent, OpenInFileManager } from '../../../bindings/vshell/internal/app/appservice'
+import { SFTPUpload, SFTPDownload, SFTPDelete, SFTPReadFileContent, SFTPCancelTransfers, GetHomeDir, ListLocalDir, DeleteLocalFile, ReadLocalFileContent, OpenInFileManager } from '../../../bindings/vshell/internal/app/appservice'
 import { useDragSource, useDropTarget } from '../../composables/useDragTransfer'
 import { isEditableFile } from '../../utils/fileType'
 
@@ -521,8 +522,18 @@ function formatSpeed(kbps: number): string {
   return (kbps / 1024).toFixed(1) + ' MB/s'
 }
 
-const downloadTransfers = computed(() => transferStore.transfers.filter(t => t.direction === 'download'))
-const uploadTransfers = computed(() => transferStore.transfers.filter(t => t.direction === 'upload'))
+const hasActiveTransfers = computed(() => allTransfers.value.some(tr => !tr.done))
+
+async function handleCancelAll() {
+  try {
+    await SFTPCancelTransfers()
+  } catch (e) {
+    console.error('Failed to cancel transfers:', e)
+  }
+}
+
+const allTransfers = computed(() => transferStore.transfers)
+
 function transferSummary(transfers: TransferProgress[]) {
   if (transfers.length === 0) return { path: '', percent: 0, speed: 0 }
   let totalBytes = 0
@@ -560,7 +571,6 @@ onMounted(async () => {
     } else {
       refreshLocal()
     }
-    setTimeout(() => transferStore.clearDone(), 200)
   })
   Events.On('sftp:download:error', (ev: any) => {
     message.error(t('sftp.downloadFailed', { error: ev?.data || '' }))
@@ -664,12 +674,6 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
             </table>
           </div>
         </div>
-        <!-- Upload status bar -->
-        <div class="status-bar">
-          <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(uploadTransfers).percent + '%' }"></div></div>
-          <span class="status-path">{{ transferSummary(uploadTransfers).path }}</span>
-          <span class="status-speed">{{ transferSummary(uploadTransfers).speed > 0 ? formatSpeed(transferSummary(uploadTransfers).speed) : '' }}</span>
-        </div>
       </div>
 
       <!-- Local side -->
@@ -731,13 +735,20 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
           </table>
         </div>
         </div>
+      </div>
+    </div>
 
-        <!-- Download status bar -->
-        <div class="status-bar">
-          <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(downloadTransfers).percent + '%' }"></div></div>
-          <span class="status-path">{{ transferSummary(downloadTransfers).path }}</span>
-          <span class="status-speed">{{ transferSummary(downloadTransfers).speed > 0 ? formatSpeed(transferSummary(downloadTransfers).speed) : '' }}</span>
-        </div>
+    <!-- Unified transfer status bar (always visible) -->
+    <div class="status-bar">
+      <template v-if="hasActiveTransfers">
+        <div class="status-bg"><div class="status-fill" :style="{ width: transferSummary(allTransfers).percent + '%' }"></div></div>
+        <span class="status-path">{{ transferSummary(allTransfers).path }}</span>
+        <span class="status-speed">{{ transferSummary(allTransfers).speed > 0 ? formatSpeed(transferSummary(allTransfers).speed) : '' }}</span>
+      </template>
+      <div class="status-actions" v-if="hasActiveTransfers">
+        <NButton size="tiny" quaternary @click="handleCancelAll" :title="t('sftp.cancelAll')">
+          <IconX :width="14" :height="14" />
+        </NButton>
       </div>
     </div>
   </div>
@@ -826,5 +837,14 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
   margin-left: 8px;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+}
+.status-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 </style>

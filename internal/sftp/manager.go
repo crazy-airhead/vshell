@@ -1,8 +1,11 @@
 package sftp
 
 import (
+	"context"
 	"fmt"
+	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"vshell/internal/crypto"
 	vshellssh "vshell/internal/ssh"
@@ -15,6 +18,9 @@ type Manager struct {
 	crypto  *crypto.CryptoService
 	onEvent func(string, any)
 	sem     chan struct{}
+
+	cancelMu sync.Mutex
+	cancels  map[string]context.CancelFunc
 }
 
 func NewManager(sshMgr *vshellssh.Manager, cryptoSvc *crypto.CryptoService, onEvent func(string, any)) *Manager {
@@ -24,7 +30,29 @@ func NewManager(sshMgr *vshellssh.Manager, cryptoSvc *crypto.CryptoService, onEv
 		crypto:  cryptoSvc,
 		onEvent: onEvent,
 		sem:     make(chan struct{}, 3),
+		cancels: make(map[string]context.CancelFunc),
 	}
+}
+
+func (m *Manager) registerCancel(id string, cancel context.CancelFunc) {
+	m.cancelMu.Lock()
+	m.cancels[id] = cancel
+	m.cancelMu.Unlock()
+}
+
+func (m *Manager) unregisterCancel(id string) {
+	m.cancelMu.Lock()
+	delete(m.cancels, id)
+	m.cancelMu.Unlock()
+}
+
+func (m *Manager) CancelAllTransfers() {
+	m.cancelMu.Lock()
+	for id, cancel := range m.cancels {
+		cancel()
+		delete(m.cancels, id)
+	}
+	m.cancelMu.Unlock()
 }
 
 func (m *Manager) GetOrCreateClient(connectionID string) (*Client, error) {
@@ -66,23 +94,67 @@ func (m *Manager) ReadDir(connectionID, path string) ([]FileInfo, error) {
 }
 
 func (m *Manager) UploadFile(connectionID, localPath, remotePath string) error {
+	transferID := newTransferID()
+	fileName := filepath.Base(localPath)
+	ctx, cancel := context.WithCancel(context.Background())
+	m.registerCancel(transferID, cancel)
+	defer m.unregisterCancel(transferID)
+
+	m.onEvent("sftp:progress", TransferProgress{
+		ID: transferID, FileName: fileName, Direction: DirUpload,
+	})
+
 	m.sem <- struct{}{}
 	defer func() { <-m.sem }()
+
 	client, err := m.GetOrCreateClient(connectionID)
 	if err != nil {
+		m.emitDone(transferID, fileName, DirUpload, err)
 		return err
 	}
-	return client.Upload(localPath, remotePath)
+	return client.Upload(ctx, transferID, localPath, remotePath)
 }
 
 func (m *Manager) DownloadFile(connectionID, remotePath, localPath string) error {
+	transferID := newTransferID()
+	fileName := filepath.Base(remotePath)
+	ctx, cancel := context.WithCancel(context.Background())
+	m.registerCancel(transferID, cancel)
+	defer m.unregisterCancel(transferID)
+
+	m.onEvent("sftp:progress", TransferProgress{
+		ID: transferID, FileName: fileName, Direction: DirDownload,
+	})
+
 	m.sem <- struct{}{}
 	defer func() { <-m.sem }()
+
 	client, err := m.GetOrCreateClient(connectionID)
 	if err != nil {
+		m.emitDone(transferID, fileName, DirDownload, err)
 		return err
 	}
-	return client.Download(remotePath, localPath)
+	return client.Download(ctx, transferID, remotePath, localPath)
+}
+
+func (m *Manager) emitDone(id, fileName string, dir Direction, err error) {
+	errStr := ""
+	if err != nil {
+		errStr = err.Error()
+	}
+	m.onEvent("sftp:progress", TransferProgress{
+		ID: id, FileName: fileName, Done: true, Error: errStr, Direction: dir,
+	})
+}
+
+func newTransferID() string {
+	return fmt.Sprintf("tx-%d", nextTransferSeq())
+}
+
+var transferSeq int64
+
+func nextTransferSeq() int64 {
+	return atomic.AddInt64(&transferSeq, 1)
 }
 
 func (m *Manager) RemoveFile(connectionID, remotePath string) error {

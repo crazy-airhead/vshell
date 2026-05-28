@@ -1,6 +1,7 @@
 import { Terminal } from '@xterm/xterm'
 import { Events } from '@wailsio/runtime'
 import { useTerminalStore } from '../stores/terminal'
+import i18n from '../locales'
 
 const terminals = new Map<string, Terminal>()
 const disconnectedSessions = new Set<string>()
@@ -24,7 +25,7 @@ function ensureListener() {
       terminalStore.markTabDisconnected(d.sessionID)
       const term = terminals.get(d.sessionID)
       if (term) {
-        term.write('\r\n\x1b[33m--- 连接已断开，按回车键重连 ---\x1b[0m\r\n')
+        term.write(`\r\n\x1b[33m${i18n.global.t('tab.disconnectedNotice')}\x1b[0m\r\n`)
       }
     }
   })

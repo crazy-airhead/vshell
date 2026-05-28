@@ -652,6 +652,10 @@ func (a *AppService) SFTPDelete(connectionID, remotePath string) error {
 	return nil
 }
 
+func (a *AppService) SFTPCancelTransfers() {
+	a.sftpManager.CancelAllTransfers()
+}
+
 // --- Local File System ---
 
 type LocalFileInfo struct {

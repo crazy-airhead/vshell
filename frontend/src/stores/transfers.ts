@@ -11,6 +11,7 @@ export interface TransferProgress {
   done: boolean
   error?: string
   direction: 'upload' | 'download'
+  cancelled?: boolean
 }
 
 export const useTransferStore = defineStore('transfers', () => {
@@ -18,22 +19,33 @@ export const useTransferStore = defineStore('transfers', () => {
   const doneTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
   function addOrUpdateTransfer(t: TransferProgress) {
+    if (t.done && t.error && (t.error === 'context canceled' || t.error === 'cancelled')) {
+      t.cancelled = true
+    }
     const idx = transfers.value.findIndex(x => x.id === t.id)
     if (idx >= 0) {
       transfers.value[idx] = t
     } else {
       transfers.value.push(t)
     }
-    // Auto-clear done transfers after 2s as safety net against
-    // race between final progress event and transfer-done event
+    // Keep done transfers visible while there are still active ones,
+    // so the details view can show all files in the batch.
+    // When all transfers are done, auto-clear after 2s.
     if (t.done) {
-      const existing = doneTimers.get(t.id)
-      if (existing) clearTimeout(existing)
-      doneTimers.set(t.id, setTimeout(() => {
-        removeTransfer(t.id)
-        doneTimers.delete(t.id)
-      }, 2000))
+      scheduleClear()
     }
+  }
+
+  function scheduleClear() {
+    const hasActive = transfers.value.some(x => !x.done)
+    if (hasActive) return
+    // All done — clear after a short delay
+    setTimeout(() => {
+      // Re-check in case new transfers started
+      if (!transfers.value.some(x => !x.done)) {
+        clearDone()
+      }
+    }, 2000)
   }
 
   function removeTransfer(id: string) {
