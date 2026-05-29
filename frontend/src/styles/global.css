@@ -1,0 +1,183 @@
+:root {
+  /* Layout tokens from doc/*.json */
+  --border-radius: 6px;
+
+  /* Typography */
+  --font-size-base: 13px;
+  --font-size-sm: 11px;
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Layout dimensions */
+  --terminal-bar-height: 36px;
+  --title-bar-height: 30px;
+  --activity-bar-width: 48px;
+}
+
+/* ── Dark theme (from doc/dark.json tokens) ── */
+[data-theme="dark"] {
+  /* Semantic colors */
+  --color-primary: #646cff;
+  --color-info: #2080f0;
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+  --color-error: #f5222d;
+
+  /* Background tokens → dark.container=rgb(28,28,28), dark.layout=rgb(18,18,18) */
+  --bg-primary: rgb(18, 18, 18);
+  --bg-secondary: rgb(28, 28, 28);
+  --bg-tertiary: #2d2d2d;
+  --bg-hover: #3d3d3d;
+
+  /* Text tokens → dark.base-text=rgb(224,224,224) */
+  --text-primary: rgb(224, 224, 224);
+  --text-secondary: #858585;
+
+  /* Borders */
+  --border-color: #3d3d3d;
+
+  /* Shadows (dark context) */
+  --shadow-header: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sider: 2px 0 8px 0 rgba(0, 0, 0, 0.25);
+  --shadow-tab: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* Interaction overlays */
+  --hover-overlay: rgba(255, 255, 255, 0.06);
+  --hover-overlay-strong: rgba(255, 255, 255, 0.04);
+  --action-hover-bg: rgba(100, 108, 255, 0.15);
+  --delete-hover-color: #f5222d;
+  --delete-hover-bg: rgba(245, 34, 45, 0.15);
+
+  /* Status indicator */
+  --stat-bar-bg: #3a3a3a;
+}
+
+/* ── Light theme (from doc/default.json tokens) ── */
+[data-theme="light"] {
+  /* Semantic colors */
+  --color-primary: #646cff;
+  --color-info: #2080f0;
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+  --color-error: #f5222d;
+
+  /* Background tokens → light.container=rgb(255,255,255), light.layout=rgb(247,250,252) */
+  --bg-primary: rgb(247, 250, 252);
+  --bg-secondary: rgb(255, 255, 255);
+  --bg-tertiary: #e8e8e8;
+  --bg-hover: #e0e0e0;
+
+  /* Text tokens → light.base-text=rgb(31,31,31) */
+  --text-primary: rgb(31, 31, 31);
+  --text-secondary: #666666;
+
+  /* Borders */
+  --border-color: #d9d9d9;
+
+  /* Shadows (from tokens.light.boxShadow) */
+  --shadow-header: 0 1px 2px rgb(0, 21, 41, 0.08);
+  --shadow-sider: 2px 0 8px 0 rgb(29, 35, 41, 0.05);
+  --shadow-tab: 0 1px 2px rgb(0, 21, 41, 0.08);
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* Interaction overlays */
+  --hover-overlay: rgba(0, 0, 0, 0.04);
+  --hover-overlay-strong: rgba(0, 0, 0, 0.03);
+  --action-hover-bg: rgba(100, 108, 255, 0.1);
+  --delete-hover-color: #f5222d;
+  --delete-hover-bg: rgba(245, 34, 45, 0.1);
+
+  /* Status indicator */
+  --stat-bar-bg: #e0e0e0;
+}
+
+/* ── Global resets ── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-hover);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* ── Drag ghost ── */
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 99997;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--border-radius);
+  font-size: 12px;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-elevated);
+  white-space: nowrap;
+  opacity: 0.92;
+}
+.drag-ghost-icon { font-size: 14px; }
+.drag-ghost-label { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.drag-ghost-count {
+  font-size: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 8px;
+  padding: 1px 5px;
+}
+
+/* ── Title bar connecting progress bar ── */
+@keyframes connecting-slide {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+.animate-connecting-bar {
+  animation: connecting-slide 0.8s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  background-size: 200% 100%;
+}
+.animate-connecting-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  background-size: 200% 100%;
+  animation: connecting-slide 1.6s ease-in-out 0.4s infinite;
+}
