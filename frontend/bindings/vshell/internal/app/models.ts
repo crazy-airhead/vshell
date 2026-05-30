@@ -111,6 +111,46 @@ export class SSHConfigEntry {
 }
 
 /**
+ * SSHConfigHostDetail contains full info for a single SSH config Host entry, including private key content.
+ */
+export class SSHConfigHostDetail {
+    "pattern": string;
+    "hostname": string;
+    "port": number;
+    "user": string;
+    "private_key": string;
+
+    /** Creates a new SSHConfigHostDetail instance. */
+    constructor($$source: Partial<SSHConfigHostDetail> = {}) {
+        if (!("pattern" in $$source)) {
+            this["pattern"] = "";
+        }
+        if (!("hostname" in $$source)) {
+            this["hostname"] = "";
+        }
+        if (!("port" in $$source)) {
+            this["port"] = 0;
+        }
+        if (!("user" in $$source)) {
+            this["user"] = "";
+        }
+        if (!("private_key" in $$source)) {
+            this["private_key"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SSHConfigHostDetail instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SSHConfigHostDetail {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SSHConfigHostDetail($$parsedSource as Partial<SSHConfigHostDetail>);
+    }
+}
+
+/**
  * SSHConfigImportCandidate represents a Host entry from ~/.ssh/config that can be imported as a vShell connection.
  */
 export class SSHConfigImportCandidate {

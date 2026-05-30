@@ -220,6 +220,8 @@ export default {
     unsavedChanges: 'Unsaved changes',
     importHosts: 'Import as Connections',
     importHostsDesc: 'Select Host entries to import as vShell connections. They will appear in the sidebar.',
+    importAsConnection: 'Add Connection',
+    directImport: 'Direct Import',
     importSelectAll: 'Select All',
     importDeselectAll: 'Deselect All',
     imported: 'Imported {count} connection(s)',

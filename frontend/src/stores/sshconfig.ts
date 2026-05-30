@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { ReadSSHConfig, WriteSSHConfig, ReadSSHConfigRaw, WriteSSHConfigRaw, GetSSHConfigImportCandidates, ImportSSHConfigHosts } from '../../bindings/vshell/internal/app/appservice'
+import { ReadSSHConfig, WriteSSHConfig, ReadSSHConfigRaw, WriteSSHConfigRaw, GetSSHConfigImportCandidates, ImportSSHConfigHosts, GetSSHConfigHostDetail } from '../../bindings/vshell/internal/app/appservice'
 import type { SSHConfigEntry, SSHConfigDirective, SSHConfigImportCandidate } from '../types'
 
 export const useSSHConfigStore = defineStore('sshconfig', () => {
@@ -72,6 +72,18 @@ export const useSSHConfigStore = defineStore('sshconfig', () => {
     await ImportSSHConfigHosts(patterns)
   }
 
+  async function getHostDetail(pattern: string): Promise<{ pattern: string; hostname: string; port: number; user: string; private_key: string } | null> {
+    const result = await GetSSHConfigHostDetail(pattern)
+    if (!result) return null
+    return {
+      pattern: result.pattern || '',
+      hostname: result.hostname || '',
+      port: result.port || 22,
+      user: result.user || '',
+      private_key: result.private_key || '',
+    }
+  }
+
   return {
     entries,
     loading,
@@ -84,5 +96,6 @@ export const useSSHConfigStore = defineStore('sshconfig', () => {
     writeRaw,
     getImportCandidates,
     importHosts,
+    getHostDetail,
   }
 })

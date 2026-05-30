@@ -220,6 +220,8 @@ export default {
     unsavedChanges: '有未保存的更改',
     importHosts: '导入为连接',
     importHostsDesc: '选择要导入的 Host 条目，将作为 vShell 连接添加到左侧列表。',
+    importAsConnection: '添加连接',
+    directImport: '直接导入',
     importSelectAll: '全选',
     importDeselectAll: '取消全选',
     imported: '已导入 {count} 个连接',

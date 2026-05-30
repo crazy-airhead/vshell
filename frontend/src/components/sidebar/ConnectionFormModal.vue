@@ -26,6 +26,7 @@ const props = defineProps<{
   show: boolean
   editConnection?: Connection | null
   defaultGroupID?: string | null
+  prefillData?: ConnectionFormData | null
 }>()
 const emit = defineEmits<{ (e: 'update:show', val: boolean): void }>()
 
@@ -98,6 +99,10 @@ watch(
         }
         keySource.value = 'manual'
         selectedKeyName.value = null
+      } else if (props.prefillData) {
+        form.value = { ...props.prefillData }
+        keySource.value = 'manual'
+        selectedKeyName.value = null
       } else {
         form.value = newFormData()
         if (props.defaultGroupID) {
@@ -156,7 +161,7 @@ async function handleSave() {
   const f = form.value
   if (!f.name.trim()) { message.warning(t('connection.nameRequired')); return }
   if (!f.host.trim()) { message.warning(t('connection.hostRequired')); return }
-  if (f.authType === 'private_key' && !f.privateKey.trim()) {
+  if (!isEdit.value && f.authType === 'private_key' && !f.privateKey.trim()) {
     message.warning(t('connection.keyRequired'))
     return
   }

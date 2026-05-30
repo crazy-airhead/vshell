@@ -221,6 +221,58 @@ func (a *AppService) GetSSHConfigImportCandidates() ([]SSHConfigImportCandidate,
 	return candidates, nil
 }
 
+// SSHConfigHostDetail contains full info for a single SSH config Host entry, including private key content.
+type SSHConfigHostDetail struct {
+	Pattern    string `json:"pattern"`
+	HostName   string `json:"hostname"`
+	Port       int    `json:"port"`
+	User       string `json:"user"`
+	PrivateKey string `json:"private_key"`
+}
+
+// GetSSHConfigHostDetail returns full details for a single Host entry from ~/.ssh/config, including private key content.
+func (a *AppService) GetSSHConfigHostDetail(pattern string) (*SSHConfigHostDetail, error) {
+	entries, err := a.ReadSSHConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	sshDir, err := sshDir()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if entry.Type != "HOST" || entry.Pattern != pattern {
+			continue
+		}
+		d := &SSHConfigHostDetail{
+			Pattern: pattern,
+			Port:    22,
+		}
+		for _, dir := range entry.Directives {
+			switch strings.ToLower(dir.Key) {
+			case "hostname":
+				d.HostName = dir.Value
+			case "port":
+				if p, err := strconv.Atoi(dir.Value); err == nil {
+					d.Port = p
+				}
+			case "user":
+				d.User = dir.Value
+			case "identityfile":
+				keyPath := resolveIdentityFile(dir.Value, sshDir)
+				if keyData, err := os.ReadFile(keyPath); err == nil {
+					d.PrivateKey = strings.TrimSpace(string(keyData))
+				}
+			}
+		}
+		return d, nil
+	}
+
+	return nil, fmt.Errorf("host %q not found in SSH config", pattern)
+}
+
 // ImportSSHConfigHosts imports selected Host entries from ~/.ssh/config as vShell connections.
 func (a *AppService) ImportSSHConfigHosts(patterns []string) error {
 	entries, err := a.ReadSSHConfig()

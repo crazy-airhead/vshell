@@ -11,7 +11,10 @@ import IconXCircle from '~icons/lucide/x-circle'
 import { useSSHConfigStore } from '../../stores/sshconfig'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
+import { newFormData, AuthType } from '../../stores/connection'
+import type { ConnectionFormData } from '../../stores/connection'
 import ConfigEntryForm from './ConfigEntryForm.vue'
+import ConnectionFormModal from '../sidebar/ConnectionFormModal.vue'
 import type { SSHConfigEntry, SSHConfigImportCandidate } from '../../types'
 
 const { t } = useI18n()
@@ -28,6 +31,10 @@ const importCandidates = ref<SSHConfigImportCandidate[]>([])
 const selectedPatterns = ref<Set<string>>(new Set())
 const importing = ref(false)
 const loadingCandidates = ref(false)
+
+// Connection form modal state
+const showConnModal = ref(false)
+const prefillData = ref<ConnectionFormData | null>(null)
 
 onMounted(() => {
   store.loadEntries()
@@ -95,6 +102,35 @@ async function handleImport() {
     message.error(e.message || String(e))
   } finally {
     importing.value = false
+  }
+}
+
+async function handleAddAsConnection() {
+  if (selectedPatterns.value.size === 0) {
+    message.warning(t('sshConfig.importNothingSelected'))
+    return
+  }
+  const pattern = [...selectedPatterns.value][0]
+  try {
+    const detail = await store.getHostDetail(pattern)
+    if (!detail) {
+      message.error(t('sshConfig.importNothingSelected'))
+      return
+    }
+    const form: ConnectionFormData = {
+      ...newFormData(),
+      name: detail.pattern,
+      host: detail.hostname || detail.pattern,
+      port: detail.port,
+      username: detail.user || 'root',
+      authType: detail.private_key ? AuthType.AuthPrivateKey : AuthType.AuthPassword,
+      privateKey: detail.private_key || '',
+    }
+    prefillData.value = form
+    showConnModal.value = true
+    showImportModal.value = false
+  } catch (e: any) {
+    message.error(e.message || String(e))
   }
 }
 
@@ -198,12 +234,17 @@ async function handleEditRaw() {
       <template #footer>
         <NSpace justify="end">
           <NButton @click="showImportModal = false">{{ t('common.cancel') }}</NButton>
+          <NButton :disabled="selectedPatterns.size === 0" @click="handleAddAsConnection">
+            {{ t('sshConfig.importAsConnection') }}
+          </NButton>
           <NButton type="primary" :loading="importing" :disabled="selectedPatterns.size === 0" @click="handleImport">
-            {{ t('common.save') }} ({{ selectedPatterns.size }})
+            {{ t('sshConfig.directImport') }} ({{ selectedPatterns.size }})
           </NButton>
         </NSpace>
       </template>
     </NModal>
+
+    <ConnectionFormModal v-model:show="showConnModal" :prefill-data="prefillData" />
   </div>
 </template>
 
