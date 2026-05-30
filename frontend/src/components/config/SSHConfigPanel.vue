@@ -5,7 +5,7 @@ import { NEmpty, NModal, NCheckbox, NButton, NSpace, useMessage } from 'naive-ui
 import IconRefreshCw from '~icons/lucide/refresh-cw'
 import IconPencil from '~icons/lucide/pencil'
 import IconPlus from '~icons/lucide/plus'
-import IconDownload from '~icons/lucide/download'
+import IconFileInput from '~icons/lucide/file-input'
 import IconCheckCircle from '~icons/lucide/check-circle'
 import IconXCircle from '~icons/lucide/x-circle'
 import { useSSHConfigStore } from '../../stores/sshconfig'
@@ -164,7 +164,7 @@ async function handleEditRaw() {
           <IconPlus :width="14" :height="14" />
         </button>
         <button class="panel-action-btn" @click="openImportModal" :title="t('sshConfig.importHosts')">
-          <IconDownload :width="14" :height="14" />
+          <IconFileInput :width="14" :height="14" />
         </button>
       </div>
     </div>
