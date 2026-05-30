@@ -922,6 +922,7 @@ func (a *AppService) RenameSSHKey(oldName string, newName string) error {
 
 	oldPath := filepath.Join(dir, oldName)
 	newPath := filepath.Join(dir, newName)
+	os.MkdirAll(filepath.Dir(newPath), 0700)
 
 	if err := os.Rename(oldPath, newPath); err != nil {
 		return fmt.Errorf("rename key: %w", err)
@@ -939,6 +940,7 @@ func (a *AppService) RenameSSHKey(oldName string, newName string) error {
 }
 
 // DeleteSSHKey removes a key file and its .pub companion from ~/.ssh.
+// If the key is in a subdirectory, the subdirectory is also removed when empty.
 func (a *AppService) DeleteSSHKey(name string) error {
 	dir, err := sshDir()
 	if err != nil {
@@ -951,6 +953,10 @@ func (a *AppService) DeleteSSHKey(name string) error {
 	}
 
 	os.Remove(keyPath + ".pub")
+	// Remove parent subdirectory if empty (not ~/.ssh itself)
+	if parent := filepath.Dir(keyPath); parent != dir {
+		os.Remove(parent)
+	}
 	return nil
 }
 
@@ -1050,6 +1056,7 @@ func (a *AppService) GenerateSSHKey(name string, keyType string, bits int, comme
 
 	// Write private key
 	keyPath := filepath.Join(dir, name)
+	os.MkdirAll(filepath.Dir(keyPath), 0700)
 	if err := os.WriteFile(keyPath, privateKeyPEM, 0600); err != nil {
 		return fmt.Errorf("write private key: %w", err)
 	}

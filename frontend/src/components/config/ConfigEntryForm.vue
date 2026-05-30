@@ -115,15 +115,15 @@ function displayMeta(entry: SSHConfigEntry): string {
     <div v-else class="px-3 py-[10px] flex flex-col gap-[6px] bg-[var(--hover-overlay)]">
       <div class="flex items-center gap-2">
         <label class="text-[var(--font-size-sm)] text-[var(--text-secondary)] w-[70px] shrink-0 text-right">{{ t('sshConfig.hostPattern') }}</label>
-        <NInput v-model:value="form.pattern" size="small" :placeholder="t('sshConfig.hostPatternPlaceholder')" />
+        <NInput v-model:value="form.pattern" size="small" :placeholder="t('sshConfig.hostPatternPlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
       </div>
       <div class="flex items-center gap-2">
         <label class="text-[var(--font-size-sm)] text-[var(--text-secondary)] w-[70px] shrink-0 text-right">{{ t('sshConfig.hostName') }}</label>
-        <NInput :value="getDirective('HostName')" size="small" :placeholder="t('sshConfig.hostNamePlaceholder')" @update:value="(v: string) => setDirective('HostName', v)" />
+        <NInput :value="getDirective('HostName')" size="small" :placeholder="t('sshConfig.hostNamePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" @update:value="(v: string) => setDirective('HostName', v)" />
       </div>
       <div class="flex items-center gap-2">
         <label class="text-[var(--font-size-sm)] text-[var(--text-secondary)] w-[70px] shrink-0 text-right">{{ t('sshConfig.user') }}</label>
-        <NInput :value="getDirective('User')" size="small" :placeholder="t('sshConfig.userPlaceholder')" @update:value="(v: string) => setDirective('User', v)" />
+        <NInput :value="getDirective('User')" size="small" :placeholder="t('sshConfig.userPlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" @update:value="(v: string) => setDirective('User', v)" />
       </div>
       <div class="flex items-center gap-2">
         <label class="text-[var(--font-size-sm)] text-[var(--text-secondary)] w-[70px] shrink-0 text-right">{{ t('sshConfig.port') }}</label>
@@ -131,13 +131,13 @@ function displayMeta(entry: SSHConfigEntry): string {
       </div>
       <div class="flex items-center gap-2">
         <label class="text-[var(--font-size-sm)] text-[var(--text-secondary)] w-[70px] shrink-0 text-right">{{ t('sshConfig.identityFile') }}</label>
-        <NInput :value="getDirective('IdentityFile')" size="small" :placeholder="t('sshConfig.identityFilePlaceholder')" @update:value="(v: string) => setDirective('IdentityFile', v)" />
+        <NInput :value="getDirective('IdentityFile')" size="small" :placeholder="t('sshConfig.identityFilePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" @update:value="(v: string) => setDirective('IdentityFile', v)" />
       </div>
 
       <!-- Extra directives -->
       <div v-for="(dir, i) in extraDirectives()" :key="i" class="flex items-center gap-2 ml-[78px]">
-        <NInput v-model:value="dir.key" size="small" :placeholder="t('sshConfig.directiveKey')" class="w-[100px] shrink-0" />
-        <NInput v-model:value="dir.value" size="small" :placeholder="t('sshConfig.directiveValue')" class="flex-1" />
+        <NInput v-model:value="dir.key" size="small" :placeholder="t('sshConfig.directiveKey')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" class="w-[100px] shrink-0" />
+        <NInput v-model:value="dir.value" size="small" :placeholder="t('sshConfig.directiveValue')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" class="flex-1" />
         <button class="directive-remove" @click="removeDirective(dir.key)">
           <IconX :width="10" :height="10" />
         </button>

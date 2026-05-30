@@ -188,19 +188,19 @@ async function handleSave() {
   <NModal v-model:show="showModal" preset="card" :title="isEdit ? t('connection.editConnection') : t('connection.newConnection')" style="width: 480px" :mask-closable="false">
     <NForm label-placement="left" label-width="90">
       <NFormItem :label="t('common.name')">
-        <NInput v-model:value="form.name" :placeholder="t('connection.namePlaceholder')" />
+        <NInput v-model:value="form.name" :placeholder="t('connection.namePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
       </NFormItem>
       <NFormItem :label="t('connection.group')">
         <NSelect v-model:value="form.groupID" :options="groupOptions" clearable />
       </NFormItem>
       <NFormItem :label="t('common.host')">
-        <NInput v-model:value="form.host" :placeholder="t('connection.hostPlaceholder')" />
+        <NInput v-model:value="form.host" :placeholder="t('connection.hostPlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
       </NFormItem>
       <NFormItem :label="t('common.port')">
         <NInputNumber v-model:value="form.port" :min="1" :max="65535" style="width: 100%" />
       </NFormItem>
       <NFormItem :label="t('common.username')">
-        <NInput v-model:value="form.username" :placeholder="t('connection.usernamePlaceholder')" />
+        <NInput v-model:value="form.username" :placeholder="t('connection.usernamePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
       </NFormItem>
       <NDivider style="margin: 8px 0" />
       <NFormItem :label="t('connection.authType')">
@@ -208,7 +208,7 @@ async function handleSave() {
       </NFormItem>
       <NFormItem v-if="form.authType === 'password' || form.authType === 'interactive'" :label="isEdit ? t('connection.newPassword') : t('common.password')">
         <div style="display: flex; align-items: center; gap: 4px; width: 100%">
-          <NInput v-model:value="form.password" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passwordEditPlaceholder') : t('connection.passwordPlaceholder')" style="flex: 1" />
+          <NInput v-model:value="form.password" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passwordEditPlaceholder') : t('connection.passwordPlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" style="flex: 1" />
           <NButton v-if="isEdit" :type="passwordVisible ? 'primary' : 'default'" :ghost="true" :loading="revealingPassword" @click="toggleRevealPassword" style="flex-shrink: 0; height: 34px; width: 34px">
             <template #icon>
               <IconKey :width="16" :height="16" />
@@ -250,11 +250,12 @@ async function handleSave() {
               type="textarea"
               :rows="4"
               :placeholder="isEdit ? t('connection.keyEditPlaceholder') : t('connection.keyPlaceholder')"
+              :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }"
             />
           </NFormItem>
         </template>
         <NFormItem :label="isEdit ? t('connection.newPassphrase') : t('connection.passphrase')">
-          <NInput v-model:value="form.keyPassphrase" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passphraseEditPlaceholder') : t('connection.passphrasePlaceholder')" />
+          <NInput v-model:value="form.keyPassphrase" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passphraseEditPlaceholder') : t('connection.passphrasePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
       </template>
     </NForm>

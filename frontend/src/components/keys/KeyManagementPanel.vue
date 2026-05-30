@@ -268,13 +268,13 @@ function formatType(keyType: string): string {
     <NModal v-model:show="showCreateModal" preset="card" :title="t('keys.newKey')" style="width: 480px" :mask-closable="false">
       <NForm label-placement="left" label-width="90">
         <NFormItem :label="t('keys.fileName')">
-          <NInput v-model:value="createForm.name" :placeholder="t('keys.fileNamePlaceholder')" />
+          <NInput v-model:value="createForm.name" :placeholder="t('keys.fileNamePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
         <NFormItem :label="t('keys.privateKey')">
-          <NInput v-model:value="createForm.privateKey" type="textarea" :rows="6" :placeholder="t('keys.keyPlaceholder')" />
+          <NInput v-model:value="createForm.privateKey" type="textarea" :rows="6" :placeholder="t('keys.keyPlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
         <NFormItem :label="t('keys.publicKey')">
-          <NInput v-model:value="createForm.publicKey" type="textarea" :rows="2" :placeholder="'ssh-ed25519 AAAA...'" />
+          <NInput v-model:value="createForm.publicKey" type="textarea" :rows="2" :placeholder="'ssh-ed25519 AAAA...'" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
       </NForm>
       <template #footer>
@@ -305,13 +305,13 @@ function formatType(keyType: string): string {
           </NRadioGroup>
         </NFormItem>
         <NFormItem :label="t('keys.fileName')">
-          <NInput v-model:value="genForm.name" :placeholder="t('keys.fileNamePlaceholder')" />
+          <NInput v-model:value="genForm.name" :placeholder="t('keys.fileNamePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
         <NFormItem :label="t('keys.comment')">
-          <NInput v-model:value="genForm.comment" :placeholder="t('keys.commentPlaceholder')" />
+          <NInput v-model:value="genForm.comment" :placeholder="t('keys.commentPlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
         <NFormItem :label="t('keys.passphrase')">
-          <NInput v-model:value="genForm.passphrase" type="password" show-password-on="click" :placeholder="t('keys.passphrasePlaceholder')" />
+          <NInput v-model:value="genForm.passphrase" type="password" show-password-on="click" :placeholder="t('keys.passphrasePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
       </NForm>
       <template #footer>
@@ -326,7 +326,7 @@ function formatType(keyType: string): string {
     <NModal v-model:show="showRenameModal" preset="card" :title="t('keys.rename')" style="width: 360px" :mask-closable="false">
       <NForm label-placement="left" label-width="90">
         <NFormItem :label="t('keys.fileName')">
-          <NInput v-model:value="renameNewName" :placeholder="t('keys.fileNamePlaceholder')" @keydown.enter="handleRename" />
+          <NInput v-model:value="renameNewName" :placeholder="t('keys.fileNamePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" @keydown.enter="handleRename" />
         </NFormItem>
       </NForm>
       <template #footer>

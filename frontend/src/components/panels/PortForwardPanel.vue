@@ -361,7 +361,7 @@ onMounted(() => {
     <NModal v-model:show="showModal" preset="card" :title="isEdit ? t('portForward.edit') : t('portForward.add')" style="width: 480px" :mask-closable="false">
       <NForm label-placement="left" label-width="100">
         <NFormItem :label="t('portForward.name')">
-          <NInput v-model:value="form.name" :placeholder="t('portForward.namePlaceholder')" />
+          <NInput v-model:value="form.name" :placeholder="t('portForward.namePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
         <NFormItem :label="t('portForward.connection')">
           <NSelect v-model:value="form.connectionID" :options="connectionOptions" :placeholder="t('portForward.connectionPlaceholder')" />
@@ -379,16 +379,16 @@ onMounted(() => {
           <NSelect v-model:value="form.type" :options="typeOptions" />
         </NFormItem>
         <NFormItem :label="t('portForward.localHost')">
-          <NInput v-model:value="form.localHost" placeholder="127.0.0.1" />
+          <NInput v-model:value="form.localHost" placeholder="127.0.0.1" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
         <NFormItem :label="t('portForward.localPort')">
-          <NInput v-model:value="form.localPort" placeholder="8080" />
+          <NInput v-model:value="form.localPort" placeholder="8080" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
         <NFormItem :label="t('portForward.remoteHost')">
-          <NInput v-model:value="form.remoteHost" placeholder="127.0.0.1" />
+          <NInput v-model:value="form.remoteHost" placeholder="127.0.0.1" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
         <NFormItem :label="t('portForward.remotePort')">
-          <NInput v-model:value="form.remotePort" placeholder="80" />
+          <NInput v-model:value="form.remotePort" placeholder="80" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
         </NFormItem>
         <NFormItem label=" ">
           <NCheckbox v-model:checked="form.autoStart">{{ t('portForward.autoStart') }}</NCheckbox>
