@@ -163,7 +163,7 @@ export function ListRunningPortForwards(): $CancellablePromise<string[]> {
 }
 
 /**
- * ListSSHKeys scans ~/.ssh for private key files and returns their metadata.
+ * ListSSHKeys scans ~/.ssh and its subdirectories for private key files and returns their metadata.
  */
 export function ListSSHKeys(): $CancellablePromise<$models.SSHKeyInfo[]> {
     return $Call.ByID(3301404409).then(($result: any) => {

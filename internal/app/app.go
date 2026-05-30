@@ -829,52 +829,62 @@ func guessKeyTypeFromContent(content string) string {
 	return "ssh-ed25519"
 }
 
-// ListSSHKeys scans ~/.ssh for private key files and returns their metadata.
+// ListSSHKeys scans ~/.ssh and its subdirectories for private key files and returns their metadata.
 func (a *AppService) ListSSHKeys() ([]SSHKeyInfo, error) {
 	dir, err := sshDir()
 	if err != nil {
 		return nil, err
 	}
 
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, fmt.Errorf("read ~/.ssh: %w", err)
-	}
-
 	skipSuffixes := []string{".pub", "-cert.pub", ".known_hosts", ".known_hosts_old", ".authorized_keys", ".config", ".rfc"}
 
 	var results []SSHKeyInfo
-	for _, e := range entries {
-		if e.IsDir() || strings.HasPrefix(e.Name(), ".") {
-			continue
+	var walk func(string)
+	walk = func(current string) {
+		entries, err := os.ReadDir(current)
+		if err != nil {
+			return
 		}
-
-		skip := false
-		for _, s := range skipSuffixes {
-			if strings.HasSuffix(e.Name(), s) {
-				skip = true
-				break
+		for _, e := range entries {
+			name := e.Name()
+			if strings.HasPrefix(name, ".") {
+				continue
 			}
+			path := filepath.Join(current, name)
+			if e.IsDir() {
+				walk(path)
+				continue
+			}
+			skip := false
+			for _, s := range skipSuffixes {
+				if strings.HasSuffix(name, s) {
+					skip = true
+					break
+				}
+			}
+			if skip {
+				continue
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				continue
+			}
+			if !strings.Contains(string(raw), "PRIVATE KEY") {
+				continue
+			}
+			info, err := parseKeyFile(path)
+			if err != nil {
+				continue
+			}
+			// Use relative path from ~/.ssh as the name for keys in subdirectories
+			rel, err := filepath.Rel(dir, path)
+			if err == nil {
+				info.Name = rel
+			}
+			results = append(results, info)
 		}
-		if skip {
-			continue
-		}
-
-		keyPath := filepath.Join(dir, e.Name())
-		raw, err := os.ReadFile(keyPath)
-		if err != nil {
-			continue
-		}
-		if !strings.Contains(string(raw), "PRIVATE KEY") {
-			continue
-		}
-
-		info, err := parseKeyFile(keyPath)
-		if err != nil {
-			continue
-		}
-		results = append(results, info)
 	}
+	walk(dir)
 
 	return results, nil
 }
@@ -885,9 +895,10 @@ func (a *AppService) SaveSSHKey(name string, privateKey string, publicKey string
 	if err != nil {
 		return err
 	}
-	os.MkdirAll(dir, 0700)
 
 	keyPath := filepath.Join(dir, name)
+	os.MkdirAll(filepath.Dir(keyPath), 0700)
+
 	if err := os.WriteFile(keyPath, []byte(privateKey), 0600); err != nil {
 		return fmt.Errorf("write key: %w", err)
 	}
