@@ -63,6 +63,7 @@ export function DeleteQuickCommand(id: string): $CancellablePromise<void> {
 
 /**
  * DeleteSSHKey removes a key file and its .pub companion from ~/.ssh.
+ * If the key is in a subdirectory, the subdirectory is also removed when empty.
  */
 export function DeleteSSHKey(name: string): $CancellablePromise<void> {
     return $Call.ByID(2358421539, name);
