@@ -21,6 +21,7 @@ import type { TransferProgress } from '../../stores/transfers'
 import { SFTPUpload, SFTPDownload, SFTPDelete, SFTPReadFileContent, SFTPCancelTransfers, GetHomeDir, ListLocalDir, DeleteLocalFile, ReadLocalFileContent, OpenInFileManager } from '../../../bindings/vshell/internal/app/appservice'
 import { useDragSource, useDropTarget } from '../../composables/useDragTransfer'
 import { isEditableFile } from '../../utils/fileType'
+import DraggableDivider from '../common/DraggableDivider.vue'
 
 const props = defineProps<{ connectionID: string }>()
 const { t } = useI18n()
@@ -634,7 +635,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
         </div>
 
         <div class="flex-1 flex overflow-hidden min-h-0">
-          <div class="overflow-y-auto thin-border-r" :style="{ width: treeWidth + 'px', flexShrink: 0 }">
+          <div class="h-full overflow-auto thin-border-r sftp-tree shrink-0" :style="{ width: treeWidth + 'px' }">
             <NTree v-if="treeData.length > 0" :data="treeData" :expanded-keys="expandedKeys" :on-load="handleLoad"
               selectable block-line
               @update:expanded-keys="(keys: string[]) => expandedKeys = keys"
@@ -642,7 +643,10 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
             <div v-else-if="!sftpStore.getPanel(props.connectionID).loading" class="h-full flex-center text-[var(--text-secondary)] text-[var(--font-size-sm)] px-2 text-center">{{ t('sftp.treeEmpty') }}</div>
           </div>
 
-          <div class="flex-1 overflow-y-auto" ref="remoteDropRef" :id="'remote-drop-zone-' + props.connectionID" data-file-drop-target :class="{ 'drag-over': remoteIsDragOver }">
+          <DraggableDivider direction="vertical" :model-value="treeWidth" :min="120" :max="500"
+            @update:model-value="(v: number) => treeWidth = v" />
+
+          <div class="flex-1 min-w-0 h-full overflow-y-auto" ref="remoteDropRef" :id="'remote-drop-zone-' + props.connectionID" data-file-drop-target :class="{ 'drag-over': remoteIsDragOver }">
             <div v-if="sftpStore.getPanel(props.connectionID).error" class="h-full flex-center text-[var(--color-error)] px-4">{{ sftpStore.getPanel(props.connectionID).error }}</div>
             <table v-else-if="!sftpStore.getPanel(props.connectionID).loading" class="w-full border-collapse file-table">
               <thead>
@@ -761,6 +765,22 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
   border-bottom: 1px solid rgba(128, 128, 128, 0.12);
 }
 .thin-border-r { border-right: 1px solid rgba(128, 128, 128, 0.12); }
+
+/* File tree: allow horizontal scroll so deep/long names don't wrap */
+.sftp-tree :deep(.n-tree) {
+  width: max-content;
+  min-width: 100%;
+}
+.sftp-tree :deep(.n-tree-node) {
+  white-space: nowrap;
+}
+.sftp-tree :deep(.n-tree-node-content) {
+  white-space: nowrap;
+}
+.sftp-tree :deep(.n-tree-node-content__text) {
+  white-space: nowrap;
+  max-width: none;
+}
 
 .loading-bar {
   position: absolute;
