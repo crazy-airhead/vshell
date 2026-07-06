@@ -9,6 +9,9 @@ import {
   CreateConnection,
   UpdateConnection,
   DeleteConnection,
+  ExportConnectionConfigs,
+  ImportConnectionConfigs,
+  IsConnectionConfigEncrypted,
   MoveConnection,
   CreateGroup,
   UpdateGroup,
@@ -185,6 +188,20 @@ export const useConnectionStore = defineStore('connection', () => {
     await loadConnections()
   }
 
+  async function exportConfigs(filePath: string, password = '') {
+    await ExportConnectionConfigs(filePath, password)
+  }
+
+  async function isConfigEncrypted(filePath: string) {
+    return await IsConnectionConfigEncrypted(filePath)
+  }
+
+  async function importConfigs(filePath: string, password = '') {
+    const result = await ImportConnectionConfigs(filePath, password)
+    await Promise.all([loadConnections(), loadGroups()])
+    return result
+  }
+
   function getConnectionsByGroup(groupID: string | null): Connection[] {
     return connections.value.filter((c) => {
       const gid = c.group_id || null
@@ -223,6 +240,9 @@ export const useConnectionStore = defineStore('connection', () => {
     removeConnection,
     moveConnection,
     updateConnection,
+    exportConfigs,
+    isConfigEncrypted,
+    importConfigs,
     getConnectionsByGroup,
     createGroup,
     updateGroup,

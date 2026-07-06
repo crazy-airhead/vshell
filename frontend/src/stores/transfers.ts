@@ -57,14 +57,38 @@ export const useTransferStore = defineStore('transfers', () => {
     transfers.value = transfers.value.filter(x => x.id !== id)
   }
 
+  function markTransfersDone(direction: TransferProgress['direction']) {
+    let changed = false
+    transfers.value = transfers.value.map((t) => {
+      if (t.direction !== direction || t.done) return t
+      changed = true
+      return {
+        ...t,
+        transferred: t.total_bytes > 0 ? t.total_bytes : t.transferred,
+        percent: 100,
+        speed_kbps: 0,
+        done: true,
+      }
+    })
+    if (changed) scheduleClear()
+  }
+
   function clearDone() {
     transfers.value = transfers.value.filter(x => !x.done)
+  }
+
+  function clearAll() {
+    doneTimers.forEach(timer => clearTimeout(timer))
+    doneTimers.clear()
+    transfers.value = []
   }
 
   return {
     transfers,
     addOrUpdateTransfer,
     removeTransfer,
+    markTransfersDone,
     clearDone,
+    clearAll,
   }
 })

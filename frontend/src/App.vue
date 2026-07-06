@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NConfigProvider, darkTheme, NMessageProvider, NDialogProvider, type GlobalThemeOverrides } from 'naive-ui'
 import { Events } from '@wailsio/runtime'
@@ -23,6 +23,7 @@ import { useTerminalStore } from './stores/terminal'
 import { useConnectionStore } from './stores/connection'
 import { useShortcuts } from './composables/useShortcuts'
 import type { LocaleCode } from './stores/settings'
+import { SaveWindowSize } from '../bindings/vshell/internal/app/appservice'
 
 const { locale, t } = useI18n()
 const settings = useSettingsStore()
@@ -87,7 +88,38 @@ useShortcuts({
   toggleSidebar: () => { sidebarVisible.value = !sidebarVisible.value },
 })
 
-onMounted(() => {
+let saveWindowSizeTimer: ReturnType<typeof setTimeout> | null = null
+
+async function saveCurrentWindowSize() {
+  try {
+    const [width, height] = await Promise.all([Window.Width(), Window.Height()])
+    await SaveWindowSize(Math.round(width), Math.round(height))
+  } catch (e) {
+    console.error('Failed to save window size:', e)
+  }
+}
+
+function scheduleWindowSizeSave() {
+  if (saveWindowSizeTimer) {
+    clearTimeout(saveWindowSizeTimer)
+  }
+  saveWindowSizeTimer = setTimeout(() => {
+    saveWindowSizeTimer = null
+    void saveCurrentWindowSize()
+  }, 300)
+}
+
+onMounted(async () => {
+  window.addEventListener('resize', scheduleWindowSizeSave)
+
+  if (terminalStore.tabs.length === 0) {
+    try {
+      await terminalStore.openLocalTerminal()
+    } catch (e) {
+      console.error('Failed to start local terminal:', e)
+    }
+  }
+
   Events.On('menu:settings', () => {
     showSettings.value = true
   })
@@ -95,11 +127,20 @@ onMounted(() => {
     const id = terminalStore.activeTabID
     if (!id) return
     const tab = terminalStore.tabs.find(t => t.id === id)
-    if (tab && tab.type !== 'editor' && tab.connectionID) {
-      connectionStore.disconnect(tab.connectionID)
+    if (tab && tab.type !== 'editor') {
+      connectionStore.disconnectSession(tab.id, tab.connectionID)
     }
     terminalStore.removeTab(id)
   })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', scheduleWindowSizeSave)
+  if (saveWindowSizeTimer) {
+    clearTimeout(saveWindowSizeTimer)
+    saveWindowSizeTimer = null
+  }
+  void saveCurrentWindowSize()
 })
 </script>
 

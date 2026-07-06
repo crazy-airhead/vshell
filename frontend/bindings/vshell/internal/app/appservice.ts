@@ -80,6 +80,10 @@ export function DisconnectSession(sessionID: string, connectionID: string): $Can
     return $Call.ByID(3227406241, sessionID, connectionID);
 }
 
+export function ExportConnectionConfigs(filePath: string, password: string): $CancellablePromise<void> {
+    return $Call.ByID(506786186, filePath, password);
+}
+
 /**
  * GenerateSSHKey generates a new SSH key pair and writes it to ~/.ssh/<name>.
  */
@@ -104,6 +108,12 @@ export function GetSSHConfigImportCandidates(): $CancellablePromise<$models.SSHC
     });
 }
 
+export function ImportConnectionConfigs(filePath: string, password: string): $CancellablePromise<$models.ConnectionImportResult> {
+    return $Call.ByID(2284970839, filePath, password).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
 /**
  * ImportSSHConfigHosts imports selected Host entries from ~/.ssh/config as vShell connections.
  */
@@ -111,45 +121,49 @@ export function ImportSSHConfigHosts(patterns: string[]): $CancellablePromise<vo
     return $Call.ByID(4221413695, patterns);
 }
 
+export function IsConnectionConfigEncrypted(filePath: string): $CancellablePromise<boolean> {
+    return $Call.ByID(3226245909, filePath);
+}
+
 export function ListAllPortForwards(): $CancellablePromise<models$0.PortForward[]> {
     return $Call.ByID(4070239221).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
 export function ListConnections(): $CancellablePromise<models$0.Connection[]> {
     return $Call.ByID(2436681430).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
 export function ListGroups(): $CancellablePromise<models$0.Group[]> {
     return $Call.ByID(494692261).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType8($result);
     });
 }
 
 export function ListLocalDir(dirPath: string): $CancellablePromise<$models.LocalFileInfo[]> {
     return $Call.ByID(1378612327, dirPath).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType10($result);
     });
 }
 
 export function ListPortForwards(connectionID: string): $CancellablePromise<models$0.PortForward[]> {
     return $Call.ByID(3400329328, connectionID).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
 export function ListQuickCommands(connectionID: string | null): $CancellablePromise<models$0.QuickCommand[]> {
     return $Call.ByID(3567644202, connectionID).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType12($result);
     });
 }
 
 export function ListRunningPortForwards(): $CancellablePromise<string[]> {
     return $Call.ByID(3835552541).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType13($result);
     });
 }
 
@@ -158,7 +172,7 @@ export function ListRunningPortForwards(): $CancellablePromise<string[]> {
  */
 export function ListSSHKeys(): $CancellablePromise<$models.SSHKeyInfo[]> {
     return $Call.ByID(3301404409).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType15($result);
     });
 }
 
@@ -182,7 +196,7 @@ export function ReadLocalFileContent(localPath: string): $CancellablePromise<str
  */
 export function ReadSSHConfig(): $CancellablePromise<$models.SSHConfigEntry[]> {
     return $Call.ByID(3639124279).then(($result: any) => {
-        return $$createType16($result);
+        return $$createType17($result);
     });
 }
 
@@ -222,7 +236,7 @@ export function SFTPDownload(connectionID: string, remotePath: string, localPath
 
 export function SFTPReadDir(connectionID: string, path: string): $CancellablePromise<sftp$0.FileInfo[]> {
     return $Call.ByID(3242100799, connectionID, path).then(($result: any) => {
-        return $$createType18($result);
+        return $$createType19($result);
     });
 }
 
@@ -245,11 +259,19 @@ export function SaveSSHKey(name: string, privateKey: string, publicKey: string):
     return $Call.ByID(3774081477, name, privateKey, publicKey);
 }
 
+export function SaveWindowSize(width: number, height: number): $CancellablePromise<void> {
+    return $Call.ByID(786872505, width, height);
+}
+
 /**
  * SetApp sets the Wails application reference. Called after application creation.
  */
 export function SetApp(app: application$0.App | null): $CancellablePromise<void> {
     return $Call.ByID(4209028258, app);
+}
+
+export function StartLocalTerminal(): $CancellablePromise<string> {
+    return $Call.ByID(2952856122);
 }
 
 export function StartMonitor(connectionID: string): $CancellablePromise<void> {
@@ -302,19 +324,20 @@ export function WriteSSHConfigRaw(content: string): $CancellablePromise<void> {
 const $$createType0 = models$0.PortForward.createFrom;
 const $$createType1 = $models.SSHConfigImportCandidate.createFrom;
 const $$createType2 = $Create.Array($$createType1);
-const $$createType3 = $Create.Array($$createType0);
-const $$createType4 = models$0.Connection.createFrom;
-const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = models$0.Group.createFrom;
-const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = $models.LocalFileInfo.createFrom;
-const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = models$0.QuickCommand.createFrom;
-const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = $Create.Array($Create.Any);
-const $$createType13 = $models.SSHKeyInfo.createFrom;
-const $$createType14 = $Create.Array($$createType13);
-const $$createType15 = $models.SSHConfigEntry.createFrom;
-const $$createType16 = $Create.Array($$createType15);
-const $$createType17 = sftp$0.FileInfo.createFrom;
-const $$createType18 = $Create.Array($$createType17);
+const $$createType3 = $models.ConnectionImportResult.createFrom;
+const $$createType4 = $Create.Array($$createType0);
+const $$createType5 = models$0.Connection.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = models$0.Group.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = $models.LocalFileInfo.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = models$0.QuickCommand.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = $Create.Array($Create.Any);
+const $$createType14 = $models.SSHKeyInfo.createFrom;
+const $$createType15 = $Create.Array($$createType14);
+const $$createType16 = $models.SSHConfigEntry.createFrom;
+const $$createType17 = $Create.Array($$createType16);
+const $$createType18 = sftp$0.FileInfo.createFrom;
+const $$createType19 = $Create.Array($$createType18);

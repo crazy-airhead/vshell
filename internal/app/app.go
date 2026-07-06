@@ -21,6 +21,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"vshell/internal/db"
+	"vshell/internal/localterm"
 	"vshell/internal/models"
 	"vshell/internal/portforward"
 	"vshell/internal/sftp"
@@ -30,6 +31,7 @@ import (
 type AppService struct {
 	wailsApp    *application.App
 	db          *db.DB
+	localTerms  *localterm.Manager
 	sshManager  *vshellssh.Manager
 	sftpManager *sftp.Manager
 	fwdManager  *portforward.Manager
@@ -57,6 +59,7 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 		a.wailsApp.Event.Emit(event, data)
 	}
 
+	a.localTerms = localterm.NewManager(emit)
 	a.sshManager = vshellssh.NewManager(a.db.Crypto(), emit)
 	a.sftpManager = sftp.NewManager(a.sshManager, a.db.Crypto(), emit)
 	a.fwdManager = portforward.NewManager()
@@ -73,6 +76,9 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 			return
 		}
 		if msg.SessionID != "" && msg.Data != "" {
+			if a.localTerms.WriteStdin(msg.SessionID, []byte(msg.Data)) {
+				return
+			}
 			a.sshManager.WriteStdin(msg.SessionID, []byte(msg.Data))
 		}
 	})
@@ -152,6 +158,9 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 			return
 		}
 		if msg.SessionID != "" && msg.Rows > 0 && msg.Cols > 0 {
+			if a.localTerms.Resize(msg.SessionID, uint16(msg.Rows), uint16(msg.Cols)) {
+				return
+			}
 			a.sshManager.ResizeWindow(msg.SessionID, msg.Rows, msg.Cols)
 		}
 	})
@@ -161,6 +170,9 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 
 // ServiceShutdown is called by Wails when the application shuts down.
 func (a *AppService) ServiceShutdown() error {
+	if a.localTerms != nil {
+		a.localTerms.CloseAll()
+	}
 	if a.db != nil {
 		a.db.Close()
 	}
@@ -288,6 +300,14 @@ func (a *AppService) MoveConnection(connectionID string, groupID *string) error 
 
 // --- SSH Session Management ---
 
+func (a *AppService) StartLocalTerminal() (string, error) {
+	sessionID := "local-" + uuid.New().String()
+	if err := a.localTerms.Start(sessionID, 24, 80); err != nil {
+		return "", err
+	}
+	return sessionID, nil
+}
+
 func (a *AppService) ConnectSSH(connectionID string) (string, error) {
 	conn, err := a.getConnectionByID(connectionID)
 	if err != nil {
@@ -311,6 +331,10 @@ func (a *AppService) DisconnectSSH(connectionID string) {
 // DisconnectSession disconnects a single terminal session. If it's the last
 // session for its connection, the full connection cleanup is also performed.
 func (a *AppService) DisconnectSession(sessionID string, connectionID string) {
+	if connectionID == "" {
+		a.localTerms.DisconnectSession(sessionID)
+		return
+	}
 	a.sshManager.DisconnectSession(sessionID)
 	if !a.sshManager.HasActiveSession(connectionID) {
 		a.StopMonitor(connectionID)

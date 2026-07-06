@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NTabs, NTabPane, NEmpty, NTooltip, NDropdown } from 'naive-ui'
+import { NTabs, NTabPane, NEmpty, NTooltip, NDropdown, NButton } from 'naive-ui'
 import type { DropdownOption } from 'naive-ui'
+import IconPlus from '~icons/lucide/plus'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
 import { useSFTPStore } from '../../stores/sftp'
@@ -57,10 +58,10 @@ function renderTabTitle(tab: typeof terminalStore.tabs[number]) {
 
 async function handleClose(id: string) {
   const tab = terminalStore.tabs.find((t) => t.id === id)
-  if (tab && tab.type !== 'editor' && tab.connectionID) {
+  if (tab && tab.type !== 'editor') {
     await connectionStore.disconnectSession(tab.id, tab.connectionID)
     const remaining = terminalStore.tabs.filter(t => t.connectionID === tab.connectionID && t.id !== id)
-    if (remaining.length === 0) {
+    if (tab.connectionID && remaining.length === 0) {
       sftpStore.closePanel(tab.connectionID)
     }
   }
@@ -106,10 +107,18 @@ async function handleDuplicate(tab: typeof terminalStore.tabs[number]) {
   }
 }
 
+async function handleNewTerminal() {
+  try {
+    await terminalStore.openLocalTerminal()
+  } catch (e: any) {
+    // Keep the tab bar action quiet; startup failures are surfaced in the terminal area.
+  }
+}
+
 function handleCloseOthers(id: string) {
   const tabsToClose = terminalStore.tabs.filter(t => t.id !== id)
   for (const tab of tabsToClose) {
-    if (tab.type !== 'editor' && tab.connectionID) {
+    if (tab.type !== 'editor') {
       connectionStore.disconnectSession(tab.id, tab.connectionID)
     }
   }
@@ -125,9 +134,9 @@ function handleCloseOthers(id: string) {
 function handleCloseAll() {
   const connectionIDs = new Set<string>()
   for (const tab of terminalStore.tabs) {
-    if (tab.type !== 'editor' && tab.connectionID) {
+    if (tab.type !== 'editor') {
       connectionStore.disconnectSession(tab.id, tab.connectionID)
-      connectionIDs.add(tab.connectionID)
+      if (tab.connectionID) connectionIDs.add(tab.connectionID)
     }
   }
   for (const connID of connectionIDs) {
@@ -200,6 +209,17 @@ function handleContextSelect(action: string) {
         @update:value="(v: string | number) => { terminalStore.activeTabID = String(v) }"
         size="small"
       >
+        <template #suffix>
+          <NButton
+            size="tiny"
+            quaternary
+            class="terminal-new-tab"
+            title="New local terminal"
+            @click="handleNewTerminal"
+          >
+            <IconPlus :width="14" :height="14" />
+          </NButton>
+        </template>
         <NTabPane
           v-for="tab in terminalStore.tabs"
           :key="tab.id"
@@ -247,6 +267,12 @@ function handleContextSelect(action: string) {
 
 .terminal-tabs :deep(.n-tabs-content) {
   display: none;
+}
+
+.terminal-new-tab {
+  width: 24px;
+  height: 24px;
+  margin-right: 6px;
 }
 </style>
 

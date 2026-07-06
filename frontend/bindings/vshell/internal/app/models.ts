@@ -5,6 +5,31 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+export class ConnectionImportResult {
+    "groups": number;
+    "connections": number;
+
+    /** Creates a new ConnectionImportResult instance. */
+    constructor($$source: Partial<ConnectionImportResult> = {}) {
+        if (!("groups" in $$source)) {
+            this["groups"] = 0;
+        }
+        if (!("connections" in $$source)) {
+            this["connections"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ConnectionImportResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ConnectionImportResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ConnectionImportResult($$parsedSource as Partial<ConnectionImportResult>);
+    }
+}
+
 export class LocalFileInfo {
     "name": string;
     "path": string;

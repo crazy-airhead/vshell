@@ -11,4 +11,24 @@ declare module '@wailsio/runtime' {
     ByID(id: number, ...args: any[]): Promise<any>
     ByName(name: string, ...args: any[]): Promise<any>
   }
+  export const Dialogs: {
+    OpenFile(options: {
+      Title?: string
+      Message?: string
+      ButtonText?: string
+      Directory?: string
+      CanChooseFiles?: boolean
+      CanChooseDirectories?: boolean
+      AllowsMultipleSelection?: boolean
+      Filters?: Array<{ DisplayName?: string; Pattern?: string }>
+    }): Promise<string | string[]>
+    SaveFile(options: {
+      Title?: string
+      Message?: string
+      ButtonText?: string
+      Directory?: string
+      Filename?: string
+      Filters?: Array<{ DisplayName?: string; Pattern?: string }>
+    }): Promise<string>
+  }
 }

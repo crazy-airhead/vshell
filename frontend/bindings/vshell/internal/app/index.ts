@@ -7,6 +7,7 @@ export {
 };
 
 export {
+    ConnectionImportResult,
     LocalFileInfo,
     SSHConfigDirective,
     SSHConfigEntry,

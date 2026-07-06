@@ -527,8 +527,12 @@ const hasActiveTransfers = computed(() => allTransfers.value.some(tr => !tr.done
 async function handleCancelAll() {
   try {
     await SFTPCancelTransfers()
+    setTimeout(() => {
+      if (hasActiveTransfers.value) transferStore.clearAll()
+    }, 300)
   } catch (e) {
     console.error('Failed to cancel transfers:', e)
+    transferStore.clearAll()
   }
 }
 
@@ -566,6 +570,9 @@ onMounted(async () => {
   })
   Events.On('sftp:transfer-done', (ev: any) => {
     const d = ev?.data
+    if (d?.direction === 'upload' || d?.direction === 'download') {
+      transferStore.markTransfersDone(d.direction)
+    }
     if (d?.direction === 'upload' || d?.direction === 'delete') {
       refreshRemote()
     } else {

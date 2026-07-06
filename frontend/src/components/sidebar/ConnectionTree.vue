@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NTree, NButton, NInputGroup, NInput, useMessage, useDialog } from 'naive-ui'
+import { NTree, NButton, NInputGroup, NInput, NModal, NCheckbox, useMessage, useDialog } from 'naive-ui'
 import type { TreeOption, TreeDropInfo } from 'naive-ui'
+import { Dialogs } from '@wailsio/runtime'
 import IconFolderPlus from '~icons/lucide/folder-plus'
 import IconPlus from '~icons/lucide/plus'
 import IconFolder from '~icons/lucide/folder'
 import IconPencil from '~icons/lucide/pencil'
 import IconTrash2 from '~icons/lucide/trash-2'
 import IconZap from '~icons/lucide/zap'
+import IconDownload from '~icons/lucide/download'
+import IconUpload from '~icons/lucide/upload'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
 import ConnectionFormModal from './ConnectionFormModal.vue'
@@ -30,6 +33,15 @@ const newGroupParent = ref<string | null>(null)
 const showRenameInput = ref(false)
 const renameGroupID = ref<string | null>(null)
 const renameGroupName = ref('')
+const transferringConfig = ref(false)
+const showExportModal = ref(false)
+const exportPath = ref('')
+const encryptExport = ref(false)
+const exportPassword = ref('')
+const exportPasswordConfirm = ref('')
+const showImportPasswordModal = ref(false)
+const importPath = ref('')
+const importPassword = ref('')
 
 onMounted(async () => {
   try {
@@ -314,6 +326,103 @@ function startNewGroup(parentID: string | null) {
   showGroupInput.value = true
 }
 
+async function handleExportConfigs() {
+  const filePath = await Dialogs.SaveFile({
+    Title: t('connection.exportConfigs'),
+    Filename: 'vshell-connections.json',
+    Filters: [{ DisplayName: 'JSON', Pattern: '*.json' }],
+  })
+  if (!filePath) return
+
+  exportPath.value = filePath
+  encryptExport.value = false
+  exportPassword.value = ''
+  exportPasswordConfirm.value = ''
+  showExportModal.value = true
+}
+
+async function confirmExportConfigs() {
+  if (encryptExport.value) {
+    if (!exportPassword.value) {
+      message.warning(t('connection.exportPasswordRequired'))
+      return
+    }
+    if (exportPassword.value !== exportPasswordConfirm.value) {
+      message.warning(t('connection.exportPasswordMismatch'))
+      return
+    }
+  }
+
+  transferringConfig.value = true
+  try {
+    await connectionStore.exportConfigs(exportPath.value, encryptExport.value ? exportPassword.value : '')
+    showExportModal.value = false
+    message.success(t('connection.exported'))
+  } catch (e: any) {
+    message.error(t('connection.exportFailed', { error: e }))
+  } finally {
+    transferringConfig.value = false
+  }
+}
+
+async function importSelectedConfig(filePath: string, password = '') {
+  transferringConfig.value = true
+  try {
+    const result = await connectionStore.importConfigs(filePath, password)
+    expandedKeys.value = connectionStore.groups.map(g => g.id)
+    showImportPasswordModal.value = false
+    message.success(t('connection.imported', { connections: result.connections, groups: result.groups }))
+  } catch (e: any) {
+    message.error(t('connection.importFailed', { error: e }))
+  } finally {
+    transferringConfig.value = false
+  }
+}
+
+async function handleImportConfigs() {
+  const filePath = await Dialogs.OpenFile({
+    Title: t('connection.importConfigs'),
+    CanChooseFiles: true,
+    CanChooseDirectories: false,
+    AllowsMultipleSelection: false,
+    Filters: [{ DisplayName: 'JSON', Pattern: '*.json' }],
+  })
+  if (!filePath || Array.isArray(filePath)) return
+
+  importPath.value = filePath
+  importPassword.value = ''
+
+  let encrypted = false
+  try {
+    encrypted = await connectionStore.isConfigEncrypted(filePath)
+  } catch (e: any) {
+    message.error(t('connection.importFailed', { error: e }))
+    return
+  }
+
+  dialog.warning({
+    title: t('connection.importConfigs'),
+    content: t('connection.importConfirm'),
+    positiveText: t('connection.importConfigs'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      if (encrypted) {
+        showImportPasswordModal.value = true
+        return
+      }
+      await importSelectedConfig(filePath)
+    },
+  })
+}
+
+async function confirmEncryptedImport() {
+  if (!importPassword.value) {
+    message.warning(t('connection.importPasswordRequired'))
+    return
+  }
+  await importSelectedConfig(importPath.value, importPassword.value)
+}
+
 async function confirmNewGroup() {
   const name = newGroupName.value.trim()
   if (!name) {
@@ -362,6 +471,12 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
     <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0 relative thin-border-b">
       <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('connection.title') }}</span>
       <div class="flex gap-[2px]">
+        <NButton size="tiny" quaternary :loading="transferringConfig" @click="handleImportConfigs" :title="t('connection.importConfigs')">
+          <IconUpload :width="14" :height="14" />
+        </NButton>
+        <NButton size="tiny" quaternary :loading="transferringConfig" @click="handleExportConfigs" :title="t('connection.exportConfigs')">
+          <IconDownload :width="14" :height="14" />
+        </NButton>
         <NButton size="tiny" quaternary @click="startNewGroup(null)" :title="t('group.newGroup')">
           <IconFolderPlus :width="14" :height="14" />
         </NButton>
@@ -418,6 +533,58 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
     </div>
 
     <ConnectionFormModal v-model:show="showModal" :edit-connection="editConn" :defaultGroupID="defaultGroupID" />
+
+    <NModal v-model:show="showExportModal" preset="card" :title="t('connection.exportConfigs')" style="width: 420px" :mask-closable="false">
+      <div class="flex flex-col gap-3">
+        <NCheckbox v-model:checked="encryptExport">{{ t('connection.encryptExport') }}</NCheckbox>
+        <template v-if="encryptExport">
+          <NInput
+            v-model:value="exportPassword"
+            type="password"
+            show-password-on="click"
+            :placeholder="t('connection.exportPassword')"
+            @keyup.enter="confirmExportConfigs"
+          />
+          <NInput
+            v-model:value="exportPasswordConfirm"
+            type="password"
+            show-password-on="click"
+            :placeholder="t('connection.exportPasswordConfirm')"
+            @keyup.enter="confirmExportConfigs"
+          />
+        </template>
+        <div class="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+          {{ encryptExport ? t('connection.encryptedExportHint') : t('connection.plainExportHint') }}
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <NButton @click="showExportModal = false">{{ t('common.cancel') }}</NButton>
+          <NButton type="primary" :loading="transferringConfig" @click="confirmExportConfigs">{{ t('connection.exportConfigs') }}</NButton>
+        </div>
+      </template>
+    </NModal>
+
+    <NModal v-model:show="showImportPasswordModal" preset="card" :title="t('connection.decryptImport')" style="width: 420px" :mask-closable="false">
+      <div class="flex flex-col gap-3">
+        <NInput
+          v-model:value="importPassword"
+          type="password"
+          show-password-on="click"
+          :placeholder="t('connection.importPassword')"
+          @keyup.enter="confirmEncryptedImport"
+        />
+        <div class="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+          {{ t('connection.encryptedImportHint') }}
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <NButton @click="showImportPasswordModal = false">{{ t('common.cancel') }}</NButton>
+          <NButton type="primary" :loading="transferringConfig" @click="confirmEncryptedImport">{{ t('connection.importConfigs') }}</NButton>
+        </div>
+      </template>
+    </NModal>
   </div>
 </template>
 

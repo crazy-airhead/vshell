@@ -21,6 +21,7 @@ var closeIcon []byte
 
 func main() {
 	svc := app.New()
+	windowSize := app.LoadWindowSize()
 
 	wailsApp := application.New(application.Options{
 		Name:        "vShell",
@@ -93,8 +94,8 @@ func main() {
 			TitleBar:                application.MacTitleBarHidden,
 		},
 		BackgroundColour: application.NewRGB(30, 30, 30),
-		Width:            1280,
-		Height:           800,
+		Width:            windowSize.Width,
+		Height:           windowSize.Height,
 		MinWidth:         960,
 		MinHeight:        600,
 		URL:              "/",
