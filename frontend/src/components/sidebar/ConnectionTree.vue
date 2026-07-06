@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, h } from 'vue'
+import { ref, computed, onMounted, watch, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NTree, NButton, NInputGroup, NInput, NModal, NCheckbox, useMessage, useDialog } from 'naive-ui'
 import type { TreeOption, TreeDropInfo } from 'naive-ui'
@@ -15,6 +15,8 @@ import IconUpload from '~icons/lucide/upload'
 import IconPanelLeftClose from '~icons/lucide/panel-left-close'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
+import { LookupIPCountry } from '../../../bindings/vshell/internal/app/appservice'
+import { countryForIPv4, flagForCountry } from '../../utils/ipCountry'
 import ConnectionFormModal from './ConnectionFormModal.vue'
 import type { Connection } from '../../types'
 
@@ -44,6 +46,7 @@ const exportPasswordConfirm = ref('')
 const showImportPasswordModal = ref(false)
 const importPath = ref('')
 const importPassword = ref('')
+const countryByHost = ref<Record<string, string | null>>({})
 
 onMounted(async () => {
   try {
@@ -58,6 +61,13 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+watch(
+  () => connectionStore.connections.map(conn => conn.host).join('|'),
+  () => {
+    void resolveConnectionCountries()
+  },
+)
 
 function isGroupKey(key: string): boolean {
   return connectionStore.groups.some(g => g.id === key)
@@ -136,9 +146,21 @@ function renderLabel({ option }: { option: TreeOption }) {
   const conn = connectionStore.connections.find(c => c.id === key)
   if (!conn) return option.label as string
 
-  return h('div', { class: 'conn-label' }, [
-    h('span', { class: 'conn-name' }, conn.name),
-    h('span', { class: 'conn-host' }, `${conn.host}:${conn.port}`),
+  return h('div', { class: 'conn-label conn-label-with-flag' }, [
+    h('span', { class: 'conn-flag-wrap' }, [
+      h('img', {
+        class: 'conn-flag',
+        src: flagForCountry(countryByHost.value[conn.host] ?? countryForIPv4(conn.host)),
+        alt: '',
+        onError: (e: Event) => {
+          (e.target as HTMLImageElement).src = '/flags/un.png'
+        },
+      }),
+    ]),
+    h('span', { class: 'conn-info' }, [
+      h('span', { class: 'conn-name' }, conn.name),
+      h('span', { class: 'conn-host-text' }, `${conn.host}:${conn.port}`),
+    ]),
     h('span', { class: 'conn-actions flex gap-[2px]' }, [
       h('button', {
         class: 'conn-hover-btn',
@@ -157,6 +179,20 @@ function renderLabel({ option }: { option: TreeOption }) {
       }, h(IconTrash2, { width: 12, height: 12 })),
     ]),
   ])
+}
+
+async function resolveConnectionCountries() {
+  const hosts = Array.from(new Set(connectionStore.connections.map(conn => conn.host).filter(Boolean)))
+  await Promise.all(hosts.map(async (host) => {
+    if (Object.prototype.hasOwnProperty.call(countryByHost.value, host)) return
+    const fallback = countryForIPv4(host)
+    try {
+      const country = await LookupIPCountry(host)
+      countryByHost.value[host] = country || fallback
+    } catch {
+      countryByHost.value[host] = fallback
+    }
+  }))
 }
 
 function nodeProps({ option }: { option: TreeOption }) {
@@ -520,7 +556,7 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
       </NInputGroup>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-2 tree-content">
+    <div class="flex-1 overflow-y-auto px-1 py-2 tree-content">
       <NTree
         v-if="!loading"
         :data="treeData"
@@ -628,12 +664,30 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
   -webkit-user-select: none;
 }
 
+.tree-content :deep(.n-tree-node-switcher--hide) {
+  width: 0;
+  margin-right: 0;
+}
+
 .tree-content :deep(.conn-label) {
   display: flex;
   flex-direction: column;
   width: 100%;
   min-width: 0;
   line-height: 1.3;
+}
+
+.tree-content :deep(.conn-label-with-flag) {
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+}
+
+.tree-content :deep(.conn-info) {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
 }
 
 .tree-content :deep(.conn-name) {
@@ -645,11 +699,39 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 }
 
 .tree-content :deep(.conn-host) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.tree-content :deep(.conn-flag-wrap) {
+  width: 30px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tree-content :deep(.conn-flag) {
+  width: 30px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.tree-content :deep(.conn-host-text) {
   font-size: 11px;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .tree-content :deep(.conn-actions) {

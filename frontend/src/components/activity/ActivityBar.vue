@@ -2,6 +2,7 @@
 import { useLayoutStore } from '../../stores/layout'
 import IconServer from '~icons/lucide/server'
 import IconBraces from '~icons/lucide/braces'
+import IconNetwork from '~icons/lucide/network'
 import IconKeyRound from '~icons/lucide/key-round'
 import IconFileText from '~icons/lucide/file-text'
 import IconActivity from '~icons/lucide/activity'
@@ -42,6 +43,15 @@ function selectSidebar(view: SidebarView) {
       >
         <IconBraces :width="20" :height="20" />
         <span v-if="layout.activeSidebar === 'snippets'" class="absolute left-0 top-2 bottom-2 w-[2px] bg-[var(--color-primary)] rounded-r-[2px]" />
+      </button>
+      <button
+        class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
+        :class="{ '!text-[var(--color-primary)]': layout.activeSidebar === 'proxies' }"
+        @click="selectSidebar('proxies')"
+        title="Proxies"
+      >
+        <IconNetwork :width="20" :height="20" />
+        <span v-if="layout.activeSidebar === 'proxies'" class="absolute left-0 top-2 bottom-2 w-[2px] bg-[var(--color-primary)] rounded-r-[2px]" />
       </button>
       <button
         class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"

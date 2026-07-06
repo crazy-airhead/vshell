@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   NModal, NTabs, NTabPane, NFormItem, NSlider, NSpace,
-  NButton, NSelect,
+  NButton, NSelect, NInput, useMessage,
 } from 'naive-ui'
 import { useSettingsStore } from '../../stores/settings'
+import {
+  GetGeoIPDownloadURL,
+  SetGeoIPDownloadURL,
+  UpdateGeoIPDatabase,
+} from '../../../bindings/vshell/internal/app/appservice'
 import type { ShortcutMap } from '../../stores/settings'
 
 const props = defineProps<{ show: boolean }>()
@@ -13,6 +18,9 @@ const emit = defineEmits<{ (e: 'update:show', val: boolean): void }>()
 
 const { t } = useI18n()
 const settings = useSettingsStore()
+const message = useMessage()
+const geoIPDownloadURL = ref('')
+const updatingGeoIP = ref(false)
 
 const showModal = computed({
   get: () => props.show,
@@ -94,13 +102,50 @@ function formatCombo(combo: string): string {
 function findFontValue(options: { value: string }[], current: string): string {
   return options.find(o => o.value === current)?.value || options[0].value
 }
+
+watch(
+  () => props.show,
+  async (visible) => {
+    if (!visible) return
+    try {
+      geoIPDownloadURL.value = await GetGeoIPDownloadURL()
+    } catch (e: any) {
+      message.error(t('settings.geoipLoadFailed', { error: e }))
+    }
+  },
+  { immediate: true },
+)
+
+async function saveGeoIPDownloadURL() {
+  try {
+    await SetGeoIPDownloadURL(geoIPDownloadURL.value)
+    geoIPDownloadURL.value = await GetGeoIPDownloadURL()
+    message.success(t('settings.geoipSaved'))
+  } catch (e: any) {
+    message.error(t('settings.geoipSaveFailed', { error: e }))
+  }
+}
+
+async function updateGeoIPDatabase() {
+  updatingGeoIP.value = true
+  try {
+    await SetGeoIPDownloadURL(geoIPDownloadURL.value)
+    await UpdateGeoIPDatabase()
+    geoIPDownloadURL.value = await GetGeoIPDownloadURL()
+    message.success(t('settings.geoipUpdated'))
+  } catch (e: any) {
+    message.error(t('settings.geoipUpdateFailed', { error: e }))
+  } finally {
+    updatingGeoIP.value = false
+  }
+}
 </script>
 
 <template>
   <NModal v-model:show="showModal" preset="card" :title="t('settings.title')" style="width: 520px" :mask-closable="true">
     <NTabs type="line" animated>
-      <!-- Interface Tab -->
-      <NTabPane :name="t('settings.interface')">
+      <!-- General Tab -->
+      <NTabPane :name="t('settings.general')">
         <NSpace vertical :size="16" style="padding: 8px 0">
           <NFormItem :label="t('settings.uiFontFamily')" label-placement="left" :show-feedback="false">
             <NSelect
@@ -127,6 +172,21 @@ function findFontValue(options: { value: string }[], current: string): string {
               />
             </div>
           </NFormItem>
+
+          <NFormItem :label="t('settings.geoipDownloadURL')" label-placement="top" :show-feedback="false">
+            <div class="flex gap-2 w-full">
+              <NInput
+                v-model:value="geoIPDownloadURL"
+                :placeholder="t('settings.geoipDownloadURLPlaceholder')"
+              />
+              <NButton type="primary" :loading="updatingGeoIP" @click="updateGeoIPDatabase">
+                {{ t('settings.geoipUpdate') }}
+              </NButton>
+            </div>
+          </NFormItem>
+          <div class="flex justify-end gap-2">
+            <NButton @click="saveGeoIPDownloadURL">{{ t('common.save') }}</NButton>
+          </div>
         </NSpace>
       </NTabPane>
 

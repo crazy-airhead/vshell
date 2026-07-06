@@ -15,6 +15,8 @@ export interface Connection {
   port: number
   username: string
   auth_type: AuthType
+  proxy_type: string | null
+  proxy_addr: string | null
   upload_path: string
   default_cmd: string | null
   sort_order: number
@@ -48,6 +50,15 @@ export interface QuickCommand {
   command: string
   connection_id: string | null
   sort_order: number
+}
+
+export interface ProxyConfig {
+  id: string
+  name: string
+  type: 'http' | 'socks5'
+  host: string
+  port: number
+  username: string
 }
 
 export type ForwardType = 'local' | 'remote' | 'dynamic'

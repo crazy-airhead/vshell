@@ -11,6 +11,7 @@ import IconMoon from '~icons/lucide/moon'
 import ActivityBar from './components/activity/ActivityBar.vue'
 import ConnectionTree from './components/sidebar/ConnectionTree.vue'
 import SnippetsPanel from './components/snippets/SnippetsPanel.vue'
+import ProxyPanel from './components/proxy/ProxyPanel.vue'
 import KeyManagementPanel from './components/keys/KeyManagementPanel.vue'
 import SSHConfigPanel from './components/config/SSHConfigPanel.vue'
 import PortForwardPanel from './components/panels/PortForwardPanel.vue'
@@ -34,6 +35,7 @@ const connectionStore = useConnectionStore()
 
 const sidebarVisible = ref(true)
 const showSettings = ref(false)
+const geoIPDownloading = ref(false)
 
 const naiveTheme = computed(() => settings.isDark ? darkTheme : null)
 const themeIcon = computed(() => settings.isDark ? IconMoon : IconSun)
@@ -133,6 +135,15 @@ onMounted(async () => {
     }
     terminalStore.removeTab(id)
   })
+  Events.On('geoip:download:start', () => {
+    geoIPDownloading.value = true
+  })
+  Events.On('geoip:download:done', () => {
+    geoIPDownloading.value = false
+  })
+  Events.On('geoip:download:error', () => {
+    geoIPDownloading.value = false
+  })
 })
 
 onUnmounted(() => {
@@ -177,6 +188,13 @@ onUnmounted(() => {
             />
           </div>
 
+          <div
+            v-if="geoIPDownloading"
+            class="h-[28px] shrink-0 flex items-center justify-center thin-border-b bg-[var(--bg-secondary)] text-[12px] text-[var(--text-secondary)]"
+          >
+            {{ t('geoip.downloading') }}
+          </div>
+
           <div class="flex flex-1 min-h-0">
             <!-- Activity Bar -->
             <ActivityBar @open-settings="showSettings = true" @show-sidebar="sidebarVisible = true" />
@@ -189,6 +207,7 @@ onUnmounted(() => {
                   <div class="shrink-0 overflow-hidden rounded-[var(--border-radius)] bg-[var(--bg-secondary)]" :style="{ width: layout.sidebarWidth + 'px' }">
                     <ConnectionTree v-if="layout.activeSidebar === 'connections'" @collapse-sidebar="sidebarVisible = false" />
                     <SnippetsPanel v-else-if="layout.activeSidebar === 'snippets'" />
+                    <ProxyPanel v-else-if="layout.activeSidebar === 'proxies'" />
                     <KeyManagementPanel v-else-if="layout.activeSidebar === 'keys'" />
                     <SSHConfigPanel v-else-if="layout.activeSidebar === 'ssh-config'" />
                     <PortForwardPanel v-else-if="layout.activeSidebar === 'port-forward'" />

@@ -1,11 +1,17 @@
 package ssh
 
 import (
+	"bufio"
+	"encoding/base64"
 	"fmt"
+	"net"
+	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/net/proxy"
 
 	"vshell/internal/crypto"
 	"vshell/internal/models"
@@ -50,7 +56,7 @@ func (m *Manager) Connect(conn *models.Connection, sessionID string) (*Session, 
 	m.mu.Unlock()
 
 	if !exists {
-		client, err = ssh.Dial("tcp", addr, config)
+		client, err = m.dialSSH(conn, addr, config)
 		if err != nil {
 			return nil, fmt.Errorf("dial %s: %w", addr, err)
 		}
@@ -218,6 +224,105 @@ func (m *Manager) buildSSHConfig(conn *models.Connection) (*ssh.ClientConfig, er
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         10 * time.Second,
 	}, nil
+}
+
+func (m *Manager) dialSSH(conn *models.Connection, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	if conn.ProxyType == nil || conn.ProxyAddr == nil || *conn.ProxyType == "" || *conn.ProxyAddr == "" {
+		return ssh.Dial("tcp", addr, config)
+	}
+
+	proxyType := strings.ToLower(*conn.ProxyType)
+	proxyAddr := *conn.ProxyAddr
+
+	var rawConn net.Conn
+	var err error
+	switch proxyType {
+	case "socks5":
+		rawConn, err = dialSocks5(proxyAddr, addr, config.Timeout)
+	case "http":
+		rawConn, err = dialHTTPProxy(proxyAddr, addr, config.Timeout)
+	default:
+		return nil, fmt.Errorf("unsupported proxy type: %s", proxyType)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	sshConn, chans, reqs, err := ssh.NewClientConn(rawConn, addr, config)
+	if err != nil {
+		rawConn.Close()
+		return nil, err
+	}
+	return ssh.NewClient(sshConn, chans, reqs), nil
+}
+
+func dialSocks5(proxyAddr string, targetAddr string, timeout time.Duration) (net.Conn, error) {
+	auth, address := splitProxyAuth(proxyAddr)
+	var proxyAuth *proxy.Auth
+	if auth != nil {
+		proxyAuth = &proxy.Auth{User: auth.username, Password: auth.password}
+	}
+
+	dialer := &net.Dialer{Timeout: timeout}
+	socksDialer, err := proxy.SOCKS5("tcp", address, proxyAuth, dialer)
+	if err != nil {
+		return nil, err
+	}
+	return socksDialer.Dial("tcp", targetAddr)
+}
+
+func dialHTTPProxy(proxyAddr string, targetAddr string, timeout time.Duration) (net.Conn, error) {
+	auth, address := splitProxyAuth(proxyAddr)
+	conn, err := net.DialTimeout("tcp", address, timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodConnect, "http://"+targetAddr, nil)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	req.Host = targetAddr
+	if auth != nil {
+		token := base64.StdEncoding.EncodeToString([]byte(auth.username + ":" + auth.password))
+		req.Header.Set("Proxy-Authorization", "Basic "+token)
+	}
+	if err := req.Write(conn); err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(conn), req)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		conn.Close()
+		return nil, fmt.Errorf("http proxy connect failed: %s", resp.Status)
+	}
+	return conn, nil
+}
+
+type proxyAuthInfo struct {
+	username string
+	password string
+}
+
+func splitProxyAuth(proxyAddr string) (*proxyAuthInfo, string) {
+	at := strings.LastIndex(proxyAddr, "@")
+	if at < 0 {
+		return nil, proxyAddr
+	}
+	authPart := proxyAddr[:at]
+	address := proxyAddr[at+1:]
+	user, password, ok := strings.Cut(authPart, ":")
+	if !ok {
+		user = authPart
+	}
+	return &proxyAuthInfo{username: user, password: password}, address
 }
 
 func (m *Manager) NewMonitorSession(connectionID string) (*ssh.Session, *ssh.Client, error) {

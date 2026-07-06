@@ -13,12 +13,15 @@ import {
   NDivider,
   NRadioGroup,
   NRadio,
+  NCheckbox,
   useMessage,
 } from 'naive-ui'
 import { useConnectionStore, newFormData, AuthType } from '../../stores/connection'
 import { useSSHKeyStore } from '../../stores/sshkey'
+import { useProxyStore, newProxyFormData, type ProxyFormData } from '../../stores/proxy'
 import { GetPassword } from '../../../bindings/vshell/internal/app/appservice'
 import IconKey from '~icons/lucide/key'
+import IconPlus from '~icons/lucide/plus'
 import type { ConnectionFormData } from '../../stores/connection'
 import type { Connection } from '../../types'
 
@@ -32,6 +35,7 @@ const emit = defineEmits<{ (e: 'update:show', val: boolean): void }>()
 const { t } = useI18n()
 const store = useConnectionStore()
 const sshKeyStore = useSSHKeyStore()
+const proxyStore = useProxyStore()
 const message = useMessage()
 
 const isEdit = computed(() => !!props.editConnection)
@@ -43,6 +47,9 @@ const selectedKeyName = ref<string | null>(null)
 const loadingKey = ref(false)
 const revealingPassword = ref(false)
 const passwordVisible = ref(false)
+const useProxy = ref(false)
+const showProxyModal = ref(false)
+const proxyForm = ref<ProxyFormData>(newProxyFormData())
 
 const showModal = computed({
   get: () => props.show,
@@ -78,6 +85,16 @@ const groupOptions = computed(() => {
   return opts
 })
 
+const proxyOptions = computed(() => proxyStore.proxies.map((proxy) => ({
+  label: `${proxy.name} (${proxy.type.toUpperCase()} ${proxy.host}:${proxy.port})`,
+  value: proxy.id,
+})))
+
+const proxyTypeOptions = computed(() => [
+  { label: 'HTTP', value: 'http' },
+  { label: 'SOCKS5', value: 'socks5' },
+])
+
 watch(
   () => props.show,
   async (visible) => {
@@ -95,7 +112,9 @@ watch(
           privateKey: '',
           keyPassphrase: '',
           groupID: c.group_id || null,
+          proxyID: c.proxy_addr || null,
         }
+        useProxy.value = !!c.proxy_addr
         keySource.value = 'manual'
         selectedKeyName.value = null
       } else {
@@ -103,13 +122,20 @@ watch(
         if (props.defaultGroupID) {
           form.value.groupID = props.defaultGroupID
         }
+        useProxy.value = false
         keySource.value = 'managed'
         selectedKeyName.value = null
       }
-      await sshKeyStore.loadKeys()
+      await Promise.all([sshKeyStore.loadKeys(), proxyStore.loadProxies()])
     }
   },
 )
+
+watch(useProxy, (enabled) => {
+  if (!enabled) {
+    form.value.proxyID = null
+  }
+})
 
 async function onManagedKeyChange(name: string | null) {
   if (!name) {
@@ -146,6 +172,32 @@ async function toggleRevealPassword() {
   }
 }
 
+function openProxyModal() {
+  proxyForm.value = newProxyFormData()
+  showProxyModal.value = true
+}
+
+async function saveProxy() {
+  const p = proxyForm.value
+  if (!p.name.trim()) { message.warning(t('proxy.nameRequired')); return }
+  if (!p.host.trim()) { message.warning(t('proxy.hostRequired')); return }
+
+  try {
+    await proxyStore.createProxy({
+      ...p,
+      name: p.name.trim(),
+      host: p.host.trim(),
+      username: p.username.trim(),
+    })
+    form.value.proxyID = p.id
+    useProxy.value = true
+    showProxyModal.value = false
+    message.success(t('proxy.created'))
+  } catch (e: any) {
+    message.error(t('proxy.saveFailed', { error: e }))
+  }
+}
+
 function handleClose() {
   passwordVisible.value = false
   form.value.password = ''
@@ -158,6 +210,10 @@ async function handleSave() {
   if (!f.host.trim()) { message.warning(t('connection.hostRequired')); return }
   if (f.authType === 'private_key' && !f.privateKey.trim()) {
     message.warning(t('connection.keyRequired'))
+    return
+  }
+  if (useProxy.value && !f.proxyID) {
+    message.warning(t('proxy.selectRequired'))
     return
   }
 
@@ -196,6 +252,24 @@ async function handleSave() {
       </NFormItem>
       <NFormItem :label="t('common.username')">
         <NInput v-model:value="form.username" :placeholder="t('connection.usernamePlaceholder')" />
+      </NFormItem>
+      <NFormItem :label="t('proxy.useProxy')">
+        <div style="display: flex; align-items: center; gap: 8px; width: 100%">
+          <NCheckbox v-model:checked="useProxy" />
+          <NSelect
+            v-model:value="form.proxyID"
+            :options="proxyOptions"
+            :placeholder="t('proxy.selectProxy')"
+            :disabled="!useProxy"
+            :loading="proxyStore.loading"
+            clearable
+            filterable
+            style="flex: 1"
+          />
+          <NButton size="small" quaternary :title="t('proxy.newProxy')" @click="openProxyModal">
+            <IconPlus :width="14" :height="14" />
+          </NButton>
+        </div>
       </NFormItem>
       <NDivider style="margin: 8px 0" />
       <NFormItem :label="t('connection.authType')">
@@ -257,6 +331,35 @@ async function handleSave() {
       <NSpace justify="end">
         <NButton @click="handleClose">{{ t('common.cancel') }}</NButton>
         <NButton type="primary" :loading="saving" @click="handleSave">{{ isEdit ? t('common.update') : t('common.save') }}</NButton>
+      </NSpace>
+    </template>
+  </NModal>
+
+  <NModal v-model:show="showProxyModal" preset="card" :title="t('proxy.newProxy')" style="width: 420px" :mask-closable="false">
+    <NForm label-placement="left" label-width="90">
+      <NFormItem :label="t('common.name')">
+        <NInput v-model:value="proxyForm.name" :placeholder="t('proxy.namePlaceholder')" />
+      </NFormItem>
+      <NFormItem label="Type">
+        <NSelect v-model:value="proxyForm.type" :options="proxyTypeOptions" />
+      </NFormItem>
+      <NFormItem :label="t('common.host')">
+        <NInput v-model:value="proxyForm.host" :placeholder="t('proxy.hostPlaceholder')" />
+      </NFormItem>
+      <NFormItem :label="t('common.port')">
+        <NInputNumber v-model:value="proxyForm.port" :min="1" :max="65535" style="width: 100%" />
+      </NFormItem>
+      <NFormItem :label="t('common.username')">
+        <NInput v-model:value="proxyForm.username" :placeholder="t('proxy.usernamePlaceholder')" />
+      </NFormItem>
+      <NFormItem :label="t('common.password')">
+        <NInput v-model:value="proxyForm.password" type="password" show-password-on="click" :placeholder="t('proxy.passwordPlaceholder')" />
+      </NFormItem>
+    </NForm>
+    <template #footer>
+      <NSpace justify="end">
+        <NButton @click="showProxyModal = false">{{ t('common.cancel') }}</NButton>
+        <NButton type="primary" @click="saveProxy">{{ t('common.save') }}</NButton>
       </NSpace>
     </template>
   </NModal>

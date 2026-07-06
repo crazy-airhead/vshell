@@ -298,6 +298,56 @@ export class PortForward {
     }
 }
 
+export class ProxyConfig {
+    "id": string;
+    "name": string;
+    "type": string;
+    "host": string;
+    "port": number;
+    "username": string;
+    "password"?: string;
+    "created_at": time$0.Time;
+    "updated_at": time$0.Time;
+
+    /** Creates a new ProxyConfig instance. */
+    constructor($$source: Partial<ProxyConfig> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("host" in $$source)) {
+            this["host"] = "";
+        }
+        if (!("port" in $$source)) {
+            this["port"] = 0;
+        }
+        if (!("username" in $$source)) {
+            this["username"] = "";
+        }
+        if (!("created_at" in $$source)) {
+            this["created_at"] = null;
+        }
+        if (!("updated_at" in $$source)) {
+            this["updated_at"] = null;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProxyConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProxyConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProxyConfig($$parsedSource as Partial<ProxyConfig>);
+    }
+}
+
 export class QuickCommand {
     "id": string;
     "name": string;

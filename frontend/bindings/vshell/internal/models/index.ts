@@ -8,5 +8,6 @@ export {
     ForwardType,
     Group,
     PortForward,
+    ProxyConfig,
     QuickCommand
 } from "./models.js";

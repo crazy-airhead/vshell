@@ -65,6 +65,8 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 	a.fwdManager = portforward.NewManager()
 	a.monitors = make(map[string]*vshellssh.Monitor)
 
+	go a.ensureGeoIPDatabase(emit)
+
 	// Listen for terminal stdin events from frontend
 	a.wailsApp.Event.On("terminal:stdin", func(e *application.CustomEvent) {
 		payload, _ := json.Marshal(e.Data)
@@ -170,6 +172,10 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 
 // ServiceShutdown is called by Wails when the application shuts down.
 func (a *AppService) ServiceShutdown() error {
+	if geoIPDB.reader != nil {
+		geoIPDB.reader.Close()
+		geoIPDB.reader = nil
+	}
 	if a.localTerms != nil {
 		a.localTerms.CloseAll()
 	}
@@ -313,6 +319,9 @@ func (a *AppService) ConnectSSH(connectionID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err := a.resolveConnectionProxy(conn); err != nil {
+		return "", err
+	}
 	sessionID := uuid.New().String()
 	_, err = a.sshManager.Connect(conn, sessionID)
 	if err != nil {
@@ -380,6 +389,94 @@ func (a *AppService) GetPassword(id string) (string, error) {
 		return "", err
 	}
 	return a.db.Crypto().Decrypt(encrypted)
+}
+
+// --- Proxy CRUD ---
+
+func (a *AppService) ListProxies() ([]models.ProxyConfig, error) {
+	rows, err := a.db.Query("SELECT id, name, type, host, port, username, created_at, updated_at FROM proxies ORDER BY name")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	proxies := make([]models.ProxyConfig, 0)
+	for rows.Next() {
+		var p models.ProxyConfig
+		if err := rows.Scan(&p.ID, &p.Name, &p.Type, &p.Host, &p.Port, &p.Username, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		proxies = append(proxies, p)
+	}
+	return proxies, nil
+}
+
+func (a *AppService) CreateProxy(proxy models.ProxyConfig) error {
+	encryptedPW, err := a.db.Crypto().Encrypt(proxy.Password)
+	if err != nil {
+		return fmt.Errorf("encrypt proxy password: %w", err)
+	}
+	_, err = a.db.Exec(
+		"INSERT INTO proxies (id, name, type, host, port, username, password) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		proxy.ID, proxy.Name, proxy.Type, proxy.Host, proxy.Port, proxy.Username, encryptedPW,
+	)
+	return err
+}
+
+func (a *AppService) UpdateProxy(proxy models.ProxyConfig) error {
+	var encryptedPW string
+	if proxy.Password != "" {
+		var err error
+		encryptedPW, err = a.db.Crypto().Encrypt(proxy.Password)
+		if err != nil {
+			return fmt.Errorf("encrypt proxy password: %w", err)
+		}
+	} else {
+		_ = a.db.QueryRow("SELECT password FROM proxies WHERE id = ?", proxy.ID).Scan(&encryptedPW)
+	}
+	_, err := a.db.Exec(
+		"UPDATE proxies SET name = ?, type = ?, host = ?, port = ?, username = ?, password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+		proxy.Name, proxy.Type, proxy.Host, proxy.Port, proxy.Username, encryptedPW, proxy.ID,
+	)
+	return err
+}
+
+func (a *AppService) DeleteProxy(id string) error {
+	_, err := a.db.Exec("DELETE FROM proxies WHERE id = ?", id)
+	return err
+}
+
+func (a *AppService) resolveConnectionProxy(conn *models.Connection) error {
+	if conn.ProxyType == nil || conn.ProxyAddr == nil || *conn.ProxyType == "" || *conn.ProxyAddr == "" {
+		return nil
+	}
+
+	var proxy models.ProxyConfig
+	var encryptedPW string
+	err := a.db.QueryRow(
+		"SELECT id, name, type, host, port, username, password FROM proxies WHERE id = ?",
+		*conn.ProxyAddr,
+	).Scan(&proxy.ID, &proxy.Name, &proxy.Type, &proxy.Host, &proxy.Port, &proxy.Username, &encryptedPW)
+	if err != nil {
+		if *conn.ProxyType == "saved" {
+			return fmt.Errorf("proxy not found: %s", *conn.ProxyAddr)
+		}
+		return nil
+	}
+
+	password, err := a.db.Crypto().Decrypt(encryptedPW)
+	if err != nil {
+		return fmt.Errorf("decrypt proxy password: %w", err)
+	}
+	proxy.Password = password
+
+	conn.ProxyType = &proxy.Type
+	proxyAddr := fmt.Sprintf("%s:%d", proxy.Host, proxy.Port)
+	if proxy.Username != "" || proxy.Password != "" {
+		proxyAddr = fmt.Sprintf("%s:%s@%s", proxy.Username, proxy.Password, proxyAddr)
+	}
+	conn.ProxyAddr = &proxyAddr
+	return nil
 }
 
 // --- Group CRUD ---

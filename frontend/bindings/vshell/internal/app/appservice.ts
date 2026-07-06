@@ -37,6 +37,10 @@ export function CreatePortForward(name: string, connectionID: string, fwdType: s
     });
 }
 
+export function CreateProxy(proxy: models$0.ProxyConfig): $CancellablePromise<void> {
+    return $Call.ByID(235945831, proxy);
+}
+
 export function CreateQuickCommand(cmd: models$0.QuickCommand): $CancellablePromise<void> {
     return $Call.ByID(732401809, cmd);
 }
@@ -55,6 +59,10 @@ export function DeleteLocalFile(localPath: string): $CancellablePromise<void> {
 
 export function DeletePortForward(id: string): $CancellablePromise<void> {
     return $Call.ByID(742144622, id);
+}
+
+export function DeleteProxy(id: string): $CancellablePromise<void> {
+    return $Call.ByID(3239012530, id);
 }
 
 export function DeleteQuickCommand(id: string): $CancellablePromise<void> {
@@ -89,6 +97,10 @@ export function ExportConnectionConfigs(filePath: string, password: string): $Ca
  */
 export function GenerateSSHKey(name: string, keyType: string, bits: number, comment: string, passphrase: string): $CancellablePromise<void> {
     return $Call.ByID(1376428699, name, keyType, bits, comment, passphrase);
+}
+
+export function GetGeoIPDownloadURL(): $CancellablePromise<string> {
+    return $Call.ByID(2814757042);
 }
 
 export function GetHomeDir(): $CancellablePromise<string> {
@@ -155,15 +167,21 @@ export function ListPortForwards(connectionID: string): $CancellablePromise<mode
     });
 }
 
+export function ListProxies(): $CancellablePromise<models$0.ProxyConfig[]> {
+    return $Call.ByID(1445895299).then(($result: any) => {
+        return $$createType12($result);
+    });
+}
+
 export function ListQuickCommands(connectionID: string | null): $CancellablePromise<models$0.QuickCommand[]> {
     return $Call.ByID(3567644202, connectionID).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType14($result);
     });
 }
 
 export function ListRunningPortForwards(): $CancellablePromise<string[]> {
     return $Call.ByID(3835552541).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType15($result);
     });
 }
 
@@ -172,8 +190,12 @@ export function ListRunningPortForwards(): $CancellablePromise<string[]> {
  */
 export function ListSSHKeys(): $CancellablePromise<$models.SSHKeyInfo[]> {
     return $Call.ByID(3301404409).then(($result: any) => {
-        return $$createType15($result);
+        return $$createType17($result);
     });
+}
+
+export function LookupIPCountry(host: string): $CancellablePromise<string> {
+    return $Call.ByID(1019521628, host);
 }
 
 /**
@@ -196,7 +218,7 @@ export function ReadLocalFileContent(localPath: string): $CancellablePromise<str
  */
 export function ReadSSHConfig(): $CancellablePromise<$models.SSHConfigEntry[]> {
     return $Call.ByID(3639124279).then(($result: any) => {
-        return $$createType17($result);
+        return $$createType19($result);
     });
 }
 
@@ -236,7 +258,7 @@ export function SFTPDownload(connectionID: string, remotePath: string, localPath
 
 export function SFTPReadDir(connectionID: string, path: string): $CancellablePromise<sftp$0.FileInfo[]> {
     return $Call.ByID(3242100799, connectionID, path).then(($result: any) => {
-        return $$createType19($result);
+        return $$createType21($result);
     });
 }
 
@@ -270,6 +292,10 @@ export function SetApp(app: application$0.App | null): $CancellablePromise<void>
     return $Call.ByID(4209028258, app);
 }
 
+export function SetGeoIPDownloadURL(url: string): $CancellablePromise<void> {
+    return $Call.ByID(541456726, url);
+}
+
 export function StartLocalTerminal(): $CancellablePromise<string> {
     return $Call.ByID(2952856122);
 }
@@ -294,12 +320,20 @@ export function UpdateConnection(form: models$0.ConnectionForm): $CancellablePro
     return $Call.ByID(3356068760, form);
 }
 
+export function UpdateGeoIPDatabase(): $CancellablePromise<void> {
+    return $Call.ByID(2803038681);
+}
+
 export function UpdateGroup(id: string, name: string): $CancellablePromise<void> {
     return $Call.ByID(905940643, id, name);
 }
 
 export function UpdatePortForward(id: string, name: string, connectionID: string, fwdType: string, localHost: string, localPort: number, remoteHost: string, remotePort: number, autoStart: boolean): $CancellablePromise<void> {
     return $Call.ByID(1560667840, id, name, connectionID, fwdType, localHost, localPort, remoteHost, remotePort, autoStart);
+}
+
+export function UpdateProxy(proxy: models$0.ProxyConfig): $CancellablePromise<void> {
+    return $Call.ByID(3483449168, proxy);
 }
 
 export function UpdateQuickCommand(cmd: models$0.QuickCommand): $CancellablePromise<void> {
@@ -336,12 +370,14 @@ const $$createType7 = models$0.Group.createFrom;
 const $$createType8 = $Create.Array($$createType7);
 const $$createType9 = $models.LocalFileInfo.createFrom;
 const $$createType10 = $Create.Array($$createType9);
-const $$createType11 = models$0.QuickCommand.createFrom;
+const $$createType11 = models$0.ProxyConfig.createFrom;
 const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = $Create.Array($Create.Any);
-const $$createType14 = $models.SSHKeyInfo.createFrom;
-const $$createType15 = $Create.Array($$createType14);
-const $$createType16 = $models.SSHConfigEntry.createFrom;
+const $$createType13 = models$0.QuickCommand.createFrom;
+const $$createType14 = $Create.Array($$createType13);
+const $$createType15 = $Create.Array($Create.Any);
+const $$createType16 = $models.SSHKeyInfo.createFrom;
 const $$createType17 = $Create.Array($$createType16);
-const $$createType18 = sftp$0.FileInfo.createFrom;
+const $$createType18 = $models.SSHConfigEntry.createFrom;
 const $$createType19 = $Create.Array($$createType18);
+const $$createType20 = sftp$0.FileInfo.createFrom;
+const $$createType21 = $Create.Array($$createType20);
