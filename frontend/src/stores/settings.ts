@@ -6,6 +6,7 @@ export type LocaleCode = 'en' | 'zh-CN'
 
 export interface ShortcutMap {
   newConnection: string
+  newWindow: string
   closeTab: string
   toggleTheme: string
   toggleSidebar: string
@@ -22,6 +23,7 @@ function loadJSON<T>(key: string, fallback: T): T {
 
 const defaultShortcuts: ShortcutMap = {
   newConnection: 'CommandOrControl+Shift+N',
+  newWindow: 'CommandOrControl+L',
   closeTab: 'CommandOrControl+W',
   toggleTheme: 'CommandOrControl+Shift+T',
   toggleSidebar: 'CommandOrControl+B',
@@ -37,7 +39,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const terminalFontSize = ref<number>(loadJSON<number>('terminalFontSize', 14))
   const terminalFontFamily = ref<string>(localStorage.getItem('terminalFontFamily') || 'Menlo')
   const terminalColorScheme = ref<string>(localStorage.getItem('terminalColorScheme') || 'default')
-  const shortcuts = ref<ShortcutMap>(loadJSON<ShortcutMap>('shortcuts', { ...defaultShortcuts }))
+  const shortcuts = ref<ShortcutMap>({
+    ...defaultShortcuts,
+    ...loadJSON<Partial<ShortcutMap>>('shortcuts', {}),
+  })
 
   const isDark = computed(() => themeMode.value === 'dark')
 

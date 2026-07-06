@@ -360,6 +360,7 @@ export default {
     schemeMonokai: 'Monokai',
     schemeOneDark: 'One Dark',
     shortcutNewConnection: '新建连接',
+    shortcutNewWindow: '新增窗口',
     shortcutCloseTab: '关闭标签',
     shortcutToggleTheme: '切换主题',
     shortcutToggleSidebar: '切换侧栏',

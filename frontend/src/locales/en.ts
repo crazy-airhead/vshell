@@ -360,6 +360,7 @@ export default {
     schemeMonokai: 'Monokai',
     schemeOneDark: 'One Dark',
     shortcutNewConnection: 'New Connection',
+    shortcutNewWindow: 'New Window',
     shortcutCloseTab: 'Close Tab',
     shortcutToggleTheme: 'Toggle Theme',
     shortcutToggleSidebar: 'Toggle Sidebar',

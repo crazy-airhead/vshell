@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   NModal, NTabs, NTabPane, NFormItem, NSlider, NSpace,
   NButton, NSelect, NInput, useMessage,
 } from 'naive-ui'
 import { useSettingsStore } from '../../stores/settings'
+import { terminalThemes } from '../../constants/terminalThemes'
+import { comboFromKeyboardEvent, formatShortcutCombo } from '../../composables/useShortcuts'
 import {
   GetGeoIPDownloadURL,
   SetGeoIPDownloadURL,
@@ -53,17 +55,9 @@ const terminalFonts = [
   { label: 'Noto Sans Mono', value: '"Noto Sans Mono", Menlo, monospace' },
 ]
 
-const colorSchemes = computed(() => [
-  { label: t('settings.schemeDefault'), value: 'default' },
-  { label: t('settings.schemeSolarizedDark'), value: 'solarized-dark' },
-  { label: t('settings.schemeSolarizedLight'), value: 'solarized-light' },
-  { label: t('settings.schemeDracula'), value: 'dracula' },
-  { label: t('settings.schemeMonokai'), value: 'monokai' },
-  { label: t('settings.schemeOneDark'), value: 'one-dark' },
-])
-
 const shortcutActions: { key: keyof ShortcutMap; label: string }[] = [
   { key: 'newConnection', label: 'settings.shortcutNewConnection' },
+  { key: 'newWindow', label: 'settings.shortcutNewWindow' },
   { key: 'closeTab', label: 'settings.shortcutCloseTab' },
   { key: 'toggleTheme', label: 'settings.shortcutToggleTheme' },
   { key: 'toggleSidebar', label: 'settings.shortcutToggleSidebar' },
@@ -71,9 +65,26 @@ const shortcutActions: { key: keyof ShortcutMap; label: string }[] = [
 ]
 
 const capturingKey = ref<keyof ShortcutMap | null>(null)
+let stopShortcutCapture: (() => void) | null = null
 
 function startCapture(action: keyof ShortcutMap) {
+  stopCapture()
   capturingKey.value = action
+  document.documentElement.setAttribute('data-shortcut-capturing', 'true')
+  const handler = (e: KeyboardEvent) => {
+    onKeyCapture(e)
+  }
+  window.addEventListener('keydown', handler, true)
+  stopShortcutCapture = () => {
+    window.removeEventListener('keydown', handler, true)
+    document.documentElement.removeAttribute('data-shortcut-capturing')
+  }
+}
+
+function stopCapture() {
+  stopShortcutCapture?.()
+  stopShortcutCapture = null
+  capturingKey.value = null
 }
 
 function onKeyCapture(e: KeyboardEvent) {
@@ -81,23 +92,23 @@ function onKeyCapture(e: KeyboardEvent) {
   e.preventDefault()
   e.stopPropagation()
 
-  const parts: string[] = []
-  if (e.metaKey || e.ctrlKey) parts.push('CommandOrControl')
-  if (e.shiftKey) parts.push('Shift')
-  if (e.altKey) parts.push('Alt')
+  if (e.key === 'Escape') {
+    stopCapture()
+    return
+  }
 
-  const key = e.key
-  if (!['Control', 'Shift', 'Alt', 'Meta'].includes(key)) {
-    parts.push(key.length === 1 ? key.toUpperCase() : key)
-    settings.setShortcut(capturingKey.value, parts.join('+'))
-    capturingKey.value = null
+  const combo = comboFromKeyboardEvent(e)
+  if (combo) {
+    settings.setShortcut(capturingKey.value, combo)
+    stopCapture()
   }
 }
 
 function formatCombo(combo: string): string {
-  return combo.replace(/CommandOrControl/g, navigator.platform.includes('Mac') ? '⌘' : 'Ctrl')
-    .replace(/\+/g, ' + ')
+  return formatShortcutCombo(combo)
 }
+
+onUnmounted(stopCapture)
 
 function findFontValue(options: { value: string }[], current: string): string {
   return options.find(o => o.value === current)?.value || options[0].value
@@ -142,7 +153,7 @@ async function updateGeoIPDatabase() {
 </script>
 
 <template>
-  <NModal v-model:show="showModal" preset="card" :title="t('settings.title')" style="width: 520px" :mask-closable="true">
+  <NModal v-model:show="showModal" preset="card" :title="t('settings.title')" style="width: 720px" :mask-closable="true">
     <NTabs type="line" animated>
       <!-- General Tab -->
       <NTabPane :name="t('settings.general')">
@@ -207,15 +218,43 @@ async function updateGeoIPDatabase() {
             <span class="w-8 text-right" style="font-variant-numeric: tabular-nums">{{ settings.terminalFontSize }}</span>
           </NFormItem>
 
-          <NFormItem :label="t('settings.colorScheme')" label-placement="left" :show-feedback="false">
-            <NSelect v-model:value="settings.terminalColorScheme" :options="colorSchemes" style="width: 200px" @update:value="settings.setTerminalColorScheme" />
+          <NFormItem :label="t('settings.colorScheme')" label-placement="top" :show-feedback="false">
+            <div class="terminal-theme-grid">
+              <button
+                v-for="theme in terminalThemes"
+                :key="theme.key"
+                type="button"
+                class="terminal-theme-card"
+                :class="{ 'terminal-theme-card--active': settings.terminalColorScheme === theme.key }"
+                @click="settings.setTerminalColorScheme(theme.key)"
+              >
+                <span
+                  class="terminal-theme-preview"
+                  :style="{ backgroundColor: theme.background, color: theme.foreground, borderColor: theme.brightBlack }"
+                >
+                  <span class="terminal-theme-preview__bar" :style="{ backgroundColor: theme.brightGreen }"></span>
+                  <span class="terminal-theme-preview__bar terminal-theme-preview__bar--short" :style="{ backgroundColor: theme.green }"></span>
+                  <span class="terminal-theme-preview__row">
+                    <span :style="{ backgroundColor: theme.cyan }"></span>
+                    <span :style="{ backgroundColor: theme.blue }"></span>
+                    <span :style="{ backgroundColor: theme.yellow }"></span>
+                  </span>
+                  <span class="terminal-theme-preview__row terminal-theme-preview__row--small">
+                    <span :style="{ backgroundColor: theme.magenta }"></span>
+                    <span :style="{ backgroundColor: theme.foreground }"></span>
+                    <span :style="{ backgroundColor: theme.cursor }"></span>
+                  </span>
+                </span>
+                <span class="terminal-theme-name">{{ theme.name }}</span>
+              </button>
+            </div>
           </NFormItem>
         </NSpace>
       </NTabPane>
 
       <!-- Shortcuts Tab -->
       <NTabPane :name="t('settings.shortcuts')">
-        <NSpace vertical :size="10" style="padding: 8px 0" @keydown="onKeyCapture">
+        <NSpace vertical :size="10" style="padding: 8px 0" data-shortcut-scope="settings" @keydown="onKeyCapture">
           <div v-for="s in shortcutActions" :key="s.key" class="flex items-center justify-between">
             <span class="text-[var(--font-size-base)] text-[var(--text-primary)]">{{ t(s.label) }}</span>
             <button
@@ -233,3 +272,94 @@ async function updateGeoIPDatabase() {
     </NTabs>
   </NModal>
 </template>
+
+<style scoped>
+.terminal-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.terminal-theme-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.terminal-theme-card:hover {
+  border-color: var(--color-primary);
+  background: var(--bg-secondary);
+}
+
+.terminal-theme-card--active {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.terminal-theme-preview {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 70px;
+  height: 48px;
+  padding: 7px;
+  border: 1px solid;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.terminal-theme-preview__bar {
+  display: block;
+  width: 48px;
+  height: 4px;
+  border-radius: 999px;
+}
+
+.terminal-theme-preview__bar--short {
+  width: 35px;
+}
+
+.terminal-theme-preview__row {
+  display: flex;
+  gap: 5px;
+}
+
+.terminal-theme-preview__row span {
+  display: block;
+  width: 18px;
+  height: 4px;
+  border-radius: 999px;
+}
+
+.terminal-theme-preview__row--small span {
+  width: 13px;
+}
+
+.terminal-theme-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .terminal-theme-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

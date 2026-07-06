@@ -8,6 +8,8 @@ import { useTerminalManager } from '../../composables/useTerminalManager'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
 import { useSettingsStore } from '../../stores/settings'
+import { resolveTerminalTheme } from '../../constants/terminalThemes'
+import { shortcutActionFromKeyboardEvent, shortcutDigitIndex } from '../../composables/useShortcuts'
 import { useI18n } from 'vue-i18n'
 
 import '@xterm/xterm/css/xterm.css'
@@ -29,57 +31,33 @@ let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
 
-const colorSchemes: Record<string, Record<string, string>> = {
-  'default-dark': {
-    background: '#1e1e1e',
-    foreground: '#cccccc',
-    cursor: '#ffffff',
-    selectionBackground: '#264f78',
-  },
-  'default-light': {
-    background: '#ffffff',
-    foreground: '#1e1e1e',
-    cursor: '#1e1e1e',
-    selectionBackground: '#add6ff',
-  },
-  'solarized-dark': {
-    background: '#002b36',
-    foreground: '#839496',
-    cursor: '#93a1a1',
-    selectionBackground: '#073642',
-  },
-  'solarized-light': {
-    background: '#fdf6e3',
-    foreground: '#657b83',
-    cursor: '#586e75',
-    selectionBackground: '#eee8d5',
-  },
-  'dracula': {
-    background: '#282a36',
-    foreground: '#f8f8f2',
-    cursor: '#f8f8f2',
-    selectionBackground: '#44475a',
-  },
-  'monokai': {
-    background: '#272822',
-    foreground: '#f8f8f2',
-    cursor: '#f8f8f0',
-    selectionBackground: '#49483e',
-  },
-  'one-dark': {
-    background: '#282c34',
-    foreground: '#abb2bf',
-    cursor: '#528bff',
-    selectionBackground: '#3e4451',
-  },
+function getTermTheme() {
+  return resolveTerminalTheme(settings.terminalColorScheme, settings.isDark)
 }
 
-function getTermTheme() {
-  const scheme = settings.terminalColorScheme
-  const key = scheme === 'default'
-    ? (settings.isDark ? 'default-dark' : 'default-light')
-    : scheme
-  return colorSchemes[key] || colorSchemes['default-dark']
+function handleCustomKeyEvent(e: KeyboardEvent): boolean {
+  if (e.type !== 'keydown') return true
+  if (document.documentElement.hasAttribute('data-shortcut-capturing')) return true
+
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+    const index = shortcutDigitIndex(e)
+    if (index !== null) {
+      e.preventDefault()
+      e.stopPropagation()
+      window.dispatchEvent(new CustomEvent('vshell:activate-tab-index', { detail: { index } }))
+      return false
+    }
+  }
+
+  const action = shortcutActionFromKeyboardEvent(settings.shortcuts, e)
+  if (action) {
+    e.preventDefault()
+    e.stopPropagation()
+    window.dispatchEvent(new CustomEvent('vshell:app-shortcut', { detail: { action } }))
+    return false
+  }
+
+  return true
 }
 
 onMounted(() => {
@@ -92,6 +70,8 @@ onMounted(() => {
     theme: getTermTheme(),
     allowProposedApi: true,
   })
+
+  term.attachCustomKeyEventHandler(handleCustomKeyEvent)
 
   fitAddon = new FitAddon()
   term.loadAddon(fitAddon)

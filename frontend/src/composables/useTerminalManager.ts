@@ -51,5 +51,9 @@ export function useTerminalManager() {
     disconnectedSessions.delete(sessionID)
   }
 
-  return { registerTerminal, unregisterTerminal, isDisconnected, clearDisconnected }
+  function focusTerminal(sessionID: string) {
+    terminals.get(sessionID)?.focus()
+  }
+
+  return { registerTerminal, unregisterTerminal, isDisconnected, clearDisconnected, focusTerminal }
 }

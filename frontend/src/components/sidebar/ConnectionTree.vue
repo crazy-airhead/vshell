@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, h } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NTree, NButton, NInputGroup, NInput, NModal, NCheckbox, useMessage, useDialog } from 'naive-ui'
 import type { TreeOption, TreeDropInfo } from 'naive-ui'
@@ -48,7 +48,12 @@ const importPath = ref('')
 const importPassword = ref('')
 const countryByHost = ref<Record<string, string | null>>({})
 
+function handleGlobalNewConnection() {
+  handleNew()
+}
+
 onMounted(async () => {
+  window.addEventListener('vshell:new-connection', handleGlobalNewConnection)
   try {
     await Promise.all([
       connectionStore.loadConnections(),
@@ -60,6 +65,10 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('vshell:new-connection', handleGlobalNewConnection)
 })
 
 watch(

@@ -14,10 +14,16 @@ import type { SidebarView } from '../../stores/layout'
 const emit = defineEmits<{
   (e: 'openSettings'): void
   (e: 'showSidebar'): void
+  (e: 'toggleSidebar'): void
 }>()
 const layout = useLayoutStore()
 
 function selectSidebar(view: SidebarView) {
+  if (layout.activeSidebar === view) {
+    emit('toggleSidebar')
+    return
+  }
+
   layout.setSidebar(view)
   emit('showSidebar')
 }
