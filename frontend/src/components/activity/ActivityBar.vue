@@ -1,15 +1,25 @@
 <script setup lang="ts">
 import { useLayoutStore } from '../../stores/layout'
 import IconServer from '~icons/lucide/server'
+import IconBraces from '~icons/lucide/braces'
 import IconKeyRound from '~icons/lucide/key-round'
 import IconFileText from '~icons/lucide/file-text'
 import IconActivity from '~icons/lucide/activity'
 import IconFolder from '~icons/lucide/folder'
 import IconArrowLeftRight from '~icons/lucide/arrow-left-right'
 import IconSettings from '~icons/lucide/settings'
+import type { SidebarView } from '../../stores/layout'
 
-const emit = defineEmits<{ (e: 'openSettings'): void }>()
+const emit = defineEmits<{
+  (e: 'openSettings'): void
+  (e: 'showSidebar'): void
+}>()
 const layout = useLayoutStore()
+
+function selectSidebar(view: SidebarView) {
+  layout.setSidebar(view)
+  emit('showSidebar')
+}
 </script>
 
 <template>
@@ -18,7 +28,7 @@ const layout = useLayoutStore()
       <button
         class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
         :class="{ '!text-[var(--color-primary)]': layout.activeSidebar === 'connections' }"
-        @click="layout.setSidebar('connections')"
+        @click="selectSidebar('connections')"
         title="Connections"
       >
         <IconServer :width="20" :height="20" />
@@ -26,8 +36,17 @@ const layout = useLayoutStore()
       </button>
       <button
         class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
+        :class="{ '!text-[var(--color-primary)]': layout.activeSidebar === 'snippets' }"
+        @click="selectSidebar('snippets')"
+        title="Snippets"
+      >
+        <IconBraces :width="20" :height="20" />
+        <span v-if="layout.activeSidebar === 'snippets'" class="absolute left-0 top-2 bottom-2 w-[2px] bg-[var(--color-primary)] rounded-r-[2px]" />
+      </button>
+      <button
+        class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
         :class="{ '!text-[var(--color-primary)]': layout.activeSidebar === 'keys' }"
-        @click="layout.setSidebar('keys')"
+        @click="selectSidebar('keys')"
         title="SSH Keys"
       >
         <IconKeyRound :width="20" :height="20" />
@@ -36,7 +55,7 @@ const layout = useLayoutStore()
       <button
         class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
         :class="{ '!text-[var(--color-primary)]': layout.activeSidebar === 'ssh-config' }"
-        @click="layout.setSidebar('ssh-config')"
+        @click="selectSidebar('ssh-config')"
         title="SSH Config"
       >
         <IconFileText :width="20" :height="20" />
@@ -45,7 +64,7 @@ const layout = useLayoutStore()
       <button
         class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
         :class="{ '!text-[var(--color-primary)]': layout.activeSidebar === 'port-forward' }"
-        @click="layout.setSidebar('port-forward')"
+        @click="selectSidebar('port-forward')"
         title="Port Forwards"
       >
         <IconArrowLeftRight :width="20" :height="20" />

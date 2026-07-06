@@ -10,6 +10,7 @@ import IconSun from '~icons/lucide/sun'
 import IconMoon from '~icons/lucide/moon'
 import ActivityBar from './components/activity/ActivityBar.vue'
 import ConnectionTree from './components/sidebar/ConnectionTree.vue'
+import SnippetsPanel from './components/snippets/SnippetsPanel.vue'
 import KeyManagementPanel from './components/keys/KeyManagementPanel.vue'
 import SSHConfigPanel from './components/config/SSHConfigPanel.vue'
 import PortForwardPanel from './components/panels/PortForwardPanel.vue'
@@ -178,7 +179,7 @@ onUnmounted(() => {
 
           <div class="flex flex-1 min-h-0">
             <!-- Activity Bar -->
-            <ActivityBar @open-settings="showSettings = true" />
+            <ActivityBar @open-settings="showSettings = true" @show-sidebar="sidebarVisible = true" />
 
             <!-- Main Area: Sidebar + Terminal + Bottom Panel -->
             <div class="flex-1 flex flex-col min-w-0 p-1.5">
@@ -186,7 +187,8 @@ onUnmounted(() => {
                 <!-- Sidebar -->
                 <template v-if="sidebarVisible">
                   <div class="shrink-0 overflow-hidden rounded-[var(--border-radius)] bg-[var(--bg-secondary)]" :style="{ width: layout.sidebarWidth + 'px' }">
-                    <ConnectionTree v-if="layout.activeSidebar === 'connections'" />
+                    <ConnectionTree v-if="layout.activeSidebar === 'connections'" @collapse-sidebar="sidebarVisible = false" />
+                    <SnippetsPanel v-else-if="layout.activeSidebar === 'snippets'" />
                     <KeyManagementPanel v-else-if="layout.activeSidebar === 'keys'" />
                     <SSHConfigPanel v-else-if="layout.activeSidebar === 'ssh-config'" />
                     <PortForwardPanel v-else-if="layout.activeSidebar === 'port-forward'" />

@@ -302,6 +302,10 @@ export function UpdatePortForward(id: string, name: string, connectionID: string
     return $Call.ByID(1560667840, id, name, connectionID, fwdType, localHost, localPort, remoteHost, remotePort, autoStart);
 }
 
+export function UpdateQuickCommand(cmd: models$0.QuickCommand): $CancellablePromise<void> {
+    return $Call.ByID(1011135060, cmd);
+}
+
 export function WriteLocalFileContent(localPath: string, content: string): $CancellablePromise<void> {
     return $Call.ByID(3166138842, localPath, content);
 }

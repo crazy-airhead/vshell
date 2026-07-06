@@ -471,6 +471,12 @@ func (a *AppService) CreateQuickCommand(cmd models.QuickCommand) error {
 	return err
 }
 
+func (a *AppService) UpdateQuickCommand(cmd models.QuickCommand) error {
+	_, err := a.db.Exec("UPDATE quick_commands SET name = ?, command = ?, connection_id = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+		cmd.Name, cmd.Command, cmd.ConnectionID, cmd.SortOrder, cmd.ID)
+	return err
+}
+
 func (a *AppService) DeleteQuickCommand(id string) error {
 	_, err := a.db.Exec("DELETE FROM quick_commands WHERE id = ?", id)
 	return err

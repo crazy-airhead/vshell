@@ -12,12 +12,14 @@ import IconTrash2 from '~icons/lucide/trash-2'
 import IconZap from '~icons/lucide/zap'
 import IconDownload from '~icons/lucide/download'
 import IconUpload from '~icons/lucide/upload'
+import IconPanelLeftClose from '~icons/lucide/panel-left-close'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
 import ConnectionFormModal from './ConnectionFormModal.vue'
 import type { Connection } from '../../types'
 
 const { t } = useI18n()
+const emit = defineEmits<{ (e: 'collapseSidebar'): void }>()
 const connectionStore = useConnectionStore()
 const terminalStore = useTerminalStore()
 const message = useMessage()
@@ -471,6 +473,9 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
     <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0 relative thin-border-b">
       <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('connection.title') }}</span>
       <div class="flex gap-[2px]">
+        <NButton size="tiny" quaternary @click="emit('collapseSidebar')" :title="t('common.collapse')">
+          <IconPanelLeftClose :width="14" :height="14" />
+        </NButton>
         <NButton size="tiny" quaternary :loading="transferringConfig" @click="handleImportConfigs" :title="t('connection.importConfigs')">
           <IconUpload :width="14" :height="14" />
         </NButton>
