@@ -6,6 +6,7 @@ import {
   ConnectSSH,
   DisconnectSSH,
   DisconnectSession,
+  CopyConnection,
   CreateConnection,
   UpdateConnection,
   DeleteConnection,
@@ -170,6 +171,11 @@ export const useConnectionStore = defineStore('connection', () => {
     await loadConnections()
   }
 
+  async function copyConnection(id: string, name: string) {
+    await CopyConnection(id, name)
+    await loadConnections()
+  }
+
   async function moveConnection(id: string, groupID: string | null) {
     await MoveConnection(id, groupID)
     await loadConnections()
@@ -245,6 +251,7 @@ export const useConnectionStore = defineStore('connection', () => {
     disconnect,
     disconnectSession,
     createConnection,
+    copyConnection,
     removeConnection,
     moveConnection,
     updateConnection,

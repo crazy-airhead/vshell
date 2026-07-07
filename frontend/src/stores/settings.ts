@@ -13,6 +13,18 @@ export interface ShortcutMap {
   focusTerminal: string
 }
 
+export interface ClientSettingsData {
+  themeMode: ThemeMode
+  localeCode: LocaleCode
+  uiFontSize: number
+  uiFontFamily: string
+  accentColor: string
+  terminalFontSize: number
+  terminalFontFamily: string
+  terminalColorScheme: string
+  shortcuts: ShortcutMap
+}
+
 function loadJSON<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key)
@@ -28,6 +40,35 @@ const defaultShortcuts: ShortcutMap = {
   toggleTheme: 'CommandOrControl+Shift+T',
   toggleSidebar: 'CommandOrControl+B',
   focusTerminal: 'CommandOrControl+`',
+}
+
+function isThemeMode(value: unknown): value is ThemeMode {
+  return value === 'light' || value === 'dark'
+}
+
+function isLocaleCode(value: unknown): value is LocaleCode {
+  return value === 'en' || value === 'zh-CN'
+}
+
+function mergeShortcuts(value: unknown): ShortcutMap {
+  if (!value || typeof value !== 'object') return { ...defaultShortcuts }
+  const source = value as Partial<Record<keyof ShortcutMap, unknown>>
+  const next = { ...defaultShortcuts }
+  for (const key of Object.keys(defaultShortcuts) as (keyof ShortcutMap)[]) {
+    const shortcut = source[key]
+    if (typeof shortcut === 'string' && shortcut) {
+      next[key] = shortcut
+    }
+  }
+  return next
+}
+
+function numberOrFallback(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
+
+function stringOrFallback(value: unknown, fallback: string): string {
+  return typeof value === 'string' && value ? value : fallback
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -100,6 +141,33 @@ export const useSettingsStore = defineStore('settings', () => {
     localStorage.setItem('shortcuts', JSON.stringify(shortcuts.value))
   }
 
+  function exportSettings(): ClientSettingsData {
+    return {
+      themeMode: themeMode.value,
+      localeCode: localeCode.value,
+      uiFontSize: uiFontSize.value,
+      uiFontFamily: uiFontFamily.value,
+      accentColor: accentColor.value,
+      terminalFontSize: terminalFontSize.value,
+      terminalFontFamily: terminalFontFamily.value,
+      terminalColorScheme: terminalColorScheme.value,
+      shortcuts: { ...shortcuts.value },
+    }
+  }
+
+  function importSettings(data: Partial<ClientSettingsData>) {
+    setTheme(isThemeMode(data.themeMode) ? data.themeMode : themeMode.value)
+    setLocale(isLocaleCode(data.localeCode) ? data.localeCode : localeCode.value)
+    setUIFontSize(numberOrFallback(data.uiFontSize, uiFontSize.value))
+    setUIFontFamily(stringOrFallback(data.uiFontFamily, uiFontFamily.value))
+    setAccentColor(stringOrFallback(data.accentColor, accentColor.value))
+    setTerminalFontSize(numberOrFallback(data.terminalFontSize, terminalFontSize.value))
+    setTerminalFontFamily(stringOrFallback(data.terminalFontFamily, terminalFontFamily.value))
+    setTerminalColorScheme(stringOrFallback(data.terminalColorScheme, terminalColorScheme.value))
+    shortcuts.value = mergeShortcuts(data.shortcuts)
+    localStorage.setItem('shortcuts', JSON.stringify(shortcuts.value))
+  }
+
   return {
     themeMode, localeCode, uiFontSize, uiFontFamily, accentColor,
     terminalFontSize, terminalFontFamily, terminalColorScheme, shortcuts,
@@ -107,6 +175,6 @@ export const useSettingsStore = defineStore('settings', () => {
     setTheme, toggleTheme, setLocale,
     setUIFontSize, setUIFontFamily, setAccentColor,
     setTerminalFontSize, setTerminalFontFamily, setTerminalColorScheme,
-    setShortcut, resetShortcuts,
+    setShortcut, resetShortcuts, exportSettings, importSettings,
   }
 })

@@ -30,9 +30,32 @@ let reconnecting = false
 let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
+let offNativeFileDrop: (() => void) | null = null
+
+const dropTargetID = `terminal-drop-${props.sessionID}`
 
 function getTermTheme() {
   return resolveTerminalTheme(settings.terminalColorScheme, settings.isDark)
+}
+
+function shellQuotePath(path: string): string {
+  if (/^[A-Za-z0-9_./:@%+=,-]+$/.test(path)) return path
+  return `'${path.replace(/'/g, `'\\''`)}'`
+}
+
+function formatDroppedPaths(paths: string[]): string {
+  return paths.map(shellQuotePath).join(' ') + ' '
+}
+
+function handleNativeFileDrop(ev: any) {
+  const data = ev?.data
+  if (!data?.files || data.targetId !== dropTargetID) return
+
+  const paths = (data.files as string[]).filter(Boolean)
+  if (paths.length === 0) return
+
+  const text = formatDroppedPaths(paths)
+  Events.Emit('terminal:stdin', { sessionID: props.sessionID, data: text })
 }
 
 function handleCustomKeyEvent(e: KeyboardEvent): boolean {
@@ -105,6 +128,7 @@ onMounted(() => {
   })
 
   registerTerminal(props.sessionID, term)
+  offNativeFileDrop = Events.On('native:file-drop', handleNativeFileDrop)
 
   term.onData((data) => {
     if (isDisconnected(props.sessionID)) {
@@ -140,6 +164,8 @@ watch(() => settings.terminalFontFamily, (family) => {
 
 onUnmounted(() => {
   unregisterTerminal(props.sessionID)
+  offNativeFileDrop?.()
+  offNativeFileDrop = null
   resizeObserver?.disconnect()
   term?.dispose()
   term = null
@@ -180,7 +206,12 @@ defineExpose({ fit })
 </script>
 
 <template>
-  <div ref="terminalRef" class="xterminal-container"></div>
+  <div
+    :id="dropTargetID"
+    ref="terminalRef"
+    class="xterminal-container"
+    data-file-drop-target
+  ></div>
 </template>
 
 <style scoped>

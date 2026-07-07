@@ -5,24 +5,43 @@ import {
   NModal, NTabs, NTabPane, NFormItem, NSlider, NSpace,
   NButton, NSelect, NInput, useMessage,
 } from 'naive-ui'
+import { Dialogs } from '@wailsio/runtime'
 import { useSettingsStore } from '../../stores/settings'
 import { terminalThemes } from '../../constants/terminalThemes'
 import { comboFromKeyboardEvent, formatShortcutCombo } from '../../composables/useShortcuts'
 import {
   GetGeoIPDownloadURL,
+  ReadLocalFileContent,
   SetGeoIPDownloadURL,
   UpdateGeoIPDatabase,
+  WriteLocalFileContent,
 } from '../../../bindings/vshell/internal/app/appservice'
-import type { ShortcutMap } from '../../stores/settings'
+import type { ClientSettingsData, ShortcutMap } from '../../stores/settings'
 
 const props = defineProps<{ show: boolean }>()
 const emit = defineEmits<{ (e: 'update:show', val: boolean): void }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const settings = useSettingsStore()
 const message = useMessage()
 const geoIPDownloadURL = ref('')
 const updatingGeoIP = ref(false)
+const transferringSettings = ref(false)
+const lastSavedGeoIPDownloadURL = ref('')
+let geoIPSaveTimer: ReturnType<typeof setTimeout> | null = null
+
+const clientSettingsExportType = 'vshell-client-settings'
+const clientSettingsExportVersion = 1
+
+interface ClientSettingsExportFile {
+  type: typeof clientSettingsExportType
+  version: number
+  exported_at: string
+  settings: ClientSettingsData
+  geoip?: {
+    download_url?: string
+  }
+}
 
 const showModal = computed({
   get: () => props.show,
@@ -104,22 +123,34 @@ function onKeyCapture(e: KeyboardEvent) {
   }
 }
 
+function findFontValue(options: { value: string }[], current: string): string {
+  return options.find(o => o.value === current)?.value || options[0].value
+}
+
 function formatCombo(combo: string): string {
   return formatShortcutCombo(combo)
 }
 
-onUnmounted(stopCapture)
-
-function findFontValue(options: { value: string }[], current: string): string {
-  return options.find(o => o.value === current)?.value || options[0].value
+function clearGeoIPSaveTimer() {
+  if (geoIPSaveTimer) {
+    clearTimeout(geoIPSaveTimer)
+    geoIPSaveTimer = null
+  }
 }
+
+onUnmounted(() => {
+  stopCapture()
+  clearGeoIPSaveTimer()
+})
 
 watch(
   () => props.show,
   async (visible) => {
     if (!visible) return
     try {
-      geoIPDownloadURL.value = await GetGeoIPDownloadURL()
+      const url = await GetGeoIPDownloadURL()
+      lastSavedGeoIPDownloadURL.value = url
+      geoIPDownloadURL.value = url
     } catch (e: any) {
       message.error(t('settings.geoipLoadFailed', { error: e }))
     }
@@ -127,27 +158,106 @@ watch(
   { immediate: true },
 )
 
+watch(geoIPDownloadURL, (url) => {
+  if (!props.show || url === lastSavedGeoIPDownloadURL.value) return
+
+  clearGeoIPSaveTimer()
+  geoIPSaveTimer = setTimeout(() => {
+    geoIPSaveTimer = null
+    void saveGeoIPDownloadURL()
+  }, 600)
+})
+
 async function saveGeoIPDownloadURL() {
   try {
     await SetGeoIPDownloadURL(geoIPDownloadURL.value)
-    geoIPDownloadURL.value = await GetGeoIPDownloadURL()
-    message.success(t('settings.geoipSaved'))
+    const savedURL = await GetGeoIPDownloadURL()
+    lastSavedGeoIPDownloadURL.value = savedURL
+    geoIPDownloadURL.value = savedURL
   } catch (e: any) {
     message.error(t('settings.geoipSaveFailed', { error: e }))
   }
 }
 
 async function updateGeoIPDatabase() {
+  clearGeoIPSaveTimer()
   updatingGeoIP.value = true
   try {
     await SetGeoIPDownloadURL(geoIPDownloadURL.value)
     await UpdateGeoIPDatabase()
-    geoIPDownloadURL.value = await GetGeoIPDownloadURL()
+    const savedURL = await GetGeoIPDownloadURL()
+    lastSavedGeoIPDownloadURL.value = savedURL
+    geoIPDownloadURL.value = savedURL
     message.success(t('settings.geoipUpdated'))
   } catch (e: any) {
     message.error(t('settings.geoipUpdateFailed', { error: e }))
   } finally {
     updatingGeoIP.value = false
+  }
+}
+
+async function exportClientSettings() {
+  const filePath = await Dialogs.SaveFile({
+    Title: t('settings.exportClientSettings'),
+    Filename: 'vshell-client-settings.json',
+    Filters: [{ DisplayName: 'JSON', Pattern: '*.json' }],
+  })
+  if (!filePath) return
+
+  transferringSettings.value = true
+  try {
+    const exportFile: ClientSettingsExportFile = {
+      type: clientSettingsExportType,
+      version: clientSettingsExportVersion,
+      exported_at: new Date().toISOString(),
+      settings: settings.exportSettings(),
+      geoip: {
+        download_url: geoIPDownloadURL.value || await GetGeoIPDownloadURL(),
+      },
+    }
+    await WriteLocalFileContent(filePath, JSON.stringify(exportFile, null, 2))
+    message.success(t('settings.clientSettingsExported'))
+  } catch (e: any) {
+    message.error(t('settings.clientSettingsExportFailed', { error: e }))
+  } finally {
+    transferringSettings.value = false
+  }
+}
+
+async function importClientSettings() {
+  const filePath = await Dialogs.OpenFile({
+    Title: t('settings.importClientSettings'),
+    CanChooseFiles: true,
+    CanChooseDirectories: false,
+    AllowsMultipleSelection: false,
+    Filters: [{ DisplayName: 'JSON', Pattern: '*.json' }],
+  })
+  if (!filePath || Array.isArray(filePath)) return
+
+  transferringSettings.value = true
+  try {
+    const content = await ReadLocalFileContent(filePath)
+    const parsed = JSON.parse(content) as Partial<ClientSettingsExportFile>
+    if (parsed.type !== clientSettingsExportType || parsed.version !== clientSettingsExportVersion || !parsed.settings) {
+      throw new Error(t('settings.clientSettingsInvalidFile'))
+    }
+
+    settings.importSettings(parsed.settings)
+    locale.value = settings.localeCode
+
+    const importedGeoIPURL = parsed.geoip?.download_url
+    if (typeof importedGeoIPURL === 'string') {
+      await SetGeoIPDownloadURL(importedGeoIPURL)
+      const savedURL = await GetGeoIPDownloadURL()
+      lastSavedGeoIPDownloadURL.value = savedURL
+      geoIPDownloadURL.value = savedURL
+    }
+
+    message.success(t('settings.clientSettingsImported'))
+  } catch (e: any) {
+    message.error(t('settings.clientSettingsImportFailed', { error: e?.message || e }))
+  } finally {
+    transferringSettings.value = false
   }
 }
 </script>
@@ -195,9 +305,16 @@ async function updateGeoIPDatabase() {
               </NButton>
             </div>
           </NFormItem>
-          <div class="flex justify-end gap-2">
-            <NButton @click="saveGeoIPDownloadURL">{{ t('common.save') }}</NButton>
-          </div>
+          <NFormItem :label="t('settings.clientSettingsTransfer')" label-placement="left" :show-feedback="false">
+            <div class="flex gap-2">
+              <NButton :loading="transferringSettings" @click="exportClientSettings">
+                {{ t('settings.exportClientSettings') }}
+              </NButton>
+              <NButton :loading="transferringSettings" @click="importClientSettings">
+                {{ t('settings.importClientSettings') }}
+              </NButton>
+            </div>
+          </NFormItem>
         </NSpace>
       </NTabPane>
 

@@ -295,6 +295,34 @@ func (a *AppService) DeleteConnection(id string) error {
 	return err
 }
 
+// CopyConnection duplicates a connection, including encrypted sensitive fields,
+// without exposing passwords or private keys to the frontend.
+func (a *AppService) CopyConnection(id string, name string) (*models.Connection, error) {
+	conn, err := a.getConnectionByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	newID := uuid.New().String()
+	if strings.TrimSpace(name) == "" {
+		name = conn.Name + " Copy"
+	}
+
+	_, err = a.db.Exec(
+		`INSERT INTO connections (id, group_id, name, host, port, username, auth_type, password, private_key, key_passphrase, proxy_type, proxy_addr, jump_host_id, upload_path, default_cmd, sort_order, color)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		newID, conn.GroupID, name, conn.Host, conn.Port, conn.Username, conn.AuthType,
+		conn.Password, conn.PrivateKey, conn.KeyPassphrase,
+		conn.ProxyType, conn.ProxyAddr, conn.JumpHostID,
+		conn.UploadPath, conn.DefaultCmd, conn.SortOrder, conn.Color,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return a.getConnectionByID(newID)
+}
+
 // MoveConnection updates just the group_id of a connection (for drag-and-drop reordering).
 func (a *AppService) MoveConnection(connectionID string, groupID *string) error {
 	if groupID != nil && *groupID == "" {

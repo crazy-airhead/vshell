@@ -37,6 +37,9 @@ func NewManager(onEvent func(string, any)) *Manager {
 
 func (m *Manager) Start(sessionID string, rows, cols uint16) error {
 	cmd := localShellCommand()
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		cmd.Dir = home
+	}
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 	if rows == 0 {
 		rows = 24

@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, h } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, h, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NTree, NButton, NInputGroup, NInput, NModal, NCheckbox, useMessage, useDialog } from 'naive-ui'
-import type { TreeOption, TreeDropInfo } from 'naive-ui'
+import { NTree, NButton, NInputGroup, NInput, NModal, NCheckbox, NDropdown, NSelect, useMessage, useDialog } from 'naive-ui'
+import type { TreeOption, TreeDropInfo, DropdownOption } from 'naive-ui'
 import { Dialogs } from '@wailsio/runtime'
 import IconFolderPlus from '~icons/lucide/folder-plus'
 import IconPlus from '~icons/lucide/plus'
 import IconFolder from '~icons/lucide/folder'
+import IconFolderInput from '~icons/lucide/folder-input'
 import IconPencil from '~icons/lucide/pencil'
 import IconTrash2 from '~icons/lucide/trash-2'
 import IconZap from '~icons/lucide/zap'
+import IconCopy from '~icons/lucide/copy'
 import IconDownload from '~icons/lucide/download'
 import IconUpload from '~icons/lucide/upload'
 import IconPanelLeftClose from '~icons/lucide/panel-left-close'
@@ -47,6 +49,13 @@ const showImportPasswordModal = ref(false)
 const importPath = ref('')
 const importPassword = ref('')
 const countryByHost = ref<Record<string, string | null>>({})
+const contextMenuVisible = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+const contextConnectionID = ref<string | null>(null)
+const showMoveModal = ref(false)
+const moveConnectionID = ref<string | null>(null)
+const moveTargetGroupID = ref('')
 const openedConnectionIDs = computed(() => new Set(
   terminalStore.tabs
     .filter(tab => tab.connectionID && tab.type !== 'editor')
@@ -57,6 +66,41 @@ const activeConnectionID = computed(() => {
   if (!activeTab || activeTab.type === 'editor') return null
   return activeTab.connectionID || null
 })
+const connectionContextOptions = computed<DropdownOption[]>(() => [
+  {
+    label: t('common.connect'),
+    key: 'connect',
+    icon: () => h(IconZap, { width: 14, height: 14 }),
+  },
+  {
+    label: t('common.edit'),
+    key: 'edit',
+    icon: () => h(IconPencil, { width: 14, height: 14 }),
+  },
+  {
+    label: t('common.move'),
+    key: 'move',
+    icon: () => h(IconFolderInput, { width: 14, height: 14 }),
+  },
+  {
+    label: t('common.copy'),
+    key: 'copy',
+    icon: () => h(IconCopy, { width: 14, height: 14 }),
+  },
+  {
+    type: 'divider',
+    key: 'divider',
+  },
+  {
+    label: t('common.delete'),
+    key: 'delete',
+    icon: () => h(IconTrash2, { width: 14, height: 14 }),
+  },
+])
+const moveGroupOptions = computed(() => [
+  { label: t('group.ungrouped'), value: '' },
+  ...connectionStore.groups.map(group => ({ label: group.name, value: group.id })),
+])
 
 function handleGlobalNewConnection() {
   handleNew()
@@ -232,6 +276,65 @@ function nodeProps({ option }: { option: TreeOption }) {
     onDblclick: () => {
       handleConnect(option.key as string)
     },
+    onContextmenu: (e: MouseEvent) => {
+      openConnectionContextMenu(option.key as string, e)
+    },
+  }
+}
+
+function openConnectionContextMenu(connID: string, e: MouseEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+  contextConnectionID.value = connID
+  contextMenuX.value = e.clientX
+  contextMenuY.value = e.clientY
+  contextMenuVisible.value = false
+  void nextTick(() => {
+    contextMenuVisible.value = true
+  })
+}
+
+function handleContextMenuSelect(key: string | number) {
+  const connID = contextConnectionID.value
+  contextMenuVisible.value = false
+  if (!connID) return
+
+  switch (key) {
+    case 'connect':
+      void handleConnect(connID)
+      break
+    case 'edit':
+      handleEdit(connID)
+      break
+    case 'move':
+      openMoveModal(connID)
+      break
+    case 'copy':
+      void handleCopy(connID)
+      break
+    case 'delete':
+      handleDelete(connID)
+      break
+  }
+}
+
+function openMoveModal(connID: string) {
+  const conn = connectionStore.connections.find(c => c.id === connID)
+  if (!conn) return
+  moveConnectionID.value = connID
+  moveTargetGroupID.value = conn.group_id || ''
+  showMoveModal.value = true
+}
+
+async function confirmMoveConnection() {
+  if (!moveConnectionID.value) return
+  try {
+    await connectionStore.moveConnection(moveConnectionID.value, moveTargetGroupID.value || null)
+    showMoveModal.value = false
+    moveConnectionID.value = null
+    message.success(t('connection.moved'))
+  } catch (e: any) {
+    message.error(t('connection.failed', { error: e }))
   }
 }
 
@@ -307,6 +410,18 @@ function handleEdit(connID: string) {
   if (conn) {
     editConn.value = conn
     showModal.value = true
+  }
+}
+
+async function handleCopy(connID: string) {
+  const conn = connectionStore.connections.find(c => c.id === connID)
+  if (!conn) return
+
+  try {
+    await connectionStore.copyConnection(connID, t('connection.copyName', { name: conn.name }))
+    message.success(t('connection.copied'))
+  } catch (e: any) {
+    message.error(t('connection.failed', { error: e }))
   }
 }
 
@@ -604,7 +719,28 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
       />
     </div>
 
+    <NDropdown
+      placement="bottom-start"
+      trigger="manual"
+      :x="contextMenuX"
+      :y="contextMenuY"
+      :options="connectionContextOptions"
+      :show="contextMenuVisible"
+      @select="handleContextMenuSelect"
+      @clickoutside="contextMenuVisible = false"
+    />
+
     <ConnectionFormModal v-model:show="showModal" :edit-connection="editConn" :defaultGroupID="defaultGroupID" />
+
+    <NModal v-model:show="showMoveModal" preset="card" :title="t('connection.moveConnection')" style="width: 360px" :mask-closable="false">
+      <NSelect v-model:value="moveTargetGroupID" :options="moveGroupOptions" />
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <NButton @click="showMoveModal = false">{{ t('common.cancel') }}</NButton>
+          <NButton type="primary" @click="confirmMoveConnection">{{ t('common.move') }}</NButton>
+        </div>
+      </template>
+    </NModal>
 
     <NModal v-model:show="showExportModal" preset="card" :title="t('connection.exportConfigs')" style="width: 420px" :mask-closable="false">
       <div class="flex flex-col gap-3">
