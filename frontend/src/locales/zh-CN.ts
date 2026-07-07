@@ -19,6 +19,7 @@ export default {
   },
   connection: {
     title: '连接',
+    recentUsed: '最近使用',
     newConnection: '新建 SSH 连接',
     editConnection: '编辑连接',
     newBtn: '+',
@@ -348,6 +349,7 @@ export default {
     interface: '界面',
     terminal: '终端',
     shortcuts: '快捷键',
+    appVersion: '版本',
     geoipDownloadURL: 'GeoIP 库下载地址',
     geoipDownloadURLPlaceholder: 'https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country-without-asn.mmdb',
     geoipUpdate: '更新 GeoIP 库',

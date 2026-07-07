@@ -112,6 +112,7 @@ export const useConnectionStore = defineStore('connection', () => {
       activeConnectionID.value = id
       const monitorStore = useMonitorStore()
       await monitorStore.startMonitoring(id)
+      await loadConnections()
       return sessionID
     } catch (e) {
       console.error('Failed to connect:', e)

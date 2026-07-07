@@ -8,13 +8,13 @@
         <key>CFBundleExecutable</key>
             <string>vshell</string>
         <key>CFBundleIdentifier</key>
-            <string>com.example.vshell</string>
+            <string>dev.vshell.app</string>
         <key>CFBundleVersion</key>
-            <string>0.1.0</string>
+            <string>1.2.2</string>
         <key>CFBundleGetInfoString</key>
             <string>This is a comment</string>
         <key>CFBundleShortVersionString</key>
-            <string>0.1.0</string>
+            <string>1.2.2</string>
         <key>CFBundleIconFile</key>
             <string>icons</string>
         <key>LSMinimumSystemVersion</key>

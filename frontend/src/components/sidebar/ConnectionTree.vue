@@ -105,6 +105,11 @@ const moveGroupOptions = computed(() => [
   ...connectionStore.groups.map(group => ({ label: group.name, value: group.id })),
 ])
 const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLowerCase())
+const recentConnections = computed(() => connectionStore.connections
+  .filter(conn => !!conn.last_used_at)
+  .slice()
+  .sort((a, b) => new Date(b.last_used_at || 0).getTime() - new Date(a.last_used_at || 0).getTime())
+  .slice(0, 20))
 
 function handleGlobalNewConnection() {
   handleNew()
@@ -117,7 +122,7 @@ onMounted(async () => {
       connectionStore.loadConnections(),
       connectionStore.loadGroups(),
     ])
-    expandedKeys.value = connectionStore.groups.map(g => g.id)
+    expandedKeys.value = []
   } catch {
     message.error(t('connection.loadFailed'))
   } finally {
@@ -591,7 +596,7 @@ async function importSelectedConfig(filePath: string, password = '') {
   transferringConfig.value = true
   try {
     const result = await connectionStore.importConfigs(filePath, password)
-    expandedKeys.value = connectionStore.groups.map(g => g.id)
+    expandedKeys.value = []
     showImportPasswordModal.value = false
     message.success(t('connection.imported', { connections: result.connections, groups: result.groups }))
   } catch (e: any) {
@@ -770,6 +775,39 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
         @update:selected-keys="handleSelect"
         @drop="handleDrop"
       />
+
+      <div v-if="!loading && !normalizedSearchQuery && recentConnections.length > 0" class="recent-section">
+        <div class="recent-title">{{ t('connection.recentUsed') }}</div>
+        <div
+          v-for="conn in recentConnections"
+          :key="'recent-' + conn.id"
+          class="recent-conn-row"
+          :class="{ 'recent-conn-row-active': activeConnectionID === conn.id }"
+          @click="scheduleConnectionEdit(conn.id)"
+          @dblclick.prevent="clearConnectionClickTimer(); handleConnect(conn.id)"
+          @contextmenu="openConnectionContextMenu(conn.id, $event)"
+        >
+          <span class="conn-open-cursor-wrap">
+            <span
+              v-if="openedConnectionIDs.has(conn.id)"
+              class="conn-open-cursor"
+              :class="{ 'conn-open-cursor-active': activeConnectionID === conn.id }"
+            />
+          </span>
+          <span class="conn-flag-wrap">
+            <img
+              class="conn-flag"
+              :src="flagForCountry(countryByHost[conn.host] ?? countryForIPv4(conn.host))"
+              alt=""
+              @error="(e: Event) => { (e.target as HTMLImageElement).src = '/flags/un.png' }"
+            />
+          </span>
+          <span class="conn-info">
+            <span class="conn-name">{{ conn.name }}</span>
+            <span class="conn-host-text">{{ conn.host }}:{{ conn.port }}</span>
+          </span>
+        </div>
+      </div>
     </div>
 
     <NDropdown
@@ -1011,6 +1049,83 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 }
 .tree-content :deep(.conn-hover-btn-danger:hover) {
   color: var(--color-error);
+}
+
+.recent-section {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(128, 128, 128, 0.12);
+}
+
+.recent-title {
+  padding: 4px 8px 6px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.recent-conn-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 8px 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 0.15s;
+}
+
+.recent-conn-row:hover,
+.recent-conn-row-active {
+  background: var(--hover-overlay);
+}
+
+.recent-conn-row .conn-open-cursor-wrap {
+  left: 2px;
+}
+
+.recent-conn-row .conn-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.recent-conn-row .conn-name {
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-conn-row .conn-host-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.recent-conn-row .conn-flag-wrap {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.recent-conn-row .conn-flag {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .action-btn {

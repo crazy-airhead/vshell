@@ -355,6 +355,7 @@ func (a *AppService) ConnectSSH(connectionID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	_, _ = a.db.Exec("UPDATE connections SET last_used_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", connectionID)
 	return sessionID, nil
 }
 

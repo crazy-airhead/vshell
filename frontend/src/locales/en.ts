@@ -19,6 +19,7 @@ export default {
   },
   connection: {
     title: 'Connections',
+    recentUsed: 'Recently Used',
     newConnection: 'New SSH Connection',
     editConnection: 'Edit Connection',
     newBtn: '+',
@@ -348,6 +349,7 @@ export default {
     interface: 'Interface',
     terminal: 'Terminal',
     shortcuts: 'Shortcuts',
+    appVersion: 'Version',
     geoipDownloadURL: 'GeoIP Database URL',
     geoipDownloadURLPlaceholder: 'https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country-without-asn.mmdb',
     geoipUpdate: 'Update GeoIP Database',

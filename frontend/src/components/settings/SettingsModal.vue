@@ -32,6 +32,7 @@ let geoIPSaveTimer: ReturnType<typeof setTimeout> | null = null
 
 const clientSettingsExportType = 'vshell-client-settings'
 const clientSettingsExportVersion = 1
+const appVersion = 'v1.2.2'
 
 interface ClientSettingsExportFile {
   type: typeof clientSettingsExportType
@@ -315,6 +316,10 @@ async function importClientSettings() {
               </NButton>
             </div>
           </NFormItem>
+
+          <NFormItem :label="t('settings.appVersion')" label-placement="left" :show-feedback="false">
+            <span class="settings-version">{{ appVersion }}</span>
+          </NFormItem>
         </NSpace>
       </NTabPane>
 
@@ -472,6 +477,12 @@ async function importClientSettings() {
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.settings-version {
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 720px) {

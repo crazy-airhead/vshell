@@ -1,15 +1,15 @@
 {
 	"fixed": {
-		"file_version": "0.1.0"
+		"file_version": "1.2.2"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.1.0",
-			"CompanyName": "My Company",
-			"FileDescription": "A vshell application",
-			"LegalCopyright": "© 2026, My Company",
-			"ProductName": "My Product",
-			"Comments": "This is a comment"
+			"ProductVersion": "1.2.2",
+			"CompanyName": "vShell",
+			"FileDescription": "SSH Client Management Tool",
+			"LegalCopyright": "(c) 2025, vShell",
+			"ProductName": "vShell",
+			"Comments": "SSH Client Management Tool"
 		}
 	}
 }
