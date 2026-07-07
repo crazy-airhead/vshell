@@ -35,6 +35,7 @@ export default {
     namePlaceholder: 'My Server',
     hostPlaceholder: '192.168.1.1 or example.com',
     usernamePlaceholder: 'root',
+    searchPlaceholder: 'Search connections',
     passwordPlaceholder: 'Password',
     passwordEditPlaceholder: 'Password saved. Leave blank to keep current, click key to view',
     keyPlaceholder: '-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----',

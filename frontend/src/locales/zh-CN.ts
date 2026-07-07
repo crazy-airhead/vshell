@@ -35,6 +35,7 @@ export default {
     namePlaceholder: '我的服务器',
     hostPlaceholder: '192.168.1.1 或 example.com',
     usernamePlaceholder: 'root',
+    searchPlaceholder: '搜索连接',
     passwordPlaceholder: '密码',
     passwordEditPlaceholder: '已保存密码，留空保持不变，点钥匙查看',
     keyPlaceholder: '-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----',

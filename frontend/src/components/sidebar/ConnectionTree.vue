@@ -14,6 +14,7 @@ import IconZap from '~icons/lucide/zap'
 import IconCopy from '~icons/lucide/copy'
 import IconDownload from '~icons/lucide/download'
 import IconUpload from '~icons/lucide/upload'
+import IconSearch from '~icons/lucide/search'
 import IconPanelLeftClose from '~icons/lucide/panel-left-close'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
@@ -49,6 +50,7 @@ const showImportPasswordModal = ref(false)
 const importPath = ref('')
 const importPassword = ref('')
 const countryByHost = ref<Record<string, string | null>>({})
+const searchQuery = ref('')
 const contextMenuVisible = ref(false)
 const contextMenuX = ref(0)
 const contextMenuY = ref(0)
@@ -56,6 +58,7 @@ const contextConnectionID = ref<string | null>(null)
 const showMoveModal = ref(false)
 const moveConnectionID = ref<string | null>(null)
 const moveTargetGroupID = ref('')
+let connectionClickTimer: ReturnType<typeof setTimeout> | null = null
 const openedConnectionIDs = computed(() => new Set(
   terminalStore.tabs
     .filter(tab => tab.connectionID && tab.type !== 'editor')
@@ -101,6 +104,7 @@ const moveGroupOptions = computed(() => [
   { label: t('group.ungrouped'), value: '' },
   ...connectionStore.groups.map(group => ({ label: group.name, value: group.id })),
 ])
+const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLowerCase())
 
 function handleGlobalNewConnection() {
   handleNew()
@@ -123,6 +127,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('vshell:new-connection', handleGlobalNewConnection)
+  clearConnectionClickTimer()
 })
 
 watch(
@@ -138,7 +143,10 @@ function isGroupKey(key: string): boolean {
 
 const treeData = computed<TreeOption[]>(() => {
   const groups = connectionStore.groups
-  const connections = connectionStore.connections
+  const query = normalizedSearchQuery.value
+  const connections = query
+    ? connectionStore.connections.filter(conn => connectionMatchesSearch(conn, query))
+    : connectionStore.connections
 
   const groupNodes: TreeOption[] = []
   const groupNodeMap = new Map<string, TreeOption>()
@@ -175,12 +183,47 @@ const treeData = computed<TreeOption[]>(() => {
     }
   }
 
-  const result = [...groupNodes]
+  let result = query ? pruneEmptyGroupNodes(groupNodes) : [...groupNodes]
   if (ungrouped.length > 0) {
     result.push(...ungrouped)
   }
   return result
 })
+
+watch(normalizedSearchQuery, (query) => {
+  if (!query) return
+  expandedKeys.value = connectionStore.groups.map(g => g.id)
+})
+
+function connectionMatchesSearch(conn: Connection, query: string): boolean {
+  return [
+    conn.name,
+    conn.host,
+    String(conn.port),
+    conn.username,
+  ].some(value => value.toLowerCase().includes(query))
+}
+
+function pruneEmptyGroupNodes(nodes: TreeOption[]): TreeOption[] {
+  const result: TreeOption[] = []
+  for (const node of nodes) {
+    if (!isGroupKey(String(node.key))) {
+      result.push(node)
+      continue
+    }
+
+    const children = Array.isArray(node.children)
+      ? pruneEmptyGroupNodes(node.children)
+      : []
+    if (children.length > 0) {
+      result.push({
+        ...node,
+        children,
+      })
+    }
+  }
+  return result
+}
 
 function renderLabel({ option }: { option: TreeOption }) {
   const key = option.key as string
@@ -236,23 +279,6 @@ function renderLabel({ option }: { option: TreeOption }) {
       h('span', { class: 'conn-name' }, conn.name),
       h('span', { class: 'conn-host-text' }, `${conn.host}:${conn.port}`),
     ]),
-    h('span', { class: 'conn-actions flex gap-[2px]' }, [
-      h('button', {
-        class: 'conn-hover-btn',
-        title: t('connection.newConnection'),
-        onClick: (e: MouseEvent) => { e.stopPropagation(); handleConnect(conn.id) },
-      }, h(IconZap, { width: 12, height: 12 })),
-      h('button', {
-        class: 'conn-hover-btn',
-        title: t('common.edit'),
-        onClick: (e: MouseEvent) => { e.stopPropagation(); handleEdit(conn.id) },
-      }, h(IconPencil, { width: 12, height: 12 })),
-      h('button', {
-        class: 'conn-hover-btn conn-hover-btn-danger',
-        title: t('common.delete'),
-        onClick: (e: MouseEvent) => { e.stopPropagation(); handleDelete(conn.id) },
-      }, h(IconTrash2, { width: 12, height: 12 })),
-    ]),
   ])
 }
 
@@ -273,13 +299,33 @@ async function resolveConnectionCountries() {
 function nodeProps({ option }: { option: TreeOption }) {
   if (isGroupKey(option.key as string)) return {}
   return {
-    onDblclick: () => {
-      handleConnect(option.key as string)
+    onClick: () => {
+      scheduleConnectionEdit(option.key as string)
+    },
+    onDblclick: (e: MouseEvent) => {
+      e.preventDefault()
+      clearConnectionClickTimer()
+      void handleConnect(option.key as string)
     },
     onContextmenu: (e: MouseEvent) => {
       openConnectionContextMenu(option.key as string, e)
     },
   }
+}
+
+function clearConnectionClickTimer() {
+  if (connectionClickTimer) {
+    clearTimeout(connectionClickTimer)
+    connectionClickTimer = null
+  }
+}
+
+function scheduleConnectionEdit(connID: string) {
+  clearConnectionClickTimer()
+  connectionClickTimer = setTimeout(() => {
+    connectionClickTimer = null
+    handleEdit(connID)
+  }, 220)
 }
 
 function openConnectionContextMenu(connID: string, e: MouseEvent) {
@@ -339,15 +385,7 @@ async function confirmMoveConnection() {
 }
 
 function handleSelect(keys: string[]) {
-  if (keys.length === 0) return
-  const key = keys[0]
-  if (isGroupKey(key)) return
-
-  // Switch to the first tab belonging to this connection
-  const tab = terminalStore.tabs.find(t => t.connectionID === key && t.type !== 'editor')
-  if (tab) {
-    terminalStore.activeTabID = tab.id
-  }
+  void keys
 }
 
 async function handleConnect(connID: string) {
@@ -674,6 +712,20 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
       <div v-if="loading" class="loading-bar"></div>
     </div>
 
+    <div class="px-2 py-[6px] thin-border-b shrink-0">
+      <NInput
+        v-model:value="searchQuery"
+        size="tiny"
+        clearable
+        :placeholder="t('connection.searchPlaceholder')"
+        @keyup.escape="searchQuery = ''"
+      >
+        <template #prefix>
+          <IconSearch :width="13" :height="13" />
+        </template>
+      </NInput>
+    </div>
+
     <div v-if="showGroupInput" class="px-3 py-[6px] thin-border-b shrink-0">
       <NInputGroup>
         <NInput
@@ -709,6 +761,7 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
         :expanded-keys="expandedKeys"
         :render-label="renderLabel"
         :node-props="nodeProps"
+        :indent="14"
         selectable
         block-line
         draggable
@@ -845,18 +898,23 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 }
 
 .tree-content :deep(.conn-label-with-flag) {
+  position: relative;
   flex-direction: row;
   align-items: center;
   gap: 8px;
 }
 
 .tree-content :deep(.conn-open-cursor-wrap) {
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 3px;
   height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .tree-content :deep(.conn-open-cursor) {

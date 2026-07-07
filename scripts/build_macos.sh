@@ -40,3 +40,31 @@ cp "$BUILD_DIR/Assets.car" "$APP_BUNDLE/Contents/Resources/Assets.car"
 
 echo "==> Done: $APP_BUNDLE"
 echo "    Run with: open $APP_BUNDLE"
+
+# Step 6: Create DMG
+echo "==> Creating DMG..."
+
+DMG_NAME="${APP_NAME}.dmg"
+TMP_DIR="$BIN_DIR/dmg"
+
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR"
+
+cp -R "$APP_BUNDLE" "$TMP_DIR"
+
+# 可选：增加 Applications 快捷方式
+ln -s /Applications "$TMP_DIR/Applications"
+
+rm -f "$BIN_DIR/$DMG_NAME"
+
+hdiutil create \
+    -volname "$APP_NAME" \
+    -srcfolder "$TMP_DIR" \
+    -ov \
+    -format UDZO \
+    "$BIN_DIR/$DMG_NAME"
+
+rm -rf "$TMP_DIR"
+
+echo "==> DMG Created:"
+echo "    $BIN_DIR/$DMG_NAME"
