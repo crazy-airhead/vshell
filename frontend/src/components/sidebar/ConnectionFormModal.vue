@@ -253,24 +253,6 @@ async function handleSave() {
       <NFormItem :label="t('common.username')">
         <NInput v-model:value="form.username" :placeholder="t('connection.usernamePlaceholder')" />
       </NFormItem>
-      <NFormItem :label="t('proxy.useProxy')">
-        <div style="display: flex; align-items: center; gap: 8px; width: 100%">
-          <NCheckbox v-model:checked="useProxy" />
-          <NSelect
-            v-model:value="form.proxyID"
-            :options="proxyOptions"
-            :placeholder="t('proxy.selectProxy')"
-            :disabled="!useProxy"
-            :loading="proxyStore.loading"
-            clearable
-            filterable
-            style="flex: 1"
-          />
-          <NButton size="small" quaternary :title="t('proxy.newProxy')" @click="openProxyModal">
-            <IconPlus :width="14" :height="14" />
-          </NButton>
-        </div>
-      </NFormItem>
       <NDivider style="margin: 8px 0" />
       <NFormItem :label="t('connection.authType')">
         <NSelect v-model:value="form.authType" :options="authTypeOptions" />
@@ -326,6 +308,25 @@ async function handleSave() {
           <NInput v-model:value="form.keyPassphrase" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passphraseEditPlaceholder') : t('connection.passphrasePlaceholder')" />
         </NFormItem>
       </template>
+      <NDivider style="margin: 8px 0" />
+      <NFormItem :label="t('proxy.useProxy')">
+        <div style="display: flex; align-items: center; gap: 8px; width: 100%">
+          <NCheckbox v-model:checked="useProxy" />
+          <NSelect
+            v-model:value="form.proxyID"
+            :options="proxyOptions"
+            :placeholder="t('proxy.selectProxy')"
+            :disabled="!useProxy"
+            :loading="proxyStore.loading"
+            clearable
+            filterable
+            style="flex: 1"
+          />
+          <NButton size="small" quaternary :title="t('proxy.newProxy')" @click="openProxyModal">
+            <IconPlus :width="14" :height="14" />
+          </NButton>
+        </div>
+      </NFormItem>
     </NForm>
     <template #footer>
       <NSpace justify="end">

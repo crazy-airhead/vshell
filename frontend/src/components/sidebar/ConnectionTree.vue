@@ -47,6 +47,16 @@ const showImportPasswordModal = ref(false)
 const importPath = ref('')
 const importPassword = ref('')
 const countryByHost = ref<Record<string, string | null>>({})
+const openedConnectionIDs = computed(() => new Set(
+  terminalStore.tabs
+    .filter(tab => tab.connectionID && tab.type !== 'editor')
+    .map(tab => tab.connectionID),
+))
+const activeConnectionID = computed(() => {
+  const activeTab = terminalStore.tabs.find(tab => tab.id === terminalStore.activeTabID)
+  if (!activeTab || activeTab.type === 'editor') return null
+  return activeTab.connectionID || null
+})
 
 function handleGlobalNewConnection() {
   handleNew()
@@ -154,8 +164,20 @@ function renderLabel({ option }: { option: TreeOption }) {
   }
   const conn = connectionStore.connections.find(c => c.id === key)
   if (!conn) return option.label as string
+  const isOpened = openedConnectionIDs.value.has(conn.id)
+  const isActive = activeConnectionID.value === conn.id
 
   return h('div', { class: 'conn-label conn-label-with-flag' }, [
+    h('span', { class: 'conn-open-cursor-wrap' }, [
+      isOpened
+        ? h('span', {
+          class: [
+            'conn-open-cursor',
+            isActive ? 'conn-open-cursor-active' : '',
+          ],
+        })
+        : null,
+    ]),
     h('span', { class: 'conn-flag-wrap' }, [
       h('img', {
         class: 'conn-flag',
@@ -689,7 +711,28 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 .tree-content :deep(.conn-label-with-flag) {
   flex-direction: row;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
+}
+
+.tree-content :deep(.conn-open-cursor-wrap) {
+  width: 3px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tree-content :deep(.conn-open-cursor) {
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: #22c55e;
+  opacity: 1;
+}
+
+.tree-content :deep(.conn-open-cursor-active) {
+  background: #22c55e;
 }
 
 .tree-content :deep(.conn-info) {
@@ -718,7 +761,7 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 }
 
 .tree-content :deep(.conn-flag-wrap) {
-  width: 30px;
+  width: 22px;
   height: 22px;
   display: inline-flex;
   align-items: center;
@@ -727,9 +770,9 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 }
 
 .tree-content :deep(.conn-flag) {
-  width: 30px;
-  height: 20px;
-  object-fit: cover;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
   border-radius: 3px;
   flex-shrink: 0;
 }
