@@ -8,17 +8,21 @@ vShell is a desktop SSH client management tool (similar to FinalShell) built wit
 
 ## Development Commands
 
+This project uses **pnpm** for frontend package management (declared in `frontend/package.json` → `packageManager`). `wails3 dev` / `wails3 build` auto-detect the runner from the lockfile, so keep `pnpm-lock.yaml` (not `package-lock.json`).
+
 ```bash
 wails3 dev              # Run in development mode with hot-reload
 wails3 build            # Build production executable
-cd frontend && npm run build   # Build frontend only
+cd frontend && pnpm run build   # Build frontend only
 ```
 
 Frontend-only (from `frontend/`):
 ```bash
-npm run dev             # Vite dev server
-npm run build           # vue-tsc + vite production build
-npm run build:dev       # vue-tsc + vite dev build (no minify)
+pnpm install            # Install dependencies (uses/generates pnpm-lock.yaml)
+pnpm dev                # Vite dev server
+pnpm build              # vue-tsc + vite production build
+pnpm build:dev          # vue-tsc + vite dev build (no minify)
+pnpm typecheck          # vue-tsc --noEmit (type check only)
 ```
 
 Go-only:
@@ -85,6 +89,7 @@ Native menu actions (Settings, Save, Close Tab) are emitted from Go to frontend 
 ## Key Configuration
 
 - **Wails config**: Wails 3 uses `build/config.yml` (not `wails.json`). App window options are in `main.go` via `application.Options`.
+- **Package manager**: pnpm (`frontend/package.json` → `packageManager`). Never use npm/yarn — `wails3 build` selects the frontend runner from the lockfile, so the repo must carry `pnpm-lock.yaml`, not `package-lock.json`.
 - **Vite port**: Default `9245`, configurable via `WAILS_VITE_PORT` env var.
 - **Go version**: 1.25.0
 - **Wails version**: v3.0.0-alpha.92 (alpha API may change)

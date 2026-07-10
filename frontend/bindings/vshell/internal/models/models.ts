@@ -5,10 +5,6 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Unused imports
-import * as time$0 from "../../../time/models.js";
-
 export enum AuthType {
     /**
      * The Go zero value for the underlying type of the enum.
@@ -36,9 +32,9 @@ export class Connection {
     "default_cmd": string | null;
     "sort_order": number;
     "color": string | null;
-    "last_used_at": time$0.Time | null;
-    "created_at": time$0.Time;
-    "updated_at": time$0.Time;
+    "last_used_at": string | null;
+    "created_at": string;
+    "updated_at": string;
 
     /** Creates a new Connection instance. */
     constructor($$source: Partial<Connection> = {}) {
@@ -88,10 +84,10 @@ export class Connection {
             this["last_used_at"] = null;
         }
         if (!("created_at" in $$source)) {
-            this["created_at"] = null;
+            this["created_at"] = "0001-01-01T00:00:00.000Z";
         }
         if (!("updated_at" in $$source)) {
-            this["updated_at"] = null;
+            this["updated_at"] = "0001-01-01T00:00:00.000Z";
         }
 
         Object.assign(this, $$source);
@@ -201,8 +197,8 @@ export class Group {
     "name": string;
     "parent_id": string | null;
     "sort_order": number;
-    "created_at": time$0.Time;
-    "updated_at": time$0.Time;
+    "created_at": string;
+    "updated_at": string;
 
     /** Creates a new Group instance. */
     constructor($$source: Partial<Group> = {}) {
@@ -219,10 +215,10 @@ export class Group {
             this["sort_order"] = 0;
         }
         if (!("created_at" in $$source)) {
-            this["created_at"] = null;
+            this["created_at"] = "0001-01-01T00:00:00.000Z";
         }
         if (!("updated_at" in $$source)) {
-            this["updated_at"] = null;
+            this["updated_at"] = "0001-01-01T00:00:00.000Z";
         }
 
         Object.assign(this, $$source);
@@ -304,8 +300,8 @@ export class QuickCommand {
     "command": string;
     "connection_id": string | null;
     "sort_order": number;
-    "created_at": time$0.Time;
-    "updated_at": time$0.Time;
+    "created_at": string;
+    "updated_at": string;
 
     /** Creates a new QuickCommand instance. */
     constructor($$source: Partial<QuickCommand> = {}) {
@@ -325,10 +321,10 @@ export class QuickCommand {
             this["sort_order"] = 0;
         }
         if (!("created_at" in $$source)) {
-            this["created_at"] = null;
+            this["created_at"] = "0001-01-01T00:00:00.000Z";
         }
         if (!("updated_at" in $$source)) {
-            this["updated_at"] = null;
+            this["updated_at"] = "0001-01-01T00:00:00.000Z";
         }
 
         Object.assign(this, $$source);
