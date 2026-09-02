@@ -1,0 +1,58 @@
+name: Deploy Docs
+
+# 构建 VitePress 文档站（docs/ 独立 pnpm 项目）并发布到 gh-pages 分支
+# （GitHub Settings → Pages → Deploy from a branch → gh-pages / (root)）
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+      - "Taskfile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - name: Checkout（完整历史，供 lastUpdated 读取时间）
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm（读 docs/package.json 的 packageManager 字段）
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: docs/package.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: docs/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build docs
+        run: pnpm build
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/.vitepress/dist
+          # dist 是纯生成产物：单提交孤儿分支，保证删除的页面同步消失
+          force_orphan: true
+          commit_message: "docs: deploy ${{ github.sha }}"

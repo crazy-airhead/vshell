@@ -1,0 +1,19 @@
+{
+  "name": "vshell-docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.17.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "vitepress dev .",
+    "build": "vitepress build .",
+    "preview": "vitepress preview .",
+    "clean": "rm -rf .vitepress/dist .vitepress/cache"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}
