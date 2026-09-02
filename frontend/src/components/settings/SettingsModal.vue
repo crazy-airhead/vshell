@@ -60,6 +60,8 @@ const shortcutActions: { key: keyof ShortcutMap; label: string }[] = [
   { key: 'toggleTheme', label: 'settings.shortcutToggleTheme' },
   { key: 'toggleSidebar', label: 'settings.shortcutToggleSidebar' },
   { key: 'focusTerminal', label: 'settings.shortcutFocusTerminal' },
+  { key: 'copy', label: 'settings.shortcutCopy' },
+  { key: 'paste', label: 'settings.shortcutPaste' },
 ]
 
 const capturingKey = ref<keyof ShortcutMap | null>(null)

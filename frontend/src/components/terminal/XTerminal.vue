@@ -3,8 +3,11 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
-import { Events } from '@wailsio/runtime'
+import { NDropdown } from 'naive-ui'
+import type { DropdownOption } from 'naive-ui'
+import { Events, Clipboard } from '@wailsio/runtime'
 import { useTerminalManager } from '../../composables/useTerminalManager'
+import { matchesShortcut } from '../../composables/useShortcuts'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
 import { useSettingsStore } from '../../stores/settings'
@@ -24,10 +27,16 @@ const settings = useSettingsStore()
 const { t } = useI18n()
 
 let reconnecting = false
+const isMac = navigator.platform.includes('Mac')
 
 let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
+
+const ctxShow = ref(false)
+const ctxX = ref(0)
+const ctxY = ref(0)
+const ctxCanCopy = ref(false)
 
 const colorSchemes: Record<string, Record<string, string>> = {
   'default-dark': {
@@ -91,6 +100,7 @@ onMounted(() => {
     fontFamily: settings.terminalFontFamily,
     theme: getTermTheme(),
     allowProposedApi: true,
+    rightClickSelectsWord: true,
   })
 
   fitAddon = new FitAddon()
@@ -125,6 +135,39 @@ onMounted(() => {
   })
 
   registerTerminal(props.sessionID, term)
+
+  // The global shortcut handler skips events targeting xterm's hidden
+  // textarea, so copy/paste shortcuts are intercepted here instead.
+  // Returning false stops xterm from sending the key to the PTY.
+  term.attachCustomKeyEventHandler((event) => {
+    if (event.type !== 'keydown') return true
+    // On macOS "CommandOrControl" must mean Cmd only for copy/paste:
+    // plain Ctrl+C is SIGINT and Ctrl+V is quoted-insert — never swallow them.
+    const ctrlOnly = event.ctrlKey && !event.metaKey
+    if (!(isMac && ctrlOnly) && matchesShortcut(event, settings.shortcuts.copy)) {
+      event.preventDefault()
+      copySelection()
+      return false
+    }
+    if (!(isMac && ctrlOnly) && matchesShortcut(event, settings.shortcuts.paste)) {
+      // preventDefault keeps the native paste action (menu accelerator path)
+      // from ALSO firing — otherwise the clipboard would land twice.
+      event.preventDefault()
+      pasteFromClipboard()
+      return false
+    }
+    // macOS convention: plain Cmd+C copies when a selection exists,
+    // otherwise let it through (covers users who rebound the copy shortcut).
+    if (
+      isMac && event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey &&
+      event.key.toLowerCase() === 'c' && term?.hasSelection()
+    ) {
+      event.preventDefault()
+      copySelection()
+      return false
+    }
+    return true
+  })
 
   term.onData((data) => {
     if (isDisconnected(props.sessionID)) {
@@ -170,6 +213,80 @@ function fit() {
   fitAddon?.fit()
 }
 
+async function writeClipboard(text: string) {
+  try {
+    await Clipboard.SetText(text)
+  } catch {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Clipboard unavailable; nothing sensible to fall back to
+    }
+  }
+}
+
+async function readClipboard(): Promise<string> {
+  try {
+    return await Clipboard.Text()
+  } catch {
+    try {
+      return await navigator.clipboard.readText()
+    } catch {
+      return ''
+    }
+  }
+}
+
+function copySelection() {
+  if (!term || !term.hasSelection()) return
+  void writeClipboard(term.getSelection())
+}
+
+async function pasteFromClipboard() {
+  if (!term) return
+  const text = await readClipboard()
+  if (text) term.paste(text)
+}
+
+function onContextMenu(e: MouseEvent) {
+  e.preventDefault()
+  // rightClickSelectsWord has already applied (xterm handles its own
+  // contextmenu first, on the inner .xterm element), so the word under
+  // the cursor — or a pre-existing selection — is available here.
+  ctxCanCopy.value = term?.hasSelection() ?? false
+  ctxX.value = e.clientX
+  ctxY.value = e.clientY
+  ctxShow.value = true
+}
+
+function getContextMenuOptions(): DropdownOption[] {
+  return [
+    { label: t('terminal.copy'), key: 'copy', disabled: !ctxCanCopy.value },
+    { label: t('terminal.paste'), key: 'paste' },
+    { type: 'divider', key: 'd1' },
+    { label: t('terminal.selectAll'), key: 'selectAll' },
+    { label: t('terminal.clear'), key: 'clear' },
+  ]
+}
+
+function handleContextMenuSelect(action: string) {
+  ctxShow.value = false
+  switch (action) {
+    case 'copy':
+      copySelection()
+      break
+    case 'paste':
+      void pasteFromClipboard()
+      break
+    case 'selectAll':
+      term?.selectAll()
+      break
+    case 'clear':
+      term?.clear()
+      break
+  }
+}
+
 async function handleReconnect() {
   const tab = terminalStore.tabs.find((t) => t.id === props.sessionID)
   if (!tab || !tab.connectionID) {
@@ -200,7 +317,17 @@ defineExpose({ fit })
 </script>
 
 <template>
-  <div ref="terminalRef" class="xterminal-container"></div>
+  <div ref="terminalRef" class="xterminal-container" @contextmenu="onContextMenu"></div>
+  <NDropdown
+    trigger="manual"
+    :show="ctxShow"
+    :x="ctxX"
+    :y="ctxY"
+    :options="getContextMenuOptions()"
+    @select="handleContextMenuSelect"
+    @clickoutside="ctxShow = false"
+    placement="bottom-start"
+  />
 </template>
 
 <style scoped>

@@ -71,6 +71,10 @@ export default {
   },
   terminal: {
     empty: '暂无终端会话，点击左侧连接开始。',
+    copy: '复制',
+    paste: '粘贴',
+    selectAll: '全选',
+    clear: '清屏',
   },
   tab: {
     reconnect: '重新连接',
@@ -291,6 +295,8 @@ export default {
     shortcutToggleTheme: '切换主题',
     shortcutToggleSidebar: '切换侧栏',
     shortcutFocusTerminal: '聚焦终端',
+    shortcutCopy: '复制（终端）',
+    shortcutPaste: '粘贴（终端）',
     shortcutCaptureHint: '点击后按键组合',
     resetShortcuts: '重置',
   },

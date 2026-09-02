@@ -10,6 +10,8 @@ export interface ShortcutMap {
   toggleTheme: string
   toggleSidebar: string
   focusTerminal: string
+  copy: string
+  paste: string
 }
 
 function loadJSON<T>(key: string, fallback: T): T {
@@ -20,12 +22,19 @@ function loadJSON<T>(key: string, fallback: T): T {
   return fallback
 }
 
+// Terminal convention: plain Ctrl+C (SIGINT) / Ctrl+V (quoted insert) must
+// keep working, so on Windows/Linux copy/paste defaults follow the terminal
+// standard Ctrl+Shift+C/V; macOS uses the native Cmd+C/Cmd+V instead.
+const isMac = navigator.platform.includes('Mac')
+
 const defaultShortcuts: ShortcutMap = {
   newConnection: 'CommandOrControl+Shift+N',
   closeTab: 'CommandOrControl+W',
   toggleTheme: 'CommandOrControl+Shift+T',
   toggleSidebar: 'CommandOrControl+B',
   focusTerminal: 'CommandOrControl+`',
+  copy: isMac ? 'CommandOrControl+C' : 'CommandOrControl+Shift+C',
+  paste: isMac ? 'CommandOrControl+V' : 'CommandOrControl+Shift+V',
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -37,7 +46,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const terminalFontSize = ref<number>(loadJSON<number>('terminalFontSize', 14))
   const terminalFontFamily = ref<string>(localStorage.getItem('terminalFontFamily') || 'Menlo')
   const terminalColorScheme = ref<string>(localStorage.getItem('terminalColorScheme') || 'default')
-  const shortcuts = ref<ShortcutMap>(loadJSON<ShortcutMap>('shortcuts', { ...defaultShortcuts }))
+  // Merge with defaults so shortcuts added in newer versions (e.g. copy/paste)
+  // are present for users who saved an older shortcut map.
+  const shortcuts = ref<ShortcutMap>({ ...defaultShortcuts, ...loadJSON<Partial<ShortcutMap>>('shortcuts', {}) })
 
   const isDark = computed(() => themeMode.value === 'dark')
 

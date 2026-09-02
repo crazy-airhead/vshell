@@ -71,6 +71,10 @@ export default {
   },
   terminal: {
     empty: 'No active terminal sessions. Click a connection to start.',
+    copy: 'Copy',
+    paste: 'Paste',
+    selectAll: 'Select All',
+    clear: 'Clear',
   },
   tab: {
     reconnect: 'Reconnect',
@@ -291,6 +295,8 @@ export default {
     shortcutToggleTheme: 'Toggle Theme',
     shortcutToggleSidebar: 'Toggle Sidebar',
     shortcutFocusTerminal: 'Focus Terminal',
+    shortcutCopy: 'Copy (Terminal)',
+    shortcutPaste: 'Paste (Terminal)',
     shortcutCaptureHint: 'Click to capture, then press keys',
     resetShortcuts: 'Reset',
   },

@@ -11,4 +11,8 @@ declare module '@wailsio/runtime' {
     ByID(id: number, ...args: any[]): Promise<any>
     ByName(name: string, ...args: any[]): Promise<any>
   }
+  export const Clipboard: {
+    SetText(text: string): Promise<void>
+    Text(): Promise<string>
+  }
 }
