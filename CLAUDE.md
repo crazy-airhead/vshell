@@ -92,4 +92,4 @@ Native menu actions (Settings, Save, Close Tab) are emitted from Go to frontend 
 - **Package manager**: pnpm (`frontend/package.json` → `packageManager`). Never use npm/yarn — `wails3 build` selects the frontend runner from the lockfile, so the repo must carry `pnpm-lock.yaml`, not `package-lock.json`.
 - **Vite port**: Default `9245`, configurable via `WAILS_VITE_PORT` env var.
 - **Go version**: 1.25.0
-- **Wails version**: v3.0.0-alpha.92 (alpha API may change)
+- **Wails version**: v3.0.0-beta.16 (beta API may change; keep Go module, `@wailsio/runtime`, and the `wails3` CLI on the same version)
