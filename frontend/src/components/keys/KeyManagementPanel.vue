@@ -23,6 +23,7 @@ import IconCopy from '~icons/lucide/copy'
 import IconPencil from '~icons/lucide/pencil'
 import IconTrash2 from '~icons/lucide/trash-2'
 import { useSSHKeyStore } from '../../stores/sshkey'
+import { writeClipboard } from '../../utils/clipboard'
 import type { SSHKeyInfo } from '../../types'
 
 const { t } = useI18n()
@@ -145,6 +146,11 @@ async function handleRename() {
 
 async function handleDelete(key: SSHKeyInfo) {
   try {
+    const usedBy = await store.getKeyUsage(key.name)
+    if (usedBy.length > 0) {
+      message.error(t('keys.inUse', { name: key.name, connections: usedBy.join('、') }))
+      return
+    }
     await store.deleteKey(key.name)
     message.success(t('keys.deleted', { name: key.name }))
   } catch (e: any) {
@@ -153,11 +159,16 @@ async function handleDelete(key: SSHKeyInfo) {
 }
 
 async function copyKey(key: SSHKeyInfo, kind: string) {
+  let content: string
   try {
-    const content = await store.readContent(key.name, kind)
-    await navigator.clipboard.writeText(content)
-    message.success(t('keys.copied'))
+    content = await store.readContent(key.name, kind)
   } catch (e: any) {
+    message.error(t('keys.readFailed', { error: e }))
+    return
+  }
+  if (await writeClipboard(content)) {
+    message.success(t('keys.copied'))
+  } else {
     message.error(t('keys.copyFailed'))
   }
 }

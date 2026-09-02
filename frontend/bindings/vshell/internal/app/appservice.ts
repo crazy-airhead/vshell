@@ -64,6 +64,7 @@ export function DeleteQuickCommand(id: string): $CancellablePromise<void> {
 /**
  * DeleteSSHKey removes a key file and its .pub companion from ~/.ssh.
  * If the key is in a subdirectory, the subdirectory is also removed when empty.
+ * Keys still used by a connection are refused.
  */
 export function DeleteSSHKey(name: string): $CancellablePromise<void> {
     return $Call.ByID(2358421539, name);
@@ -92,8 +93,22 @@ export function GetHomeDir(): $CancellablePromise<string> {
     return $Call.ByID(2930168599);
 }
 
+/**
+ * GetKeyPassphrase returns the decrypted key passphrase of a connection (for the edit form's reveal).
+ */
+export function GetKeyPassphrase(id: string): $CancellablePromise<string> {
+    return $Call.ByID(1809890710, id);
+}
+
 export function GetPassword(id: string): $CancellablePromise<string> {
     return $Call.ByID(2249946754, id);
+}
+
+/**
+ * GetPrivateKey returns the decrypted private key of a connection (for the edit form's reveal).
+ */
+export function GetPrivateKey(id: string): $CancellablePromise<string> {
+    return $Call.ByID(3393968389, id);
 }
 
 /**
@@ -115,6 +130,16 @@ export function GetSSHConfigImportCandidates(): $CancellablePromise<$models.SSHC
 }
 
 /**
+ * GetSSHKeyUsage returns names of connections currently using the given key.
+ * The frontend calls this before deletion to show an i18n'd "in use" message.
+ */
+export function GetSSHKeyUsage(name: string): $CancellablePromise<string[]> {
+    return $Call.ByID(1439721781, name).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
+/**
  * ImportSSHConfigHosts imports selected Host entries from ~/.ssh/config as vShell connections.
  */
 export function ImportSSHConfigHosts(patterns: string[]): $CancellablePromise<void> {
@@ -123,43 +148,43 @@ export function ImportSSHConfigHosts(patterns: string[]): $CancellablePromise<vo
 
 export function ListAllPortForwards(): $CancellablePromise<models$0.PortForward[]> {
     return $Call.ByID(4070239221).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
 export function ListConnections(): $CancellablePromise<models$0.Connection[]> {
     return $Call.ByID(2436681430).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType8($result);
     });
 }
 
 export function ListGroups(): $CancellablePromise<models$0.Group[]> {
     return $Call.ByID(494692261).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType10($result);
     });
 }
 
 export function ListLocalDir(dirPath: string): $CancellablePromise<$models.LocalFileInfo[]> {
     return $Call.ByID(1378612327, dirPath).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType12($result);
     });
 }
 
 export function ListPortForwards(connectionID: string): $CancellablePromise<models$0.PortForward[]> {
     return $Call.ByID(3400329328, connectionID).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
 export function ListQuickCommands(connectionID: string | null): $CancellablePromise<models$0.QuickCommand[]> {
     return $Call.ByID(3567644202, connectionID).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType14($result);
     });
 }
 
 export function ListRunningPortForwards(): $CancellablePromise<string[]> {
     return $Call.ByID(3835552541).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType5($result);
     });
 }
 
@@ -314,16 +339,16 @@ const $$createType1 = $models.SSHConfigHostDetail.createFrom;
 const $$createType2 = $Create.Nullable($$createType1);
 const $$createType3 = $models.SSHConfigImportCandidate.createFrom;
 const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = $Create.Array($$createType0);
-const $$createType6 = models$0.Connection.createFrom;
-const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = models$0.Group.createFrom;
-const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = $models.LocalFileInfo.createFrom;
-const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = models$0.QuickCommand.createFrom;
-const $$createType13 = $Create.Array($$createType12);
-const $$createType14 = $Create.Array($Create.Any);
+const $$createType5 = $Create.Array($Create.Any);
+const $$createType6 = $Create.Array($$createType0);
+const $$createType7 = models$0.Connection.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = models$0.Group.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = $models.LocalFileInfo.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = models$0.QuickCommand.createFrom;
+const $$createType14 = $Create.Array($$createType13);
 const $$createType15 = $models.SSHKeyInfo.createFrom;
 const $$createType16 = $Create.Array($$createType15);
 const $$createType17 = $models.SSHConfigEntry.createFrom;

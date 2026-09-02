@@ -15,6 +15,7 @@ export interface Connection {
   port: number
   username: string
   auth_type: AuthType
+  key_name: string | null
   upload_path: string
   default_cmd: string | null
   sort_order: number

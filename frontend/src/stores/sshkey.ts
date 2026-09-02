@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { ListSSHKeys, SaveSSHKey, RenameSSHKey, DeleteSSHKey, ReadSSHKeyContent, GenerateSSHKey } from '../../bindings/vshell/internal/app/appservice'
+import { ListSSHKeys, SaveSSHKey, RenameSSHKey, DeleteSSHKey, ReadSSHKeyContent, GenerateSSHKey, GetSSHKeyUsage } from '../../bindings/vshell/internal/app/appservice'
 import type { SSHKeyInfo } from '../types'
 
 export const useSSHKeyStore = defineStore('sshkey', () => {
@@ -37,6 +37,10 @@ export const useSSHKeyStore = defineStore('sshkey', () => {
     await loadKeys()
   }
 
+  async function getKeyUsage(name: string): Promise<string[]> {
+    return (await GetSSHKeyUsage(name)) || []
+  }
+
   async function readContent(name: string, kind: string): Promise<string> {
     return await ReadSSHKeyContent(name, kind)
   }
@@ -52,6 +56,7 @@ export const useSSHKeyStore = defineStore('sshkey', () => {
     saveKey,
     renameKey,
     deleteKey,
+    getKeyUsage,
     readContent,
     generateKey,
   }

@@ -5,12 +5,13 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { NDropdown } from 'naive-ui'
 import type { DropdownOption } from 'naive-ui'
-import { Events, Clipboard } from '@wailsio/runtime'
+import { Events } from '@wailsio/runtime'
 import { useTerminalManager } from '../../composables/useTerminalManager'
 import { matchesShortcut } from '../../composables/useShortcuts'
 import { useTerminalStore } from '../../stores/terminal'
 import { useConnectionStore } from '../../stores/connection'
 import { useSettingsStore } from '../../stores/settings'
+import { writeClipboard, readClipboard } from '../../utils/clipboard'
 import { useI18n } from 'vue-i18n'
 
 import '@xterm/xterm/css/xterm.css'
@@ -211,30 +212,6 @@ onUnmounted(() => {
 
 function fit() {
   fitAddon?.fit()
-}
-
-async function writeClipboard(text: string) {
-  try {
-    await Clipboard.SetText(text)
-  } catch {
-    try {
-      await navigator.clipboard.writeText(text)
-    } catch {
-      // Clipboard unavailable; nothing sensible to fall back to
-    }
-  }
-}
-
-async function readClipboard(): Promise<string> {
-  try {
-    return await Clipboard.Text()
-  } catch {
-    try {
-      return await navigator.clipboard.readText()
-    } catch {
-      return ''
-    }
-  }
 }
 
 function copySelection() {

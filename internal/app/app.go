@@ -170,7 +170,7 @@ func (a *AppService) ServiceShutdown() error {
 // --- Connection CRUD ---
 
 func (a *AppService) ListConnections() ([]models.Connection, error) {
-	rows, err := a.db.Query("SELECT id, group_id, name, host, port, username, auth_type, proxy_type, proxy_addr, jump_host_id, upload_path, default_cmd, sort_order, color, last_used_at, created_at, updated_at FROM connections ORDER BY sort_order, name")
+	rows, err := a.db.Query("SELECT id, group_id, name, host, port, username, auth_type, key_name, proxy_type, proxy_addr, jump_host_id, upload_path, default_cmd, sort_order, color, last_used_at, created_at, updated_at FROM connections ORDER BY sort_order, name")
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (a *AppService) ListConnections() ([]models.Connection, error) {
 	conns := make([]models.Connection, 0)
 	for rows.Next() {
 		var c models.Connection
-		if err := rows.Scan(&c.ID, &c.GroupID, &c.Name, &c.Host, &c.Port, &c.Username, &c.AuthType, &c.ProxyType, &c.ProxyAddr, &c.JumpHostID, &c.UploadPath, &c.DefaultCmd, &c.SortOrder, &c.Color, &c.LastUsedAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.GroupID, &c.Name, &c.Host, &c.Port, &c.Username, &c.AuthType, &c.KeyName, &c.ProxyType, &c.ProxyAddr, &c.JumpHostID, &c.UploadPath, &c.DefaultCmd, &c.SortOrder, &c.Color, &c.LastUsedAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
 		conns = append(conns, c)
@@ -207,10 +207,10 @@ func (a *AppService) CreateConnection(form models.ConnectionForm) error {
 	}
 
 	_, err = a.db.Exec(
-		`INSERT INTO connections (id, group_id, name, host, port, username, auth_type, password, private_key, key_passphrase, proxy_type, proxy_addr, jump_host_id, upload_path, default_cmd, sort_order, color)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO connections (id, group_id, name, host, port, username, auth_type, password, private_key, key_passphrase, key_name, proxy_type, proxy_addr, jump_host_id, upload_path, default_cmd, sort_order, color)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		form.ID, form.GroupID, form.Name, form.Host, form.Port, form.Username, form.AuthType,
-		encryptedPW, encryptedKey, encryptedPassphrase,
+		encryptedPW, encryptedKey, encryptedPassphrase, form.KeyName,
 		form.ProxyType, form.ProxyAddr, form.JumpHostID,
 		form.UploadPath, form.DefaultCmd, form.SortOrder, form.Color,
 	)
@@ -259,11 +259,13 @@ func (a *AppService) UpdateConnection(form models.ConnectionForm) error {
 		encryptedPassphrase = val
 	}
 
+	// Unlike the sensitive fields above, key_name is UI metadata: always write
+	// what the form carries (nil clears the association, e.g. switched to manual).
 	_, err := a.db.Exec(
-		`UPDATE connections SET group_id=?, name=?, host=?, port=?, username=?, auth_type=?, password=?, private_key=?, key_passphrase=?, proxy_type=?, proxy_addr=?, jump_host_id=?, upload_path=?, default_cmd=?, sort_order=?, color=?, updated_at=CURRENT_TIMESTAMP
+		`UPDATE connections SET group_id=?, name=?, host=?, port=?, username=?, auth_type=?, password=?, private_key=?, key_passphrase=?, key_name=?, proxy_type=?, proxy_addr=?, jump_host_id=?, upload_path=?, default_cmd=?, sort_order=?, color=?, updated_at=CURRENT_TIMESTAMP
 		 WHERE id=?`,
 		form.GroupID, form.Name, form.Host, form.Port, form.Username, form.AuthType,
-		encryptedPW, encryptedKey, encryptedPassphrase,
+		encryptedPW, encryptedKey, encryptedPassphrase, form.KeyName,
 		form.ProxyType, form.ProxyAddr, form.JumpHostID,
 		form.UploadPath, form.DefaultCmd, form.SortOrder, form.Color,
 		form.ID,
@@ -341,9 +343,9 @@ func (a *AppService) StopMonitor(connectionID string) {
 func (a *AppService) getConnectionByID(id string) (*models.Connection, error) {
 	var c models.Connection
 	err := a.db.QueryRow(
-		"SELECT id, group_id, name, host, port, username, auth_type, password, private_key, key_passphrase, proxy_type, proxy_addr, jump_host_id, upload_path, default_cmd, sort_order, color, last_used_at FROM connections WHERE id = ?",
+		"SELECT id, group_id, name, host, port, username, auth_type, password, private_key, key_passphrase, key_name, proxy_type, proxy_addr, jump_host_id, upload_path, default_cmd, sort_order, color, last_used_at FROM connections WHERE id = ?",
 		id,
-	).Scan(&c.ID, &c.GroupID, &c.Name, &c.Host, &c.Port, &c.Username, &c.AuthType, &c.Password, &c.PrivateKey, &c.KeyPassphrase, &c.ProxyType, &c.ProxyAddr, &c.JumpHostID, &c.UploadPath, &c.DefaultCmd, &c.SortOrder, &c.Color, &c.LastUsedAt)
+	).Scan(&c.ID, &c.GroupID, &c.Name, &c.Host, &c.Port, &c.Username, &c.AuthType, &c.Password, &c.PrivateKey, &c.KeyPassphrase, &c.KeyName, &c.ProxyType, &c.ProxyAddr, &c.JumpHostID, &c.UploadPath, &c.DefaultCmd, &c.SortOrder, &c.Color, &c.LastUsedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -353,6 +355,24 @@ func (a *AppService) getConnectionByID(id string) (*models.Connection, error) {
 func (a *AppService) GetPassword(id string) (string, error) {
 	var encrypted string
 	if err := a.db.QueryRow("SELECT password FROM connections WHERE id = ?", id).Scan(&encrypted); err != nil {
+		return "", err
+	}
+	return a.db.Crypto().Decrypt(encrypted)
+}
+
+// GetPrivateKey returns the decrypted private key of a connection (for the edit form's reveal).
+func (a *AppService) GetPrivateKey(id string) (string, error) {
+	var encrypted string
+	if err := a.db.QueryRow("SELECT private_key FROM connections WHERE id = ?", id).Scan(&encrypted); err != nil {
+		return "", err
+	}
+	return a.db.Crypto().Decrypt(encrypted)
+}
+
+// GetKeyPassphrase returns the decrypted key passphrase of a connection (for the edit form's reveal).
+func (a *AppService) GetKeyPassphrase(id string) (string, error) {
+	var encrypted string
+	if err := a.db.QueryRow("SELECT key_passphrase FROM connections WHERE id = ?", id).Scan(&encrypted); err != nil {
 		return "", err
 	}
 	return a.db.Crypto().Decrypt(encrypted)
@@ -939,9 +959,65 @@ func (a *AppService) RenameSSHKey(oldName string, newName string) error {
 	return nil
 }
 
+// getSSHKeyUsage returns the names of connections that use the given managed
+// key, either via the key_name association or by identical private key content
+// (legacy rows and manually pasted copies of the same key).
+func (a *AppService) getSSHKeyUsage(name string) ([]string, error) {
+	dir, err := sshDir()
+	if err != nil {
+		return nil, err
+	}
+
+	keyData, err := os.ReadFile(filepath.Join(dir, name))
+	if err != nil {
+		return nil, fmt.Errorf("read key: %w", err)
+	}
+	keyContent := strings.TrimSpace(string(keyData))
+
+	rows, err := a.db.Query("SELECT name, key_name, private_key FROM connections")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	usedBy := make([]string, 0)
+	for rows.Next() {
+		var connName string
+		var keyName, encryptedKey *string
+		if err := rows.Scan(&connName, &keyName, &encryptedKey); err != nil {
+			return nil, err
+		}
+		if keyName != nil && *keyName == name {
+			usedBy = append(usedBy, connName)
+			continue
+		}
+		if encryptedKey != nil && *encryptedKey != "" {
+			if content, err := a.db.Crypto().Decrypt(*encryptedKey); err == nil && strings.TrimSpace(content) == keyContent {
+				usedBy = append(usedBy, connName)
+			}
+		}
+	}
+	return usedBy, nil
+}
+
+// GetSSHKeyUsage returns names of connections currently using the given key.
+// The frontend calls this before deletion to show an i18n'd "in use" message.
+func (a *AppService) GetSSHKeyUsage(name string) ([]string, error) {
+	return a.getSSHKeyUsage(name)
+}
+
 // DeleteSSHKey removes a key file and its .pub companion from ~/.ssh.
 // If the key is in a subdirectory, the subdirectory is also removed when empty.
+// Keys still used by a connection are refused.
 func (a *AppService) DeleteSSHKey(name string) error {
+	usedBy, err := a.getSSHKeyUsage(name)
+	if err != nil {
+		return err
+	}
+	if len(usedBy) > 0 {
+		return fmt.Errorf("key is used by connections: %s", strings.Join(usedBy, ", "))
+	}
+
 	dir, err := sshDir()
 	if err != nil {
 		return err

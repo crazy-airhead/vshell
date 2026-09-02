@@ -325,6 +325,11 @@ func (a *AppService) ImportSSHConfigHosts(patterns []string) error {
 				if keyData, err := os.ReadFile(keyPath); err == nil {
 					form.AuthType = models.AuthPrivateKey
 					form.PrivateKey = strings.TrimSpace(string(keyData))
+					// Record the managed-key name when the identity file lives in ~/.ssh,
+					// so the imported connection preselects it in the edit form.
+					if rel, err := filepath.Rel(sshDir, keyPath); err == nil && !strings.HasPrefix(rel, "..") {
+						form.KeyName = &rel
+					}
 				}
 			}
 		}

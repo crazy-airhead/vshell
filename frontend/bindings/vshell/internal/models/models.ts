@@ -25,6 +25,12 @@ export class Connection {
     "port": number;
     "username": string;
     "auth_type": AuthType;
+
+    /**
+     * KeyName records which managed key file (~/.ssh/<name>) the private key
+     * was taken from, so the edit form can restore the key source UI.
+     */
+    "key_name"?: string | null;
     "proxy_type": string | null;
     "proxy_addr": string | null;
     "jump_host_id": string | null;
@@ -116,6 +122,7 @@ export class ConnectionForm {
     "password"?: string;
     "private_key"?: string;
     "key_passphrase"?: string;
+    "key_name"?: string | null;
     "proxy_type": string | null;
     "proxy_addr": string | null;
     "jump_host_id": string | null;

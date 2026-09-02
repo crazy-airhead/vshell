@@ -30,6 +30,7 @@ export interface ConnectionFormData {
   password: string
   privateKey: string
   keyPassphrase: string
+  keyName: string | null
   groupID: string | null
 }
 
@@ -44,6 +45,7 @@ export function newFormData(): ConnectionFormData {
     password: '',
     privateKey: '',
     keyPassphrase: '',
+    keyName: null,
     groupID: null,
   }
 }
@@ -68,6 +70,7 @@ export const useConnectionStore = defineStore('connection', () => {
         port: c.port || 22,
         username: c.username || '',
         auth_type: c.auth_type || '',
+        key_name: c.key_name || null,
         upload_path: c.upload_path || '/',
         default_cmd: c.default_cmd || null,
         sort_order: c.sort_order || 0,
@@ -146,6 +149,7 @@ export const useConnectionStore = defineStore('connection', () => {
       password: data.password,
       private_key: data.privateKey,
       key_passphrase: data.keyPassphrase,
+      key_name: data.keyName || null,
       group_id: data.groupID || null,
       upload_path: '/',
       sort_order: 0,
@@ -177,6 +181,7 @@ export const useConnectionStore = defineStore('connection', () => {
       password: data.password,
       private_key: data.privateKey,
       key_passphrase: data.keyPassphrase,
+      key_name: data.keyName || null,
       group_id: data.groupID || null,
       upload_path: '/',
       sort_order: 0,

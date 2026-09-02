@@ -63,6 +63,7 @@ func (db *DB) migrate() error {
 	// Additive migrations that may fail on fresh DBs (column/table already exists).
 	additive := []string{
 		`ALTER TABLE port_forwards ADD COLUMN name TEXT`,
+		`ALTER TABLE connections ADD COLUMN key_name TEXT`,
 	}
 	for _, m := range additive {
 		db.Exec(m) // ignore errors

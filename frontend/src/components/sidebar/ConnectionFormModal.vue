@@ -17,7 +17,7 @@ import {
 } from 'naive-ui'
 import { useConnectionStore, newFormData, AuthType } from '../../stores/connection'
 import { useSSHKeyStore } from '../../stores/sshkey'
-import { GetPassword } from '../../../bindings/vshell/internal/app/appservice'
+import { GetPassword, GetPrivateKey, GetKeyPassphrase } from '../../../bindings/vshell/internal/app/appservice'
 import IconKey from '~icons/lucide/key'
 import type { ConnectionFormData } from '../../stores/connection'
 import type { Connection } from '../../types'
@@ -44,6 +44,13 @@ const selectedKeyName = ref<string | null>(null)
 const loadingKey = ref(false)
 const revealingPassword = ref(false)
 const passwordVisible = ref(false)
+const revealingPrivateKey = ref(false)
+const privateKeyVisible = ref(false)
+const revealingPassphrase = ref(false)
+const passphraseVisible = ref(false)
+// Which managed key (if any) the stored private key matches — checked after reveal
+const keyMatchChecked = ref(false)
+const keyMatchName = ref<string | null>(null)
 
 const showModal = computed({
   get: () => props.show,
@@ -83,6 +90,13 @@ watch(
   () => props.show,
   async (visible) => {
     if (visible) {
+      passwordVisible.value = false
+      privateKeyVisible.value = false
+      passphraseVisible.value = false
+      keyMatchChecked.value = false
+      keyMatchName.value = null
+      // Load keys first: the edit branch needs the key store to validate key_name
+      await sshKeyStore.loadKeys()
       if (props.editConnection) {
         const c = props.editConnection
         form.value = {
@@ -95,10 +109,19 @@ watch(
           password: '',
           privateKey: '',
           keyPassphrase: '',
+          keyName: c.key_name || null,
           groupID: c.group_id || null,
         }
-        keySource.value = 'manual'
-        selectedKeyName.value = null
+        // Restore the managed-key source when the stored key_name still exists
+        // in the key store; otherwise fall back to manual (round 1's reveal +
+        // content matching still answers "which key" for legacy rows).
+        if (c.auth_type === 'private_key' && c.key_name && sshKeyStore.keys.some((k) => k.name === c.key_name)) {
+          keySource.value = 'managed'
+          selectedKeyName.value = c.key_name
+        } else {
+          keySource.value = 'manual'
+          selectedKeyName.value = null
+        }
       } else if (props.prefillData) {
         form.value = { ...props.prefillData }
         keySource.value = 'manual'
@@ -111,7 +134,6 @@ watch(
         keySource.value = 'managed'
         selectedKeyName.value = null
       }
-      await sshKeyStore.loadKeys()
     }
   },
 )
@@ -123,6 +145,10 @@ async function onManagedKeyChange(name: string | null) {
     return
   }
   selectedKeyName.value = name
+  // The reveal-match hint describes the previously stored key; it's stale once
+  // a different key is picked.
+  keyMatchChecked.value = false
+  keyMatchName.value = null
   loadingKey.value = true
   try {
     const content = await sshKeyStore.readContent(name, 'priv')
@@ -151,8 +177,74 @@ async function toggleRevealPassword() {
   }
 }
 
+async function toggleRevealPrivateKey() {
+  if (privateKeyVisible.value) {
+    form.value.privateKey = ''
+    privateKeyVisible.value = false
+    keyMatchChecked.value = false
+    keyMatchName.value = null
+    return
+  }
+  revealingPrivateKey.value = true
+  try {
+    const content = await GetPrivateKey(form.value.id)
+    form.value.privateKey = content
+    privateKeyVisible.value = true
+    await detectManagedKeyMatch(content)
+  } catch (e: any) {
+    message.error(t('connection.failed', { error: e }))
+  } finally {
+    revealingPrivateKey.value = false
+  }
+}
+
+async function toggleRevealPassphrase() {
+  if (passphraseVisible.value) {
+    form.value.keyPassphrase = ''
+    passphraseVisible.value = false
+    return
+  }
+  revealingPassphrase.value = true
+  try {
+    form.value.keyPassphrase = await GetKeyPassphrase(form.value.id)
+    passphraseVisible.value = true
+  } catch (e: any) {
+    message.error(t('connection.failed', { error: e }))
+  } finally {
+    revealingPassphrase.value = false
+  }
+}
+
+// Compare the stored key against managed keys (~/.ssh) by content, so the
+// reveal can also answer "which key file is this connection using".
+async function detectManagedKeyMatch(stored: string) {
+  keyMatchChecked.value = false
+  keyMatchName.value = null
+  try {
+    if (!sshKeyStore.keys.length) await sshKeyStore.loadKeys()
+    const target = stored.trim()
+    for (const k of sshKeyStore.keys) {
+      try {
+        const content = await sshKeyStore.readContent(k.name, 'private')
+        if (content.trim() === target) {
+          keyMatchName.value = k.name
+          break
+        }
+      } catch {
+        // skip unreadable key
+      }
+    }
+  } finally {
+    keyMatchChecked.value = true
+  }
+}
+
 function handleClose() {
   passwordVisible.value = false
+  privateKeyVisible.value = false
+  passphraseVisible.value = false
+  keyMatchChecked.value = false
+  keyMatchName.value = null
   form.value.password = ''
   showModal.value = false
 }
@@ -165,6 +257,9 @@ async function handleSave() {
     message.warning(t('connection.keyRequired'))
     return
   }
+  // The managed-key association follows the key source UI at save time:
+  // managed + selected name keeps/updates it, anything else clears it.
+  f.keyName = keySource.value === 'managed' && selectedKeyName.value ? selectedKeyName.value : null
 
   saving.value = true
   try {
@@ -245,17 +340,37 @@ async function handleSave() {
         </template>
         <template v-else>
           <NFormItem :label="isEdit ? t('connection.newPrivateKey') : t('connection.authPrivateKey')">
-            <NInput
-              v-model:value="form.privateKey"
-              type="textarea"
-              :rows="4"
-              :placeholder="isEdit ? t('connection.keyEditPlaceholder') : t('connection.keyPlaceholder')"
-              :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }"
-            />
+            <div style="display: flex; align-items: flex-start; gap: 4px; width: 100%">
+              <NInput
+                v-model:value="form.privateKey"
+                type="textarea"
+                :rows="4"
+                :placeholder="isEdit ? t('connection.keyEditPlaceholder') : t('connection.keyPlaceholder')"
+                :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }"
+                style="flex: 1"
+              />
+              <NButton v-if="isEdit" :type="privateKeyVisible ? 'primary' : 'default'" :ghost="true" :loading="revealingPrivateKey" @click="toggleRevealPrivateKey" style="flex-shrink: 0; height: 34px; width: 34px">
+                <template #icon>
+                  <IconKey :width="16" :height="16" />
+                </template>
+              </NButton>
+            </div>
+          </NFormItem>
+          <NFormItem v-if="privateKeyVisible && keyMatchChecked" label=" " style="margin-top: -16px">
+            <span style="color: var(--text-secondary); font-size: 12px">
+              {{ keyMatchName ? t('connection.keyMatchFound', { name: keyMatchName }) : t('connection.keyMatchNone') }}
+            </span>
           </NFormItem>
         </template>
         <NFormItem :label="isEdit ? t('connection.newPassphrase') : t('connection.passphrase')">
-          <NInput v-model:value="form.keyPassphrase" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passphraseEditPlaceholder') : t('connection.passphrasePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" />
+          <div style="display: flex; align-items: center; gap: 4px; width: 100%">
+            <NInput v-model:value="form.keyPassphrase" type="password" show-password-on="click" :placeholder="isEdit ? t('connection.passphraseEditPlaceholder') : t('connection.passphrasePlaceholder')" :input-props="{ autocapitalize: 'off', autocomplete: 'off', autocorrect: 'off', spellcheck: false }" style="flex: 1" />
+            <NButton v-if="isEdit" :type="passphraseVisible ? 'primary' : 'default'" :ghost="true" :loading="revealingPassphrase" @click="toggleRevealPassphrase" style="flex-shrink: 0; height: 34px; width: 34px">
+              <template #icon>
+                <IconKey :width="16" :height="16" />
+              </template>
+            </NButton>
+          </div>
         </NFormItem>
       </template>
     </NForm>
