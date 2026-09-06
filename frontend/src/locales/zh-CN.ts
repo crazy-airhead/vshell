@@ -365,6 +365,7 @@ export default {
     logEmpty: '暂无输出',
     copyLog: '复制',
     copyDone: '已复制',
+    copyFailed: '复制失败',
     errConnRequired: '请选择服务器连接',
     errDomainRequired: '请填写主域名',
     errCredsRequired: '请填写所有必填的 DNS 凭据',

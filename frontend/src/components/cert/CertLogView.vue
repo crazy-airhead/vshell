@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { NButton, NTooltip, useMessage } from 'naive-ui'
 import IconCopy from '~icons/lucide/copy'
 import { useCertStore } from '../../stores/cert'
+import { writeClipboard } from '../../utils/clipboard'
 
 const props = defineProps<{ logKey: string }>()
 
@@ -25,11 +26,10 @@ watch(
 )
 
 async function copyLog() {
-  try {
-    await navigator.clipboard.writeText(lines.value.join('\n'))
+  if (await writeClipboard(lines.value.join('\n'))) {
     message.success(t('certs.copyDone'))
-  } catch (e) {
-    message.error(String(e))
+  } else {
+    message.error(t('certs.copyFailed'))
   }
 }
 </script>

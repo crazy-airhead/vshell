@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { NModal, NButton, NSpace, NTabs, NTabPane, NTooltip, useMessage } from 'naive-ui'
 import IconCopy from '~icons/lucide/copy'
 import { useCertStore } from '../../stores/cert'
+import { writeClipboard } from '../../utils/clipboard'
 import type { CertTask } from '../../types'
 import CertLogView from './CertLogView.vue'
 
@@ -46,11 +47,10 @@ watch(
 )
 
 async function copyServerLog() {
-  try {
-    await navigator.clipboard.writeText(serverLog.value)
+  if (await writeClipboard(serverLog.value)) {
     message.success(t('certs.copyDone'))
-  } catch (e) {
-    message.error(String(e))
+  } else {
+    message.error(t('certs.copyFailed'))
   }
 }
 </script>

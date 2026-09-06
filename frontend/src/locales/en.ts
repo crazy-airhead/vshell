@@ -365,6 +365,7 @@ export default {
     logEmpty: 'No output yet',
     copyLog: 'Copy',
     copyDone: 'Copied',
+    copyFailed: 'Copy failed',
     errConnRequired: 'Select a server connection',
     errDomainRequired: 'Primary domain is required',
     errCredsRequired: 'Fill in all required DNS credentials',
