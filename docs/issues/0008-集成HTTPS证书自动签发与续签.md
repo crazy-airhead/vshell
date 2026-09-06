@@ -122,6 +122,20 @@
   - 用户改用「Tencent Cloud DNS (SecretId/SecretKey)」提供商或补办 DNSPod 传统 Token 后重试签发（建议先开测试模式）。
   - 签发成功后的部署 / cron / 续签链路仍待实机确认。
 
+**第 4 轮**（2026-09-06，续签路径同因失败 + 凭据治愈机制）
+
+- **反馈 / 触发**：用户点「续签」再次失败，日志与第 3 轮完全一致（`Renewing: 'zai500.com'` → dnsapi.cn 401 → `Error adding TXT record`）。
+- **根因**：续签命令（`--renew --force`）不推送凭据，acme.sh 沿用**上次失败签发持久化到服务器 `account.conf` 的错误凭据**（AKID 配 dns_dp）——用户即使把任务凭据改对，点续签也会拿旧错误凭据反复失败，且不易察觉。
+- **处理**（提交 `44ff366`）：
+  - `BuildRenewCmd` 增加可选 envFile：续签前 source 任务凭据再执行（acme.sh dns 插件 env 优先于 account.conf，且读后回写 account.conf——一次正确续签即治愈服务器端凭据，后续 cron 续签全自动）；命令链与 issue 同款（chmod 600、source 后即删、失败兜底删、退出码保真）。
+  - `Manager.Renew` 接收凭据并经 SFTP 上传临时 env 文件；`app.startCertOperation` 续签路径同样解密传递。
+  - `CertEditModal` 切换 DNS 提供商时清空旧凭据（对齐向导行为），避免旧字段名凭据（DP_*）被一并上传。
+- **校验**：`go test ./...`（新增续签 env 变体断言）、`go build`、`go vet`、`pnpm typecheck` 全绿。
+- **给用户的恢复路径**（二选一，改完点**签发**而非续签——修复后的续签也能治愈凭据，但签发路径最直接）：
+  1. 重建应用后编辑任务：DNS 提供商改选「Tencent Cloud DNS (SecretId/SecretKey)」，凭据不变（AKID 两串），开测试模式签发；
+  2. 或到 dnspod.cn 控制台申请传统 API Token（数字 ID + token），提供商保持 DNSPod，替换凭据后签发。
+- **遗留**：签发成功 → 部署 → cron → 续签全链路仍待实机确认。
+
 ---
 
 ## 附录：完整需求与设计文档（登记原文，2026-09-06）
