@@ -141,6 +141,14 @@ export function GetCertTaskCredentials(id: string): $CancellablePromise<{ [_ in 
     });
 }
 
+/**
+ * GetCertTaskLog returns the persisted log of the task's last operation so
+ * the log view survives app restarts.
+ */
+export function GetCertTaskLog(id: string): $CancellablePromise<string> {
+    return $Call.ByID(2325836218, id);
+}
+
 export function GetHomeDir(): $CancellablePromise<string> {
     return $Call.ByID(2930168599);
 }

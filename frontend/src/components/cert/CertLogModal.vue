@@ -34,6 +34,7 @@ watch(
     tab.value = 'op'
     serverLog.value = ''
     if (open && props.task) {
+      certStore.ensureOpLog(props.task.id)
       loadingServerLog.value = true
       try {
         serverLog.value = await certStore.readServerLog(props.task.connection_id)

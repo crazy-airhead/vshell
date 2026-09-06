@@ -2,11 +2,15 @@ package cert
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	vshellssh "vshell/internal/ssh"
 	"vshell/internal/sftp"
 )
+
+// maxTaskLog caps the per-task in-memory operation log buffer (tail kept).
+const maxTaskLog = 256 * 1024
 
 // Manager orchestrates acme.sh operations on remote servers over existing
 // SSH connections. It only drives commands and parses output; persistence
@@ -18,6 +22,9 @@ type Manager struct {
 
 	mu      sync.Mutex
 	running map[string]context.CancelFunc // taskID/opID -> cancel
+
+	logMu   sync.Mutex
+	taskLog map[string]*strings.Builder // taskID -> operation log buffer
 }
 
 // NewManager wires the cert manager to the shared SSH/SFTP managers.
@@ -27,6 +34,7 @@ func NewManager(sshMgr *vshellssh.Manager, sftpMgr *sftp.Manager, onEvent func(s
 		sftp:    sftpMgr,
 		onEvent: onEvent,
 		running: make(map[string]context.CancelFunc),
+		taskLog: make(map[string]*strings.Builder),
 	}
 }
 
@@ -91,7 +99,8 @@ func (m *Manager) stage(taskID, opID, connectionID, stage, status, errMsg string
 
 // stream runs a long command, forwarding every output line as a cert:log
 // event. On failure the error message carries the command's exit code and
-// the tail of its output for diagnostics.
+// the tail of its output for diagnostics. Lines of task-scoped operations
+// are also buffered for persistence (see TakeTaskLog).
 func (m *Manager) stream(ctx context.Context, connectionID, taskID, opID, stage, cmd string, timeout int) (RunResult, error) {
 	res, err := m.Run(ctx, connectionID, cmd, RunOptions{
 		Timeout: seconds(timeout),
@@ -104,10 +113,49 @@ func (m *Manager) stream(ctx context.Context, connectionID, taskID, opID, stage,
 				Line:         line,
 				Ts:           nowMillis(),
 			})
+			if taskID != "" {
+				m.appendTaskLog(taskID, streamName, line)
+			}
 		},
 	})
 	if err != nil {
 		return res, wrapStageError(stage, res, err)
 	}
 	return res, nil
+}
+
+// appendTaskLog buffers one output line for the task's operation log,
+// keeping only the last maxTaskLog bytes.
+func (m *Manager) appendTaskLog(taskID, streamName, line string) {
+	m.logMu.Lock()
+	defer m.logMu.Unlock()
+	b, ok := m.taskLog[taskID]
+	if !ok {
+		b = &strings.Builder{}
+		m.taskLog[taskID] = b
+	}
+	if streamName == "stderr" {
+		b.WriteString("[stderr] ")
+	}
+	b.WriteString(line)
+	b.WriteByte('\n')
+	if b.Len() > maxTaskLog {
+		trimmed := b.String()
+		b.Reset()
+		b.WriteString(trimmed[len(trimmed)-maxTaskLog:])
+	}
+}
+
+// TakeTaskLog returns and clears the buffered operation log of a task; the
+// app layer persists it when the operation finishes.
+func (m *Manager) TakeTaskLog(taskID string) string {
+	m.logMu.Lock()
+	defer m.logMu.Unlock()
+	b, ok := m.taskLog[taskID]
+	if !ok {
+		return ""
+	}
+	log := b.String()
+	delete(m.taskLog, taskID)
+	return log
 }

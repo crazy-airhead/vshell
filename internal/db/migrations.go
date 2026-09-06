@@ -87,6 +87,7 @@ func (db *DB) migrate() error {
 	additive := []string{
 		`ALTER TABLE port_forwards ADD COLUMN name TEXT`,
 		`ALTER TABLE connections ADD COLUMN key_name TEXT`,
+		`ALTER TABLE cert_tasks ADD COLUMN last_log TEXT`,
 	}
 	for _, m := range additive {
 		db.Exec(m) // ignore errors

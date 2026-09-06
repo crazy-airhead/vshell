@@ -92,6 +92,15 @@ func (a *AppService) setCertTaskStatus(id string, status models.CertStatus, errM
 	return err
 }
 
+// saveCertTaskLog persists the operation's streamed log so it survives app
+// restarts (the frontend keeps logs in memory only).
+func (a *AppService) saveCertTaskLog(id, log string) {
+	if log == "" {
+		return
+	}
+	a.db.Exec("UPDATE cert_tasks SET last_log = ? WHERE id = ?", log, id)
+}
+
 func encryptCertCredentials(creds map[string]string, encrypt func(string) (string, error)) (string, error) {
 	if len(creds) == 0 {
 		return "", nil
@@ -296,6 +305,17 @@ func (a *AppService) GetCertTaskCredentials(id string) (map[string]string, error
 	return decryptCertCredentials(task.DNSCredentials, a.db.Crypto().Decrypt)
 }
 
+// GetCertTaskLog returns the persisted log of the task's last operation so
+// the log view survives app restarts.
+func (a *AppService) GetCertTaskLog(id string) (string, error) {
+	var log string
+	row := a.db.QueryRow("SELECT COALESCE(last_log, '') FROM cert_tasks WHERE id = ?", id)
+	if err := row.Scan(&log); err != nil {
+		return "", fmt.Errorf("cert task %s not found", id)
+	}
+	return log, nil
+}
+
 // ListDNSProviders returns the DNS provider registry for dynamic form
 // rendering.
 func (a *AppService) ListDNSProviders() ([]models.DNSProvider, error) {
@@ -423,6 +443,7 @@ func (a *AppService) startCertOperation(taskID, op, email string) (string, error
 			status = models.CertStatusFailed
 			errMsg = runErr.Error()
 		}
+		a.saveCertTaskLog(taskID, a.certManager.TakeTaskLog(taskID))
 		if err := a.setCertTaskStatus(taskID, status, errMsg); err != nil {
 			return
 		}
@@ -463,10 +484,12 @@ func (a *AppService) StartCertRemove(taskID string, deleteTask bool) (string, er
 		}
 		if deleteTask && err == nil {
 			if _, dbErr := a.db.Exec("DELETE FROM cert_tasks WHERE id = ?", taskID); dbErr == nil {
+				a.certManager.TakeTaskLog(taskID) // discard; row is gone
 				a.wailsApp.Event.Emit("cert:task-deleted", map[string]any{"taskID": taskID})
 				return
 			}
 		}
+		a.saveCertTaskLog(taskID, a.certManager.TakeTaskLog(taskID))
 		if err := a.setCertTaskStatus(taskID, status, errMsg); err != nil {
 			return
 		}

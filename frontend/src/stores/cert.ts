@@ -7,6 +7,7 @@ import {
   UpdateCertTask,
   DeleteCertTask,
   GetCertTaskCredentials,
+  GetCertTaskLog,
   ListDNSProviders,
   DetectCertEnvironment,
   ListRemoteCerts,
@@ -191,6 +192,20 @@ export const useCertStore = defineStore('cert', () => {
     return (await GetCertTaskCredentials(taskID)) ?? {}
   }
 
+  // Logs are in-memory; after an app restart refill the view from the
+  // persisted last-operation log so the log window is never silently empty.
+  async function ensureOpLog(taskID: string) {
+    if ((logs.get(taskID) ?? []).length > 0) return
+    try {
+      const persisted = await GetCertTaskLog(taskID)
+      if (persisted) {
+        logs.set(taskID, persisted.split('\n').filter(l => l !== '').slice(-MAX_LOG_LINES))
+      }
+    } catch (e) {
+      console.error('Failed to load persisted cert log:', e)
+    }
+  }
+
   async function startIssue(taskID: string, email: string): Promise<boolean> {
     clearLog(taskID)
     await StartCertIssue(taskID, email)
@@ -249,6 +264,7 @@ export const useCertStore = defineStore('cert', () => {
     updateTask,
     deleteTask,
     revealCredentials,
+    ensureOpLog,
     startIssue,
     startRenew,
     startRemove,
