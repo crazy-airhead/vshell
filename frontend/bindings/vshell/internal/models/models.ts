@@ -17,6 +17,232 @@ export enum AuthType {
     AuthInteractive = "interactive",
 };
 
+/**
+ * CertEnvironment is the result of the remote detection script.
+ */
+export class CertEnvironment {
+    "connection_id": string;
+    "home": string;
+    "acme_sh_path": string;
+    "installed": boolean;
+    "cron_present": boolean;
+    "curl_present": boolean;
+
+    /** Creates a new CertEnvironment instance. */
+    constructor($$source: Partial<CertEnvironment> = {}) {
+        if (!("connection_id" in $$source)) {
+            this["connection_id"] = "";
+        }
+        if (!("home" in $$source)) {
+            this["home"] = "";
+        }
+        if (!("acme_sh_path" in $$source)) {
+            this["acme_sh_path"] = "";
+        }
+        if (!("installed" in $$source)) {
+            this["installed"] = false;
+        }
+        if (!("cron_present" in $$source)) {
+            this["cron_present"] = false;
+        }
+        if (!("curl_present" in $$source)) {
+            this["curl_present"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CertEnvironment instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CertEnvironment {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CertEnvironment($$parsedSource as Partial<CertEnvironment>);
+    }
+}
+
+export enum CertStatus {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    CertStatusIdle = "idle",
+    CertStatusRunning = "running",
+    CertStatusIssued = "issued",
+    CertStatusFailed = "failed",
+};
+
+/**
+ * CertTask is a local record of a certificate managed by acme.sh on a remote
+ * server. Credentials are stored AES-encrypted and never leave the backend.
+ */
+export class CertTask {
+    "id": string;
+    "connection_id": string;
+    "connection_name": string;
+    "connection_host": string;
+    "name": string;
+    "primary_domain": string;
+    "san_domains": string[];
+    "dns_provider": string;
+    "dns_plugin"?: string;
+    "key_length": string;
+    "dns_sleep": number;
+    "test_mode": boolean;
+    "auto_install": boolean;
+    "cert_dir"?: string;
+    "key_file"?: string;
+    "fullchain_file"?: string;
+    "reload_cmd"?: string;
+    "last_status": CertStatus;
+    "last_error"?: string;
+    "last_run_at": string | null;
+    "created_at": string;
+    "updated_at": string;
+
+    /** Creates a new CertTask instance. */
+    constructor($$source: Partial<CertTask> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("connection_id" in $$source)) {
+            this["connection_id"] = "";
+        }
+        if (!("connection_name" in $$source)) {
+            this["connection_name"] = "";
+        }
+        if (!("connection_host" in $$source)) {
+            this["connection_host"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("primary_domain" in $$source)) {
+            this["primary_domain"] = "";
+        }
+        if (!("san_domains" in $$source)) {
+            this["san_domains"] = [];
+        }
+        if (!("dns_provider" in $$source)) {
+            this["dns_provider"] = "";
+        }
+        if (!("key_length" in $$source)) {
+            this["key_length"] = "";
+        }
+        if (!("dns_sleep" in $$source)) {
+            this["dns_sleep"] = 0;
+        }
+        if (!("test_mode" in $$source)) {
+            this["test_mode"] = false;
+        }
+        if (!("auto_install" in $$source)) {
+            this["auto_install"] = false;
+        }
+        if (!("last_status" in $$source)) {
+            this["last_status"] = CertStatus.$zero;
+        }
+        if (!("last_run_at" in $$source)) {
+            this["last_run_at"] = null;
+        }
+        if (!("created_at" in $$source)) {
+            this["created_at"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("updated_at" in $$source)) {
+            this["updated_at"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CertTask instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CertTask {
+        const $$createField6_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("san_domains" in $$parsedSource) {
+            $$parsedSource["san_domains"] = $$createField6_0($$parsedSource["san_domains"]);
+        }
+        return new CertTask($$parsedSource as Partial<CertTask>);
+    }
+}
+
+/**
+ * CertTaskForm is used for creating/updating cert tasks from frontend.
+ * Empty DNSCredentials means "keep stored credentials" on update.
+ */
+export class CertTaskForm {
+    "id": string;
+    "connection_id": string;
+    "name": string;
+    "primary_domain": string;
+    "san_domains": string[];
+    "dns_provider": string;
+    "dns_plugin"?: string;
+    "dns_credentials"?: { [_ in string]?: string };
+    "key_length": string;
+    "dns_sleep": number;
+    "test_mode": boolean;
+    "auto_install": boolean;
+    "cert_dir"?: string;
+    "key_file"?: string;
+    "fullchain_file"?: string;
+    "reload_cmd"?: string;
+
+    /** Creates a new CertTaskForm instance. */
+    constructor($$source: Partial<CertTaskForm> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("connection_id" in $$source)) {
+            this["connection_id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("primary_domain" in $$source)) {
+            this["primary_domain"] = "";
+        }
+        if (!("san_domains" in $$source)) {
+            this["san_domains"] = [];
+        }
+        if (!("dns_provider" in $$source)) {
+            this["dns_provider"] = "";
+        }
+        if (!("key_length" in $$source)) {
+            this["key_length"] = "";
+        }
+        if (!("dns_sleep" in $$source)) {
+            this["dns_sleep"] = 0;
+        }
+        if (!("test_mode" in $$source)) {
+            this["test_mode"] = false;
+        }
+        if (!("auto_install" in $$source)) {
+            this["auto_install"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CertTaskForm instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CertTaskForm {
+        const $$createField4_0 = $$createType0;
+        const $$createField7_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("san_domains" in $$parsedSource) {
+            $$parsedSource["san_domains"] = $$createField4_0($$parsedSource["san_domains"]);
+        }
+        if ("dns_credentials" in $$parsedSource) {
+            $$parsedSource["dns_credentials"] = $$createField7_0($$parsedSource["dns_credentials"]);
+        }
+        return new CertTaskForm($$parsedSource as Partial<CertTaskForm>);
+    }
+}
+
 export class Connection {
     "id": string;
     "group_id": string | null;
@@ -188,6 +414,87 @@ export class ConnectionForm {
     }
 }
 
+/**
+ * DNSFieldSpec describes one credential input of a DNS provider.
+ */
+export class DNSFieldSpec {
+    "key": string;
+    "label": string;
+    "secret": boolean;
+    "required": boolean;
+    "placeholder": string;
+
+    /** Creates a new DNSFieldSpec instance. */
+    constructor($$source: Partial<DNSFieldSpec> = {}) {
+        if (!("key" in $$source)) {
+            this["key"] = "";
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("secret" in $$source)) {
+            this["secret"] = false;
+        }
+        if (!("required" in $$source)) {
+            this["required"] = false;
+        }
+        if (!("placeholder" in $$source)) {
+            this["placeholder"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DNSFieldSpec instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DNSFieldSpec {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new DNSFieldSpec($$parsedSource as Partial<DNSFieldSpec>);
+    }
+}
+
+/**
+ * DNSProvider is a registry entry used by the frontend to render the
+ * credential form dynamically.
+ */
+export class DNSProvider {
+    "id": string;
+    "name": string;
+    "plugin": string;
+    "fields": DNSFieldSpec[];
+
+    /** Creates a new DNSProvider instance. */
+    constructor($$source: Partial<DNSProvider> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("plugin" in $$source)) {
+            this["plugin"] = "";
+        }
+        if (!("fields" in $$source)) {
+            this["fields"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DNSProvider instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DNSProvider {
+        const $$createField3_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("fields" in $$parsedSource) {
+            $$parsedSource["fields"] = $$createField3_0($$parsedSource["fields"]);
+        }
+        return new DNSProvider($$parsedSource as Partial<DNSProvider>);
+    }
+}
+
 export enum ForwardType {
     /**
      * The Go zero value for the underlying type of the enum.
@@ -345,3 +652,126 @@ export class QuickCommand {
         return new QuickCommand($$parsedSource as Partial<QuickCommand>);
     }
 }
+
+/**
+ * RemoteCert is one row of `acme.sh --list` output, optionally enriched with
+ * `--info` data (NextRenewTime/DaysLeft).
+ */
+export class RemoteCert {
+    "main_domain": string;
+    "key_length": string;
+    "san_domains": string[];
+    "ca": string;
+    "created": string;
+    "renew": string;
+
+    /**
+     * epoch seconds, 0 = unknown
+     */
+    "next_renew_time": number;
+
+    /**
+     * nil = unknown
+     */
+    "days_left": number | null;
+    "ecc": boolean;
+
+    /** Creates a new RemoteCert instance. */
+    constructor($$source: Partial<RemoteCert> = {}) {
+        if (!("main_domain" in $$source)) {
+            this["main_domain"] = "";
+        }
+        if (!("key_length" in $$source)) {
+            this["key_length"] = "";
+        }
+        if (!("san_domains" in $$source)) {
+            this["san_domains"] = [];
+        }
+        if (!("ca" in $$source)) {
+            this["ca"] = "";
+        }
+        if (!("created" in $$source)) {
+            this["created"] = "";
+        }
+        if (!("renew" in $$source)) {
+            this["renew"] = "";
+        }
+        if (!("next_renew_time" in $$source)) {
+            this["next_renew_time"] = 0;
+        }
+        if (!("days_left" in $$source)) {
+            this["days_left"] = null;
+        }
+        if (!("ecc" in $$source)) {
+            this["ecc"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RemoteCert instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RemoteCert {
+        const $$createField2_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("san_domains" in $$parsedSource) {
+            $$parsedSource["san_domains"] = $$createField2_0($$parsedSource["san_domains"]);
+        }
+        return new RemoteCert($$parsedSource as Partial<RemoteCert>);
+    }
+}
+
+/**
+ * RemoteCertInfo holds `acme.sh --info -d <domain>` key=value output.
+ */
+export class RemoteCertInfo {
+    "domain": string;
+    "fields": { [_ in string]?: string };
+    "next_renew_time": number;
+    "next_renew_time_str": string;
+    "cert_create_time": string;
+    "cert_path": string;
+
+    /** Creates a new RemoteCertInfo instance. */
+    constructor($$source: Partial<RemoteCertInfo> = {}) {
+        if (!("domain" in $$source)) {
+            this["domain"] = "";
+        }
+        if (!("fields" in $$source)) {
+            this["fields"] = {};
+        }
+        if (!("next_renew_time" in $$source)) {
+            this["next_renew_time"] = 0;
+        }
+        if (!("next_renew_time_str" in $$source)) {
+            this["next_renew_time_str"] = "";
+        }
+        if (!("cert_create_time" in $$source)) {
+            this["cert_create_time"] = "";
+        }
+        if (!("cert_path" in $$source)) {
+            this["cert_path"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RemoteCertInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RemoteCertInfo {
+        const $$createField1_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("fields" in $$parsedSource) {
+            $$parsedSource["fields"] = $$createField1_0($$parsedSource["fields"]);
+        }
+        return new RemoteCertInfo($$parsedSource as Partial<RemoteCertInfo>);
+    }
+}
+
+// Private type creation functions
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = $Create.Map($Create.Any, $Create.Any);
+const $$createType2 = DNSFieldSpec.createFrom;
+const $$createType3 = $Create.Array($$createType2);

@@ -13,6 +13,7 @@ import ConnectionTree from './components/sidebar/ConnectionTree.vue'
 import KeyManagementPanel from './components/keys/KeyManagementPanel.vue'
 import SSHConfigPanel from './components/config/SSHConfigPanel.vue'
 import PortForwardPanel from './components/panels/PortForwardPanel.vue'
+import CertPanel from './components/cert/CertPanel.vue'
 import TerminalPane from './components/terminal/TerminalPane.vue'
 import BottomPanel from './components/panels/BottomPanel.vue'
 import DraggableDivider from './components/common/DraggableDivider.vue'
@@ -149,6 +150,7 @@ onMounted(() => {
                     <KeyManagementPanel v-else-if="layout.activeSidebar === 'keys'" />
                     <SSHConfigPanel v-else-if="layout.activeSidebar === 'ssh-config'" />
                     <PortForwardPanel v-else-if="layout.activeSidebar === 'port-forward'" />
+                    <CertPanel v-else-if="layout.activeSidebar === 'certs'" />
                   </div>
                   <DraggableDivider
                     direction="vertical"

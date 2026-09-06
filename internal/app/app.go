@@ -20,6 +20,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"golang.org/x/crypto/ssh"
 
+	"vshell/internal/cert"
 	"vshell/internal/db"
 	"vshell/internal/models"
 	"vshell/internal/portforward"
@@ -33,6 +34,7 @@ type AppService struct {
 	sshManager  *vshellssh.Manager
 	sftpManager *sftp.Manager
 	fwdManager  *portforward.Manager
+	certManager *cert.Manager
 	monitors    map[string]*vshellssh.Monitor
 }
 
@@ -60,7 +62,9 @@ func (a *AppService) ServiceStartup(ctx context.Context, options application.Ser
 	a.sshManager = vshellssh.NewManager(a.db.Crypto(), emit)
 	a.sftpManager = sftp.NewManager(a.sshManager, a.db.Crypto(), emit)
 	a.fwdManager = portforward.NewManager()
+	a.certManager = cert.NewManager(a.sshManager, a.sftpManager, emit)
 	a.monitors = make(map[string]*vshellssh.Monitor)
+	a.resetInterruptedCertTasks()
 
 	// Listen for terminal stdin events from frontend
 	a.wailsApp.Event.On("terminal:stdin", func(e *application.CustomEvent) {

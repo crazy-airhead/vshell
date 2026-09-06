@@ -19,8 +19,25 @@ import * as sftp$0 from "../sftp/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+/**
+ * CancelCertOp aborts a running issue/renew/remove/install operation.
+ */
+export function CancelCertOp(id: string): $CancellablePromise<void> {
+    return $Call.ByID(415857050, id);
+}
+
 export function ConnectSSH(connectionID: string): $CancellablePromise<string> {
     return $Call.ByID(3171932001, connectionID);
+}
+
+/**
+ * CreateCertTask stores a new certificate task. DNS credentials are
+ * encrypted before storage.
+ */
+export function CreateCertTask(form: models$0.CertTaskForm): $CancellablePromise<models$0.CertTask> {
+    return $Call.ByID(547765062, form).then(($result: any) => {
+        return $$createType0($result);
+    });
 }
 
 export function CreateConnection(form: models$0.ConnectionForm): $CancellablePromise<void> {
@@ -33,12 +50,20 @@ export function CreateGroup(id: string, name: string, parentID: string | null, s
 
 export function CreatePortForward(name: string, connectionID: string, fwdType: string, localHost: string, localPort: number, remoteHost: string, remotePort: number, autoStart: boolean): $CancellablePromise<models$0.PortForward> {
     return $Call.ByID(171843151, name, connectionID, fwdType, localHost, localPort, remoteHost, remotePort, autoStart).then(($result: any) => {
-        return $$createType0($result);
+        return $$createType1($result);
     });
 }
 
 export function CreateQuickCommand(cmd: models$0.QuickCommand): $CancellablePromise<void> {
     return $Call.ByID(732401809, cmd);
+}
+
+/**
+ * DeleteCertTask removes the local task only; the server keeps its acme.sh
+ * config and cron renewals.
+ */
+export function DeleteCertTask(id: string): $CancellablePromise<void> {
+    return $Call.ByID(2835855333, id);
 }
 
 export function DeleteConnection(id: string): $CancellablePromise<void> {
@@ -70,6 +95,16 @@ export function DeleteSSHKey(name: string): $CancellablePromise<void> {
     return $Call.ByID(2358421539, name);
 }
 
+/**
+ * DetectCertEnvironment checks acme.sh installation, cron entry and curl on
+ * the target server.
+ */
+export function DetectCertEnvironment(connectionID: string): $CancellablePromise<models$0.CertEnvironment> {
+    return $Call.ByID(2576399537, connectionID).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
 export function DisconnectSSH(connectionID: string): $CancellablePromise<void> {
     return $Call.ByID(1796353151, connectionID);
 }
@@ -87,6 +122,23 @@ export function DisconnectSession(sessionID: string, connectionID: string): $Can
  */
 export function GenerateSSHKey(name: string, keyType: string, bits: number, comment: string, passphrase: string): $CancellablePromise<void> {
     return $Call.ByID(1376428699, name, keyType, bits, comment, passphrase);
+}
+
+/**
+ * GetCertServerLog tails the persistent acme.sh log on the server.
+ */
+export function GetCertServerLog(connectionID: string): $CancellablePromise<string> {
+    return $Call.ByID(2547413604, connectionID);
+}
+
+/**
+ * GetCertTaskCredentials decrypts and returns the stored DNS credentials for
+ * the edit form's reveal button (same pattern as GetPassword).
+ */
+export function GetCertTaskCredentials(id: string): $CancellablePromise<{ [_ in string]?: string }> {
+    return $Call.ByID(3411543310, id).then(($result: any) => {
+        return $$createType3($result);
+    });
 }
 
 export function GetHomeDir(): $CancellablePromise<string> {
@@ -112,11 +164,20 @@ export function GetPrivateKey(id: string): $CancellablePromise<string> {
 }
 
 /**
+ * GetRemoteCertInfo returns detailed key=value info for one remote cert.
+ */
+export function GetRemoteCertInfo(connectionID: string, domain: string, ecc: boolean): $CancellablePromise<models$0.RemoteCertInfo | null> {
+    return $Call.ByID(211274131, connectionID, domain, ecc).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
+/**
  * GetSSHConfigHostDetail returns full details for a single Host entry from ~/.ssh/config, including private key content.
  */
 export function GetSSHConfigHostDetail(pattern: string): $CancellablePromise<$models.SSHConfigHostDetail | null> {
     return $Call.ByID(4214989274, pattern).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType7($result);
     });
 }
 
@@ -125,7 +186,7 @@ export function GetSSHConfigHostDetail(pattern: string): $CancellablePromise<$mo
  */
 export function GetSSHConfigImportCandidates(): $CancellablePromise<$models.SSHConfigImportCandidate[]> {
     return $Call.ByID(3643830274).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType9($result);
     });
 }
 
@@ -135,7 +196,7 @@ export function GetSSHConfigImportCandidates(): $CancellablePromise<$models.SSHC
  */
 export function GetSSHKeyUsage(name: string): $CancellablePromise<string[]> {
     return $Call.ByID(1439721781, name).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType10($result);
     });
 }
 
@@ -148,43 +209,72 @@ export function ImportSSHConfigHosts(patterns: string[]): $CancellablePromise<vo
 
 export function ListAllPortForwards(): $CancellablePromise<models$0.PortForward[]> {
     return $Call.ByID(4070239221).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType11($result);
+    });
+}
+
+/**
+ * ListCertTasks returns all local certificate tasks with connection info.
+ */
+export function ListCertTasks(): $CancellablePromise<models$0.CertTask[]> {
+    return $Call.ByID(3300107467).then(($result: any) => {
+        return $$createType12($result);
     });
 }
 
 export function ListConnections(): $CancellablePromise<models$0.Connection[]> {
     return $Call.ByID(2436681430).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType14($result);
+    });
+}
+
+/**
+ * ListDNSProviders returns the DNS provider registry for dynamic form
+ * rendering.
+ */
+export function ListDNSProviders(): $CancellablePromise<models$0.DNSProvider[]> {
+    return $Call.ByID(724386694).then(($result: any) => {
+        return $$createType16($result);
     });
 }
 
 export function ListGroups(): $CancellablePromise<models$0.Group[]> {
     return $Call.ByID(494692261).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType18($result);
     });
 }
 
 export function ListLocalDir(dirPath: string): $CancellablePromise<$models.LocalFileInfo[]> {
     return $Call.ByID(1378612327, dirPath).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType20($result);
     });
 }
 
 export function ListPortForwards(connectionID: string): $CancellablePromise<models$0.PortForward[]> {
     return $Call.ByID(3400329328, connectionID).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType11($result);
     });
 }
 
 export function ListQuickCommands(connectionID: string | null): $CancellablePromise<models$0.QuickCommand[]> {
     return $Call.ByID(3567644202, connectionID).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType22($result);
+    });
+}
+
+/**
+ * ListRemoteCerts lists the certs managed by acme.sh on the server,
+ * enriched with renewal dates.
+ */
+export function ListRemoteCerts(connectionID: string): $CancellablePromise<models$0.RemoteCert[]> {
+    return $Call.ByID(1241534342, connectionID).then(($result: any) => {
+        return $$createType24($result);
     });
 }
 
 export function ListRunningPortForwards(): $CancellablePromise<string[]> {
     return $Call.ByID(3835552541).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType10($result);
     });
 }
 
@@ -193,7 +283,7 @@ export function ListRunningPortForwards(): $CancellablePromise<string[]> {
  */
 export function ListSSHKeys(): $CancellablePromise<$models.SSHKeyInfo[]> {
     return $Call.ByID(3301404409).then(($result: any) => {
-        return $$createType16($result);
+        return $$createType26($result);
     });
 }
 
@@ -217,7 +307,7 @@ export function ReadLocalFileContent(localPath: string): $CancellablePromise<str
  */
 export function ReadSSHConfig(): $CancellablePromise<$models.SSHConfigEntry[]> {
     return $Call.ByID(3639124279).then(($result: any) => {
-        return $$createType18($result);
+        return $$createType28($result);
     });
 }
 
@@ -257,7 +347,7 @@ export function SFTPDownload(connectionID: string, remotePath: string, localPath
 
 export function SFTPReadDir(connectionID: string, path: string): $CancellablePromise<sftp$0.FileInfo[]> {
     return $Call.ByID(3242100799, connectionID, path).then(($result: any) => {
-        return $$createType20($result);
+        return $$createType30($result);
     });
 }
 
@@ -287,6 +377,37 @@ export function SetApp(app: application$0.App | null): $CancellablePromise<void>
     return $Call.ByID(4209028258, app);
 }
 
+/**
+ * StartAcmeShInstall installs acme.sh on the server; progress arrives via
+ * cert:log / cert:stage / cert:op-done events.
+ */
+export function StartAcmeShInstall(connectionID: string, email: string): $CancellablePromise<string> {
+    return $Call.ByID(3628445521, connectionID, email);
+}
+
+/**
+ * StartCertIssue runs the full issuance flow for a stored task. email is
+ * only used when acme.sh has to be installed first.
+ */
+export function StartCertIssue(taskID: string, email: string): $CancellablePromise<string> {
+    return $Call.ByID(3847721356, taskID, email);
+}
+
+/**
+ * StartCertRemove removes the cert from acme.sh on the server and,
+ * optionally, deletes the local task as well.
+ */
+export function StartCertRemove(taskID: string, deleteTask: boolean): $CancellablePromise<string> {
+    return $Call.ByID(1688282169, taskID, deleteTask);
+}
+
+/**
+ * StartCertRenew forces an immediate renewal of a stored task.
+ */
+export function StartCertRenew(taskID: string): $CancellablePromise<string> {
+    return $Call.ByID(404074634, taskID);
+}
+
 export function StartMonitor(connectionID: string): $CancellablePromise<void> {
     return $Call.ByID(2280921331, connectionID);
 }
@@ -301,6 +422,16 @@ export function StopMonitor(connectionID: string): $CancellablePromise<void> {
 
 export function StopPortForward(id: string): $CancellablePromise<void> {
     return $Call.ByID(3174015391, id);
+}
+
+/**
+ * UpdateCertTask updates an existing task. Empty DNS credentials keep the
+ * stored ones (same convention as connection secrets).
+ */
+export function UpdateCertTask(form: models$0.CertTaskForm): $CancellablePromise<models$0.CertTask> {
+    return $Call.ByID(2065196927, form).then(($result: any) => {
+        return $$createType0($result);
+    });
 }
 
 export function UpdateConnection(form: models$0.ConnectionForm): $CancellablePromise<void> {
@@ -334,24 +465,34 @@ export function WriteSSHConfigRaw(content: string): $CancellablePromise<void> {
 }
 
 // Private type creation functions
-const $$createType0 = models$0.PortForward.createFrom;
-const $$createType1 = $models.SSHConfigHostDetail.createFrom;
-const $$createType2 = $Create.Nullable($$createType1);
-const $$createType3 = $models.SSHConfigImportCandidate.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = $Create.Array($Create.Any);
-const $$createType6 = $Create.Array($$createType0);
-const $$createType7 = models$0.Connection.createFrom;
-const $$createType8 = $Create.Array($$createType7);
-const $$createType9 = models$0.Group.createFrom;
-const $$createType10 = $Create.Array($$createType9);
-const $$createType11 = $models.LocalFileInfo.createFrom;
-const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = models$0.QuickCommand.createFrom;
+const $$createType0 = models$0.CertTask.createFrom;
+const $$createType1 = models$0.PortForward.createFrom;
+const $$createType2 = models$0.CertEnvironment.createFrom;
+const $$createType3 = $Create.Map($Create.Any, $Create.Any);
+const $$createType4 = models$0.RemoteCertInfo.createFrom;
+const $$createType5 = $Create.Nullable($$createType4);
+const $$createType6 = $models.SSHConfigHostDetail.createFrom;
+const $$createType7 = $Create.Nullable($$createType6);
+const $$createType8 = $models.SSHConfigImportCandidate.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = $Create.Array($Create.Any);
+const $$createType11 = $Create.Array($$createType1);
+const $$createType12 = $Create.Array($$createType0);
+const $$createType13 = models$0.Connection.createFrom;
 const $$createType14 = $Create.Array($$createType13);
-const $$createType15 = $models.SSHKeyInfo.createFrom;
+const $$createType15 = models$0.DNSProvider.createFrom;
 const $$createType16 = $Create.Array($$createType15);
-const $$createType17 = $models.SSHConfigEntry.createFrom;
+const $$createType17 = models$0.Group.createFrom;
 const $$createType18 = $Create.Array($$createType17);
-const $$createType19 = sftp$0.FileInfo.createFrom;
+const $$createType19 = $models.LocalFileInfo.createFrom;
 const $$createType20 = $Create.Array($$createType19);
+const $$createType21 = models$0.QuickCommand.createFrom;
+const $$createType22 = $Create.Array($$createType21);
+const $$createType23 = models$0.RemoteCert.createFrom;
+const $$createType24 = $Create.Array($$createType23);
+const $$createType25 = $models.SSHKeyInfo.createFrom;
+const $$createType26 = $Create.Array($$createType25);
+const $$createType27 = $models.SSHConfigEntry.createFrom;
+const $$createType28 = $Create.Array($$createType27);
+const $$createType29 = sftp$0.FileInfo.createFrom;
+const $$createType30 = $Create.Array($$createType29);

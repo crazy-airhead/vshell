@@ -6,6 +6,7 @@ import IconFileText from '~icons/lucide/file-text'
 import IconActivity from '~icons/lucide/activity'
 import IconFolder from '~icons/lucide/folder'
 import IconArrowLeftRight from '~icons/lucide/arrow-left-right'
+import IconShieldCheck from '~icons/lucide/shield-check'
 import IconSettings from '~icons/lucide/settings'
 
 const emit = defineEmits<{ (e: 'openSettings'): void }>()
@@ -50,6 +51,15 @@ const layout = useLayoutStore()
       >
         <IconArrowLeftRight :width="20" :height="20" />
         <span v-if="layout.activeSidebar === 'port-forward'" class="absolute left-0 top-2 bottom-2 w-[2px] bg-[var(--color-primary)] rounded-r-[2px]" />
+      </button>
+      <button
+        class="w-10 h-10 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
+        :class="{ '!text-[var(--color-primary)]': layout.activeSidebar === 'certs' }"
+        @click="layout.setSidebar('certs')"
+        title="Certificates"
+      >
+        <IconShieldCheck :width="20" :height="20" />
+        <span v-if="layout.activeSidebar === 'certs'" class="absolute left-0 top-2 bottom-2 w-[2px] bg-[var(--color-primary)] rounded-r-[2px]" />
       </button>
     </div>
 

@@ -52,6 +52,29 @@ func (db *DB) migrate() error {
 			remote_port INTEGER,
 			auto_start INTEGER DEFAULT 0
 		)`,
+		`CREATE TABLE IF NOT EXISTS cert_tasks (
+			id TEXT PRIMARY KEY,
+			connection_id TEXT NOT NULL,
+			name TEXT NOT NULL DEFAULT '',
+			primary_domain TEXT NOT NULL,
+			san_domains TEXT NOT NULL DEFAULT '',
+			dns_provider TEXT NOT NULL,
+			dns_plugin TEXT,
+			dns_credentials TEXT NOT NULL DEFAULT '',
+			key_length TEXT NOT NULL DEFAULT 'ec-256',
+			dns_sleep INTEGER NOT NULL DEFAULT 120,
+			test_mode INTEGER NOT NULL DEFAULT 0,
+			auto_install INTEGER NOT NULL DEFAULT 1,
+			cert_dir TEXT,
+			key_file TEXT,
+			fullchain_file TEXT,
+			reload_cmd TEXT,
+			last_status TEXT NOT NULL DEFAULT 'idle',
+			last_error TEXT,
+			last_run_at DATETIME,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
 	}
 
 	for _, m := range migrations {

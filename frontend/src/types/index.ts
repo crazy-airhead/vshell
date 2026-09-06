@@ -193,3 +193,89 @@ export interface SSHConfigImportCandidate {
   identity_file: string
   has_key: boolean
 }
+
+// ---- Certificate management (acme.sh) ----
+
+export type CertStatus = 'idle' | 'running' | 'issued' | 'failed'
+
+export interface CertTask {
+  id: string
+  connection_id: string
+  connection_name: string
+  connection_host: string
+  name: string
+  primary_domain: string
+  san_domains: string[]
+  dns_provider: string
+  dns_plugin?: string
+  key_length: string
+  dns_sleep: number
+  test_mode: boolean
+  auto_install: boolean
+  cert_dir?: string
+  key_file?: string
+  fullchain_file?: string
+  reload_cmd?: string
+  last_status: CertStatus
+  last_error?: string
+  last_run_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CertTaskForm {
+  id: string
+  connection_id: string
+  name: string
+  primary_domain: string
+  san_domains: string[]
+  dns_provider: string
+  dns_plugin?: string
+  dns_credentials?: Record<string, string>
+  key_length: string
+  dns_sleep: number
+  test_mode: boolean
+  auto_install: boolean
+  cert_dir?: string
+  key_file?: string
+  fullchain_file?: string
+  reload_cmd?: string
+}
+
+export interface DNSFieldSpec {
+  key: string
+  label: string
+  secret: boolean
+  required: boolean
+  placeholder: string
+}
+
+export interface DNSProvider {
+  id: string
+  name: string
+  plugin: string
+  fields: DNSFieldSpec[]
+}
+
+export interface RemoteCert {
+  main_domain: string
+  key_length: string
+  san_domains: string[]
+  ca: string
+  created: string
+  renew: string
+  next_renew_time: number
+  days_left: number | null
+  ecc: boolean
+}
+
+export interface CertEnvironment {
+  connection_id: string
+  home: string
+  acme_sh_path: string
+  installed: boolean
+  cron_present: boolean
+  curl_present: boolean
+}
+
+export type CertStage = 'detect' | 'install' | 'issue' | 'renew' | 'install-cert' | 'cron' | 'remove' | 'done'

@@ -3,10 +3,18 @@
 
 export {
     AuthType,
+    CertEnvironment,
+    CertStatus,
+    CertTask,
+    CertTaskForm,
     Connection,
     ConnectionForm,
+    DNSFieldSpec,
+    DNSProvider,
     ForwardType,
     Group,
     PortForward,
-    QuickCommand
+    QuickCommand,
+    RemoteCert,
+    RemoteCertInfo
 } from "./models.js";
