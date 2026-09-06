@@ -70,6 +70,33 @@ func TestParseListOutputSpaced(t *testing.T) {
 	}
 }
 
+// Tab-separated layout of acme.sh 3.x (verified against a real install,
+// 2026-09): note the extra Profile column between SAN_Domains and CA.
+const listTabbedReal = "Main_Domain\tKeyLength\tSAN_Domains\tProfile\tCA\tCreated\tRenew\n" +
+	"example.com\tec-256\t*.example.com\tprod\tletsencrypt\t2026-09-06\t2026-12-05\n" +
+	"b.example.com\t2048\tno\tprod\tletsencrypt\t2026-08-01\t2026-10-31\n"
+
+func TestParseListOutputTabbedRealFormat(t *testing.T) {
+	certs := ParseListOutput(listTabbedReal)
+	if len(certs) != 2 {
+		t.Fatalf("want 2 certs, got %d: %+v", len(certs), certs)
+	}
+	c := certs[0]
+	if c.MainDomain != "example.com" || c.KeyLength != "ec-256" || !c.ECC {
+		t.Errorf("unexpected first cert: %+v", c)
+	}
+	if len(c.SANDomains) != 1 || c.SANDomains[0] != "*.example.com" {
+		t.Errorf("unexpected SAN: %+v", c.SANDomains)
+	}
+	if c.Created != "2026-09-06" || c.Renew != "2026-12-05" {
+		t.Errorf("dates: %q / %q", c.Created, c.Renew)
+	}
+	// SAN_Domains "no" must not become a domain entry.
+	if certs[1].SANDomains != nil {
+		t.Errorf("SAN 'no' must parse to nil, got %+v", certs[1].SANDomains)
+	}
+}
+
 func TestParseListOutputEmptyOrUnknown(t *testing.T) {
 	for _, out := range []string{"", "\n", "No cert found.\n", "random shell noise\n"} {
 		if certs := ParseListOutput(out); len(certs) != 0 {

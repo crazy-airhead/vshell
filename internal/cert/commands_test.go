@@ -146,6 +146,27 @@ func TestBuildRenewAndRemoveCmd(t *testing.T) {
 	}
 }
 
+func TestBuildInstallCmd(t *testing.T) {
+	cmd := BuildInstallCmd("me@example.com")
+	for _, want := range []string{
+		`d=$(mktemp)`,
+		`command -v curl`,
+		`curl -fsSL https://get.acme.sh -o "$d"`,
+		`command -v wget`,
+		`wget -qO "$d" https://get.acme.sh`,
+		`sh "$d" email='me@example.com'`,
+		"neither curl nor wget found on server",
+		`; rc=$?; rm -f "$d"; exit $rc`,
+	} {
+		if !strings.Contains(cmd, want) {
+			t.Errorf("install cmd missing %q:\n%s", want, cmd)
+		}
+	}
+	if strings.Contains(cmd, "| sh") {
+		t.Error("install cmd must not pipe the download into sh (masks download failures)")
+	}
+}
+
 func TestBuildEnsureCronCmd(t *testing.T) {
 	cmd := BuildEnsureCronCmd()
 	if !strings.Contains(cmd, "grep -q acme.sh") {

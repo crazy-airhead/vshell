@@ -40,9 +40,18 @@ command -v curl >/dev/null 2>&1 && echo "vshell:curl=present" || echo "vshell:cu
 crontab -l 2>/dev/null | grep -q acme.sh && echo "vshell:cron=present" || echo "vshell:cron=missing"`
 }
 
-// BuildInstallCmd installs acme.sh via the official installer.
+// BuildInstallCmd installs acme.sh via the official installer. The download
+// goes to a temp file instead of a `curl | sh` pipe: when curl/wget fail
+// (missing binary, network error) the pipe still exits 0 because sh reads an
+// empty stream, faking a successful install. The get.acme.sh bootstrap
+// itself also exits 0 on some failures, which the install-then-re-detect
+// step in InstallAcmeSh guards against.
 func BuildInstallCmd(email string) string {
-	return fmt.Sprintf("curl https://get.acme.sh | sh -s email=%s", shQuote(email))
+	return fmt.Sprintf(`d=$(mktemp) || exit 1; `+
+		`if command -v curl >/dev/null 2>&1; then curl -fsSL https://get.acme.sh -o "$d"; `+
+		`elif command -v wget >/dev/null 2>&1; then wget -qO "$d" https://get.acme.sh; `+
+		`else echo "vshell:install-error=neither curl nor wget found on server" >&2; rm -f "$d"; exit 127; fi && `+
+		`sh "$d" email=%s; rc=$?; rm -f "$d"; exit $rc`, shQuote(email))
 }
 
 // BuildSetDefaultCACmd switches the default CA to Let's Encrypt (acme.sh

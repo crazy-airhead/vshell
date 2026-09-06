@@ -37,6 +37,12 @@ func (m *Manager) Run(ctx context.Context, connectionID, cmd string, opts RunOpt
 	if err != nil {
 		return RunResult{ExitCode: -1}, err
 	}
+	return runOnClient(ctx, client, cmd, opts)
+}
+
+// runOnClient streams a command on the given SSH client. Split from Run so
+// integration tests can exercise it with a directly dialed client.
+func runOnClient(ctx context.Context, client *xssh.Client, cmd string, opts RunOptions) (RunResult, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -59,6 +65,12 @@ func (m *Manager) Run(ctx context.Context, connectionID, cmd string, opts RunOpt
 	stderr, err := sess.StderrPipe()
 	if err != nil {
 		return RunResult{ExitCode: -1}, fmt.Errorf("stderr pipe: %w", err)
+	}
+
+	// Pipes must be in place before the exec request so no early output is
+	// lost. Start (not Run) because Run installs its own stdout/stderr.
+	if err := sess.Start(cmd); err != nil {
+		return RunResult{ExitCode: -1}, fmt.Errorf("start %q: %w", cmd, err)
 	}
 
 	res := RunResult{ExitCode: -1}
@@ -114,8 +126,14 @@ func (m *Manager) Run(ctx context.Context, connectionID, cmd string, opts RunOpt
 	if ctx.Err() != nil {
 		return res, fmt.Errorf("command canceled or timed out: %w", ctx.Err())
 	}
-	if waitErr != nil && res.ExitCode < 0 {
-		return res, fmt.Errorf("run remote command: %w", waitErr)
+	if res.ExitCode != 0 {
+		// Non-zero exit (including transport errors with -1) is an error so
+		// orchestration stages never mistake a failed acme.sh run for
+		// success. res.Combined still carries the output for diagnostics.
+		if res.ExitCode < 0 && waitErr != nil {
+			return res, fmt.Errorf("run remote command: %w", waitErr)
+		}
+		return res, fmt.Errorf("remote command exited with status %d", res.ExitCode)
 	}
 	return res, nil
 }

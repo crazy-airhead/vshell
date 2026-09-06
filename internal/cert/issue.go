@@ -53,15 +53,19 @@ func (m *Manager) Detect(ctx context.Context, connectionID string) (models.CertE
 
 // ListCerts lists the certs managed by acme.sh on the server. It parses
 // `--list`, falls back to directory enumeration when the table format is
-// unrecognised, and enriches every row with `--info` renewal data.
+// unrecognised or acme.sh is not installed (the `ls` fallback with `|| true`
+// then yields an empty list instead of an error), and enriches every row
+// with `--info` renewal data.
 func (m *Manager) ListCerts(ctx context.Context, connectionID string) ([]models.RemoteCert, error) {
 	res, err := m.Run(ctx, connectionID, BuildListCmd(), RunOptions{Timeout: seconds(timeoutQuick)})
 	certs := ParseListOutput(res.Combined)
 	if len(certs) == 0 {
-		if err != nil {
+		if err != nil && res.ExitCode < 0 {
+			// Transport-level failure (no exit status): surface it.
 			return nil, wrapStageError("list", res, err)
 		}
-		// Format drift fallback: enumerate ~/.acme.sh/<domain>[_ecc] dirs.
+		// Format drift fallback or acme.sh missing: enumerate
+		// ~/.acme.sh/<domain>[_ecc] dirs; always exits 0.
 		dirRes, dirErr := m.Run(ctx, connectionID, BuildListDomainsCmd(), RunOptions{Timeout: seconds(timeoutQuick)})
 		if dirErr != nil {
 			return nil, wrapStageError("list", dirRes, dirErr)
@@ -128,7 +132,13 @@ func (m *Manager) InstallAcmeSh(ctx context.Context, conn *models.Connection, op
 	if err == nil {
 		env, detectErr := m.Detect(ctx, connectionID)
 		if detectErr == nil && !env.Installed {
-			err = fmt.Errorf("acme.sh still not found at %s after install", env.AcmeShPath)
+			// The get.acme.sh bootstrap can exit 0 while failing (e.g. no
+			// cron on the server: "Pre-check failed"), so verify here.
+			if !env.CronPresent {
+				err = fmt.Errorf("acme.sh still not found at %s after install; the server appears to lack a working crontab, which the acme.sh installer requires", env.AcmeShPath)
+			} else {
+				err = fmt.Errorf("acme.sh still not found at %s after install", env.AcmeShPath)
+			}
 		}
 	}
 	if err != nil {
