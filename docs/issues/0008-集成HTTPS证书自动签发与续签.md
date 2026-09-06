@@ -108,6 +108,20 @@
   - 完整签发仍需真实域名 + DNS API 凭据（staging `--test`），无法在容器内无域名验证——待用户提供实机验收。
   - 非 root 部署到 `/etc/nginx/ssl` 的权限场景（错误会原样透出 acme.sh 输出尾部）。
 
+**第 3 轮**（2026-09-06，实机验收反馈：zai500.com 签发失败分析）
+
+- **反馈 / 触发**：用户实机对 `zai500.com`（dns_dp）发起签发，失败。服务器 acme.sh.log 显示 DNSPod API（dnsapi.cn）返回 nginx 401，TXT 记录未加上，签发在 DNS 验证前终止：`Error adding TXT record to domain: _acme-challenge.zai500.com`。
+- **根因**（两个，均已修复，提交 `52ddeef`）：
+  1. **凭据类型用错**：用户填的是**腾讯云 CAM 密钥**（`login_token=AKID…`，SecretId/SecretKey 格式），而 `dns_dp` 插件要求 **DNSPod 传统 Token**（纯数字 ID + token，dnspod.cn 控制台单独签发）——两套体系不通用，dnsapi.cn 拒绝时返回的是 nginx 401 HTML 而非 JSON，难以直观辨认。
+     - 修复：新增 `tencent` 提供商（`dns_tencent` 插件，`Tencent_SecretId`/`Tencent_SecretKey`，已核对 acme.sh dnsapi/dns_tencent.sh 源码，API 即 `dnspod.tencentcloudapi.com`——用户现有 AKID 密钥直接可用）；`dnspod` 字段标签/占位符明确「数字 Token ID，非腾讯云 SecretId」。
+  2. **列表解析缺陷（vShell 侧）**：签发失败后 `--list` 只有表头无数据行，目录枚举回退误把 acme.sh 内部目录（`ca`/`deploy`/`dnsapi`/`notify`）当域名，并对每个内部目录发起 `--info`（用户日志 14:12 段可见）。
+     - 修复：`ParseListOutput` 增加第二返回值（表头是否被识别）——表头识别但零行 = 真无证书，不触发回退；`ParseAcmeDirsOutput` 过滤不含点号的条目（公网验证 FQDN 必含点号）。
+- **校验**：`go test ./...`（新增表头识别、内部目录过滤、tencent 提供商用例）、`go build`、`go vet`、`pnpm typecheck` 全绿。
+- **备注**：该次签发跑在 Let's Encrypt **生产环境**（日志为 acme-v02），说明向导的 staging 默认勾选被用户取消；正式签发前建议先走 staging（测试模式）确认凭据与 DNS 生效。
+- **遗留**：
+  - 用户改用「Tencent Cloud DNS (SecretId/SecretKey)」提供商或补办 DNSPod 传统 Token 后重试签发（建议先开测试模式）。
+  - 签发成功后的部署 / cron / 续签链路仍待实机确认。
+
 ---
 
 ## 附录：完整需求与设计文档（登记原文，2026-09-06）
