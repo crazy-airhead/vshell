@@ -181,6 +181,14 @@ func BuildTailLogCmd() string {
 	return `tail -n 200 "$HOME/.acme.sh/acme.sh.log" 2>/dev/null || echo "vshell:log=none"`
 }
 
+// BuildTruncateLogCmd clears the persistent acme.sh log so each vShell
+// operation starts from a fresh log (the file accumulates across runs,
+// which makes the log view show mostly stale history). Truncating (not
+// deleting) keeps the file in place for acme.sh to append to.
+func BuildTruncateLogCmd() string {
+	return `: > "$HOME/.acme.sh/acme.sh.log"`
+}
+
 func isECC(keyLength string) bool {
 	return strings.HasPrefix(keyLength, "ec-")
 }

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NModal, NButton, NSpace, NTabs, NTabPane } from 'naive-ui'
+import { NModal, NButton, NSpace, NTabs, NTabPane, NTooltip, useMessage } from 'naive-ui'
+import IconCopy from '~icons/lucide/copy'
 import { useCertStore } from '../../stores/cert'
 import type { CertTask } from '../../types'
 import CertLogView from './CertLogView.vue'
@@ -14,6 +15,7 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'update:show', value: boolean): void }>()
 
 const { t } = useI18n()
+const message = useMessage()
 const certStore = useCertStore()
 
 const tab = ref('op')
@@ -42,6 +44,15 @@ watch(
     }
   },
 )
+
+async function copyServerLog() {
+  try {
+    await navigator.clipboard.writeText(serverLog.value)
+    message.success(t('certs.copyDone'))
+  } catch (e) {
+    message.error(String(e))
+  }
+}
 </script>
 
 <template>
@@ -60,8 +71,20 @@ watch(
           </div>
         </NTabPane>
         <NTabPane name="server" :tab="t('certs.serverLog')">
-          <div class="h-full overflow-y-auto rounded-[var(--border-radius)] bg-[var(--bg-primary)] border border-[var(--border-color)] px-2 py-1.5">
-            <pre class="font-mono text-[11px] leading-[1.5] text-[var(--text-primary)] whitespace-pre-wrap break-all m-0">{{ serverLog || t('certs.logEmpty') }}</pre>
+          <div class="h-full flex flex-col min-h-0">
+            <div class="flex justify-end pb-1.5">
+              <NTooltip>
+                <template #trigger>
+                  <NButton size="tiny" quaternary :disabled="!serverLog" @click="copyServerLog">
+                    <template #icon><IconCopy :width="14" :height="14" /></template>
+                  </NButton>
+                </template>
+                {{ t('certs.copyLog') }}
+              </NTooltip>
+            </div>
+            <div class="flex-1 min-h-0 overflow-y-auto rounded-[var(--border-radius)] bg-[var(--bg-primary)] border border-[var(--border-color)] px-2 py-1.5">
+              <pre class="font-mono text-[11px] leading-[1.5] text-[var(--text-primary)] whitespace-pre-wrap break-all m-0">{{ serverLog || t('certs.logEmpty') }}</pre>
+            </div>
           </div>
         </NTabPane>
       </NTabs>

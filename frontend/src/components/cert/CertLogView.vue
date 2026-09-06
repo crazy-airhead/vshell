@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NButton, NTooltip } from 'naive-ui'
+import { NButton, NTooltip, useMessage } from 'naive-ui'
 import IconCopy from '~icons/lucide/copy'
 import { useCertStore } from '../../stores/cert'
 
 const props = defineProps<{ logKey: string }>()
 
 const { t } = useI18n()
+const message = useMessage()
 const certStore = useCertStore()
 
 const containerRef = ref<HTMLElement | null>(null)
@@ -26,8 +27,9 @@ watch(
 async function copyLog() {
   try {
     await navigator.clipboard.writeText(lines.value.join('\n'))
-  } catch {
-    // clipboard may be unavailable; the log stays visible for manual copy
+    message.success(t('certs.copyDone'))
+  } catch (e) {
+    message.error(String(e))
   }
 }
 </script>

@@ -120,10 +120,23 @@ func (m *Manager) ReadServerLog(ctx context.Context, connectionID string) (strin
 	return res.Combined, nil
 }
 
+// truncateServerLog clears the persistent acme.sh log so the server-log
+// view shows only the current operation (the file accumulates across runs).
+// Best-effort: a failure is noted in the operation log but never aborts it.
+func (m *Manager) truncateServerLog(ctx context.Context, connectionID, taskID, opID string) {
+	if _, err := m.Run(ctx, connectionID, BuildTruncateLogCmd(), RunOptions{Timeout: seconds(timeoutQuick)}); err != nil {
+		m.emitLog(LogEvent{
+			TaskID: taskID, OpID: opID, ConnectionID: connectionID,
+			Stream: "stderr", Line: "note: could not clear acme.sh.log: " + err.Error(), Ts: nowMillis(),
+		})
+	}
+}
+
 // InstallAcmeSh installs acme.sh on the server and switches the default CA
 // to Let's Encrypt. opID correlates the emitted events.
 func (m *Manager) InstallAcmeSh(ctx context.Context, conn *models.Connection, opID, email string) error {
 	connectionID := conn.ID
+	m.truncateServerLog(ctx, connectionID, "", opID)
 	m.stage("", opID, connectionID, StageInstall, "start", "")
 	_, err := m.stream(ctx, connectionID, "", opID, StageInstall, BuildInstallCmd(email), timeoutInstall)
 	if err == nil {
@@ -164,6 +177,9 @@ func (m *Manager) Issue(ctx context.Context, conn *models.Connection, task *mode
 	if err != nil {
 		return fail(err)
 	}
+
+	// Each operation starts from a fresh server-side acme.sh log.
+	m.truncateServerLog(ctx, connectionID, taskID, "")
 
 	m.stage(taskID, "", connectionID, StageDetect, "start", "")
 	env, err := m.Detect(ctx, connectionID)
@@ -248,6 +264,9 @@ func (m *Manager) Renew(ctx context.Context, conn *models.Connection, task *mode
 		return fail(fmt.Errorf("acme.sh is not installed on %s", conn.Name))
 	}
 
+	// Each operation starts from a fresh server-side acme.sh log.
+	m.truncateServerLog(ctx, connectionID, taskID, "")
+
 	envFile := ""
 	if len(creds) > 0 {
 		content, buildErr := BuildEnvFileContent(creds)
@@ -276,6 +295,7 @@ func (m *Manager) Renew(ctx context.Context, conn *models.Connection, task *mode
 // Remove drops a domain from acme.sh's renewal list; files on disk are kept.
 func (m *Manager) Remove(ctx context.Context, conn *models.Connection, domain string, ecc bool, taskID string) error {
 	connectionID := conn.ID
+	m.truncateServerLog(ctx, connectionID, taskID, "")
 	m.stage(taskID, "", connectionID, StageRemove, "start", "")
 	if _, err := m.stream(ctx, connectionID, taskID, "", StageRemove, BuildRemoveCmd(domain, ecc), timeoutRemove); err != nil {
 		m.stage(taskID, "", connectionID, StageRemove, "fail", err.Error())

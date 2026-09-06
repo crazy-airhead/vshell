@@ -192,3 +192,12 @@ func TestBuildEnsureCronCmd(t *testing.T) {
 		t.Error("cron cmd must not hardcode /root")
 	}
 }
+
+func TestBuildTruncateAndTailLogCmd(t *testing.T) {
+	if cmd := BuildTruncateLogCmd(); cmd != `: > "$HOME/.acme.sh/acme.sh.log"` {
+		t.Errorf("unexpected truncate cmd: %s", cmd)
+	}
+	if tail := BuildTailLogCmd(); !strings.Contains(tail, `tail -n 200 "$HOME/.acme.sh/acme.sh.log"`) {
+		t.Errorf("unexpected tail cmd: %s", tail)
+	}
+}
