@@ -57,27 +57,3 @@ tasks:
     summary: Builds and runs the Docker image
     cmds:
       - task: common:run:docker
-
-  docs:install:
-    summary: Install docs site dependencies (VitePress, independent pnpm project in docs/)
-    dir: docs
-    cmds:
-      - pnpm install
-
-  docs:dev:
-    summary: Run docs site dev server (VitePress hot-reload)
-    dir: docs
-    cmds:
-      - pnpm dev
-
-  docs:build:
-    summary: Build docs site to docs/.vitepress/dist
-    dir: docs
-    cmds:
-      - pnpm build
-
-  docs:preview:
-    summary: Preview the built docs site locally
-    dir: docs
-    cmds:
-      - pnpm preview

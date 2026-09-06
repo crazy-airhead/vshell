@@ -1,6 +1,0 @@
-# pnpm 设置（pnpm 11 起配置统一放这里，见 https://pnpm.io/settings）
-# 允许 esbuild 运行安装脚本（vitepress 的传递依赖，平台二进制校验）
-# 注意：docs 是独立 pnpm 项目（srcDir 内含 node_modules，构建产物已验证不外漏），
-# 切勿提升到仓库根目录 —— 会与 frontend/ 的独立 pnpm 项目冲突（wails3 依赖 frontend 自己的 lockfile）。
-allowBuilds:
-  esbuild: true
