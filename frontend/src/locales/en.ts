@@ -288,6 +288,7 @@ export default {
     expiringSoon: 'Expiring soon',
     remoteMissing: 'Not on server',
     renew: 'Renew',
+    issueOrRenew: 'Issue / Renew now',
     logs: 'Logs',
     serverLog: 'Server acme.sh log',
     removeFromServer: 'Remove from server',

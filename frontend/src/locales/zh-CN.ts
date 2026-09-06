@@ -288,6 +288,7 @@ export default {
     expiringSoon: '即将到期',
     remoteMissing: '服务器上不存在',
     renew: '续签',
+    issueOrRenew: '立即签发 / 续签',
     logs: '日志',
     serverLog: '服务器 acme.sh 日志',
     removeFromServer: '从服务器移除',

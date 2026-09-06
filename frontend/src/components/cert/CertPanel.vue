@@ -28,6 +28,9 @@ const { t } = useI18n()
 const message = useMessage()
 const certStore = useCertStore()
 
+// Same key the wizard uses to remember the ACME account email.
+const EMAIL_KEY = 'vshell:cert-email'
+
 const showWizard = ref(false)
 const editingTask = ref<CertTask | null>(null)
 const logTask = ref<CertTask | null>(null)
@@ -90,9 +93,12 @@ async function refreshGroup(connectionID: string) {
   await Promise.all([certStore.detectEnv(connectionID), certStore.refreshRemote(connectionID)])
 }
 
+// Issue (and renew) both go through the --issue --force flow, so the same
+// action works for a first issue, a retry, and a renewal — and always
+// re-applies the task's current provider/credentials on the server.
 async function handleRenew(task: CertTask) {
   try {
-    await certStore.startRenew(task.id)
+    await certStore.startIssue(task.id, localStorage.getItem(EMAIL_KEY) ?? '')
     message.info(t('certs.stageRenew'))
   } catch (e: any) {
     message.error(t('certs.failed', { error: String(e) }))
@@ -182,13 +188,13 @@ onMounted(() => {
               </div>
             </div>
             <div class="flex gap-[2px] shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-              <NTooltip v-if="!certStore.isRunning(task.id)">
+              <NTooltip>
                 <template #trigger>
-                  <NButton size="tiny" quaternary @click="handleRenew(task)">
+                  <NButton size="tiny" quaternary :loading="certStore.isRunning(task.id)" :disabled="certStore.isRunning(task.id)" @click="handleRenew(task)">
                     <template #icon><IconRotateCcw :width="14" :height="14" /></template>
                   </NButton>
                 </template>
-                {{ t('certs.renew') }}
+                {{ certStore.isRunning(task.id) ? t('certs.statusRunning') : t('certs.issueOrRenew') }}
               </NTooltip>
               <NTooltip>
                 <template #trigger>
