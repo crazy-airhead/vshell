@@ -91,6 +91,16 @@ watch(
   },
 )
 
+// Switching provider changes the credential field spec; keep nothing stale
+// (mirrors the wizard, which resets credentials on provider change).
+watch(
+  () => form.dnsProvider,
+  () => {
+    form.creds = {}
+    form.customPairs = [{ key: '', value: '' }]
+  },
+)
+
 async function revealCredentials() {
   if (!props.task) return
   revealing.value = true

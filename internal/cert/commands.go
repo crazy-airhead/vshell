@@ -115,8 +115,13 @@ func BuildInstallCertCmd(t *models.CertTask) string {
 }
 
 // BuildRenewCmd forces a renewal now. If install-cert was configured, acme.sh
-// re-deploys the files and runs the reload command by itself.
-func BuildRenewCmd(t *models.CertTask) string {
+// re-deploys the files and runs the reload command by itself. An optional
+// envFile sources the task's DNS credentials first: acme.sh dns plugins read
+// env vars before account.conf, so a renewal also heals stale server-side
+// credentials after an edit (otherwise a renewal keeps replaying whatever
+// wrong credentials a failed earlier issue persisted). Empty envFile = bare
+// renew relying on account.conf.
+func BuildRenewCmd(envFile string, t *models.CertTask) string {
 	var b strings.Builder
 	b.WriteString(acmeSh)
 	b.WriteString(" --renew")
@@ -126,7 +131,11 @@ func BuildRenewCmd(t *models.CertTask) string {
 		b.WriteString(" --ecc")
 	}
 	b.WriteString(" --log")
-	return b.String()
+	if envFile == "" {
+		return b.String()
+	}
+	return fmt.Sprintf("f=%s; chmod 600 \"$f\" && . \"$f\" && rm -f \"$f\" && %s; "+
+		"rc=$?; rm -f \"$f\" 2>/dev/null; exit $rc", shQuote(envFile), b.String())
 }
 
 // BuildRemoveCmd drops a domain from acme.sh's renewal list. Certificate

@@ -229,8 +229,10 @@ func (m *Manager) Issue(ctx context.Context, conn *models.Connection, task *mode
 }
 
 // Renew forces an immediate renewal. acme.sh re-runs the saved install-cert
-// and reload command automatically.
-func (m *Manager) Renew(ctx context.Context, conn *models.Connection, task *models.CertTask) error {
+// and reload command automatically. Task credentials, when present, are
+// pushed via a temporary env file so the renewal heals stale server-side
+// credentials (a failed earlier issue may have persisted wrong ones).
+func (m *Manager) Renew(ctx context.Context, conn *models.Connection, task *models.CertTask, creds map[string]string) error {
 	connectionID := conn.ID
 	taskID := task.ID
 	fail := func(err error) error {
@@ -246,8 +248,20 @@ func (m *Manager) Renew(ctx context.Context, conn *models.Connection, task *mode
 		return fail(fmt.Errorf("acme.sh is not installed on %s", conn.Name))
 	}
 
+	envFile := ""
+	if len(creds) > 0 {
+		content, buildErr := BuildEnvFileContent(creds)
+		if buildErr != nil {
+			return fail(buildErr)
+		}
+		envFile = TempEnvPath()
+		if err := m.sftp.WriteFileContent(connectionID, envFile, content); err != nil {
+			return fail(fmt.Errorf("upload DNS credentials: %w", err))
+		}
+	}
+
 	m.stage(taskID, "", connectionID, StageRenew, "start", "")
-	if _, err := m.stream(ctx, connectionID, taskID, "", StageRenew, BuildRenewCmd(task), timeoutIssue); err != nil {
+	if _, err := m.stream(ctx, connectionID, taskID, "", StageRenew, BuildRenewCmd(envFile, task), timeoutIssue); err != nil {
 		return fail(err)
 	}
 	m.stage(taskID, "", connectionID, StageRenew, "ok", "")

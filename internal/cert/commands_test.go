@@ -130,10 +130,23 @@ func TestBuildInstallCertCmd(t *testing.T) {
 
 func TestBuildRenewAndRemoveCmd(t *testing.T) {
 	task := &models.CertTask{PrimaryDomain: "example.com", KeyLength: "ec-384"}
-	renew := BuildRenewCmd(task)
+	renew := BuildRenewCmd("", task)
 	for _, want := range []string{`--renew`, `-d 'example.com'`, `--force`, ` --ecc`, `--log`} {
 		if !strings.Contains(renew, want) {
 			t.Errorf("renew cmd missing %q: %s", want, renew)
+		}
+	}
+
+	// With an env file, credentials are sourced and cleaned up like issue.
+	renewEnv := BuildRenewCmd("/tmp/.vshell_acme_env", task)
+	for _, want := range []string{
+		`f='/tmp/.vshell_acme_env'`,
+		`chmod 600 "$f" && . "$f" && rm -f "$f"`,
+		`--renew -d 'example.com' --force --ecc --log`,
+		`; rc=$?; rm -f "$f" 2>/dev/null; exit $rc`,
+	} {
+		if !strings.Contains(renewEnv, want) {
+			t.Errorf("renew-with-env cmd missing %q:\n%s", want, renewEnv)
 		}
 	}
 

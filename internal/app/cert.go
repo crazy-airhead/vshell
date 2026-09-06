@@ -413,7 +413,9 @@ func (a *AppService) startCertOperation(taskID, op, email string) (string, error
 		case "issue":
 			runErr = a.certManager.Issue(ctx, conn, task, creds, email)
 		case "renew":
-			runErr = a.certManager.Renew(ctx, conn, task)
+			// Renewal also pushes task credentials so an edited task heals
+			// stale (possibly wrong) credentials persisted on the server.
+			runErr = a.certManager.Renew(ctx, conn, task, creds)
 		}
 		status := models.CertStatusIssued
 		errMsg := ""
