@@ -17,7 +17,10 @@ example.com  "ec-256"  www.example.com,*.example.com  letsencrypt  2026-09-06T00
 b.example.com  2048  no  letsencrypt  2026-08-01T00:00:00Z  2026-10-31T00:00:00Z`
 
 func TestParseListOutputPiped(t *testing.T) {
-	certs := ParseListOutput(listPiped)
+	certs, ok := ParseListOutput(listPiped)
+	if !ok {
+		t.Fatal("piped table should be recognized")
+	}
 	if len(certs) != 2 {
 		t.Fatalf("want 2 certs, got %d: %+v", len(certs), certs)
 	}
@@ -40,7 +43,10 @@ func TestParseListOutputPiped(t *testing.T) {
 }
 
 func TestParseListOutputPipedNoCAColumn(t *testing.T) {
-	certs := ParseListOutput(listPipedNoCA)
+	certs, ok := ParseListOutput(listPipedNoCA)
+	if !ok {
+		t.Fatal("table should be recognized")
+	}
 	if len(certs) != 1 {
 		t.Fatalf("want 1 cert, got %d", len(certs))
 	}
@@ -54,7 +60,10 @@ func TestParseListOutputPipedNoCAColumn(t *testing.T) {
 }
 
 func TestParseListOutputSpaced(t *testing.T) {
-	certs := ParseListOutput(listSpaced)
+	certs, ok := ParseListOutput(listSpaced)
+	if !ok {
+		t.Fatal("table should be recognized")
+	}
 	if len(certs) != 2 {
 		t.Fatalf("want 2 certs, got %d: %+v", len(certs), certs)
 	}
@@ -77,7 +86,10 @@ const listTabbedReal = "Main_Domain\tKeyLength\tSAN_Domains\tProfile\tCA\tCreate
 	"b.example.com\t2048\tno\tprod\tletsencrypt\t2026-08-01\t2026-10-31\n"
 
 func TestParseListOutputTabbedRealFormat(t *testing.T) {
-	certs := ParseListOutput(listTabbedReal)
+	certs, ok := ParseListOutput(listTabbedReal)
+	if !ok {
+		t.Fatal("table should be recognized")
+	}
 	if len(certs) != 2 {
 		t.Fatalf("want 2 certs, got %d: %+v", len(certs), certs)
 	}
@@ -99,9 +111,21 @@ func TestParseListOutputTabbedRealFormat(t *testing.T) {
 
 func TestParseListOutputEmptyOrUnknown(t *testing.T) {
 	for _, out := range []string{"", "\n", "No cert found.\n", "random shell noise\n"} {
-		if certs := ParseListOutput(out); len(certs) != 0 {
-			t.Errorf("ParseListOutput(%q) = %+v, want empty", out, certs)
+		if certs, ok := ParseListOutput(out); len(certs) != 0 || ok {
+			t.Errorf("ParseListOutput(%q) = %+v ok=%v, want empty and unrecognized", out, certs, ok)
 		}
+	}
+}
+
+// A recognized header with zero rows means "no certs" (e.g. after a failed
+// issuance the domain conf exists but the cert is not in the renewal list).
+func TestParseListOutputHeaderOnlyIsRecognized(t *testing.T) {
+	certs, ok := ParseListOutput(listTabbedReal[:len(listTabbedReal)-len("example.com\tec-256\t*.example.com\tprod\tletsencrypt\t2026-09-06\t2026-12-05\nb.example.com\t2048\tno\tprod\tletsencrypt\t2026-08-01\t2026-10-31\n")])
+	if !ok {
+		t.Fatal("header-only table should be recognized")
+	}
+	if len(certs) != 0 {
+		t.Errorf("want zero certs, got %+v", certs)
 	}
 }
 
@@ -164,7 +188,11 @@ func TestParseDetectOutput(t *testing.T) {
 	}
 }
 
-const acmeDirs = `/root/.acme.sh/example.com/
+const acmeDirs = `/root/.acme.sh/ca/
+/root/.acme.sh/deploy/
+/root/.acme.sh/dnsapi/
+/root/.acme.sh/notify/
+/root/.acme.sh/example.com/
 /root/.acme.sh/example.com_ecc/
 /root/.acme.sh/b.example.com/
 `
@@ -172,7 +200,7 @@ const acmeDirs = `/root/.acme.sh/example.com/
 func TestParseAcmeDirsOutput(t *testing.T) {
 	certs := ParseAcmeDirsOutput(acmeDirs)
 	if len(certs) != 2 {
-		t.Fatalf("want 2 certs (ECC wins over RSA for same domain), got %+v", certs)
+		t.Fatalf("want 2 certs (internal dirs filtered, ECC wins over RSA), got %+v", certs)
 	}
 	if certs[0].MainDomain != "example.com" || !certs[0].ECC {
 		t.Errorf("first cert should be ECC example.com: %+v", certs[0])

@@ -10,9 +10,11 @@ import (
 
 // ParseListOutput parses `acme.sh --list` output into RemoteCerts. The table
 // format has drifted between acme.sh versions (pipe-separated vs dynamically
-// padded whitespace), so both layouts are supported and any unrecognised
-// output yields an empty slice rather than an error.
-func ParseListOutput(output string) []models.RemoteCert {
+// padded whitespace), so both layouts are supported. The second return value
+// reports whether a table header was recognised at all: callers must not
+// confuse "no certs" (recognised table, zero rows) with "unrecognised
+// output" (format drift, needs the directory-listing fallback).
+func ParseListOutput(output string) ([]models.RemoteCert, bool) {
 	lines := strings.Split(output, "\n")
 	headerIdx := -1
 	for i, line := range lines {
@@ -26,7 +28,7 @@ func ParseListOutput(output string) []models.RemoteCert {
 		}
 	}
 	if headerIdx < 0 {
-		return nil
+		return nil, false
 	}
 
 	var certs []models.RemoteCert
@@ -42,7 +44,7 @@ func ParseListOutput(output string) []models.RemoteCert {
 				certs = append(certs, cert)
 			}
 		}
-		return certs
+		return certs, true
 	}
 
 	// Whitespace-padded layout: fields never contain spaces (SAN domains are
@@ -65,7 +67,7 @@ func ParseListOutput(output string) []models.RemoteCert {
 		finalizeRemoteCert(&cert)
 		certs = append(certs, cert)
 	}
-	return certs
+	return certs, true
 }
 
 // splitPipeRow splits a "a | b | c" row and trims each cell.
@@ -185,6 +187,9 @@ func ParseDetectOutput(output string) models.CertEnvironment {
 
 // ParseAcmeDirsOutput parses `ls -1d ~/.acme.sh/*/` output for the fallback
 // domain discovery: "<domain>_ecc/" entries are ECC certs, plain ones RSA.
+// acme.sh's internal directories (ca, deploy, dnsapi, notify) hold no certs;
+// they are filtered by requiring a dot in the domain part, which every
+// publicly-validated FQDN has.
 func ParseAcmeDirsOutput(output string) []models.RemoteCert {
 	var certs []models.RemoteCert
 	seen := map[string]int{}
@@ -208,7 +213,7 @@ func ParseAcmeDirsOutput(output string) []models.RemoteCert {
 			cert.MainDomain = dir
 			cert.ECC = false
 		}
-		if cert.MainDomain == "" {
+		if !strings.Contains(cert.MainDomain, ".") {
 			continue
 		}
 		// Prefer the ECC variant when both layouts exist for one domain.

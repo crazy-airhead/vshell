@@ -26,11 +26,23 @@ var Providers = []models.DNSProvider{
 	},
 	{
 		ID:     "dnspod",
-		Name:   "DNSPod (Tencent)",
+		Name:   "DNSPod (Traditional Token)",
 		Plugin: "dns_dp",
 		Fields: []models.DNSFieldSpec{
-			{Key: "DP_Id", Label: "API ID", Required: true},
-			{Key: "DP_Key", Label: "API Key", Required: true, Secret: true},
+			{Key: "DP_Id", Label: "Token ID (numeric)", Required: true, Placeholder: "e.g. 12345 — NOT a Tencent Cloud SecretId"},
+			{Key: "DP_Key", Label: "Token", Required: true, Secret: true},
+		},
+	},
+	{
+		// Tencent Cloud CAM keys (SecretId starts with "AKID…") — a
+		// different credential system from the DNSPod traditional token
+		// above; dns_dp rejects them with an opaque 401.
+		ID:     "tencent",
+		Name:   "Tencent Cloud DNS (SecretId/SecretKey)",
+		Plugin: "dns_tencent",
+		Fields: []models.DNSFieldSpec{
+			{Key: "Tencent_SecretId", Label: "SecretId", Required: true, Placeholder: "AKID…"},
+			{Key: "Tencent_SecretKey", Label: "SecretKey", Required: true, Secret: true},
 		},
 	},
 	{

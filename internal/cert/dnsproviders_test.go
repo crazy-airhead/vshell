@@ -12,6 +12,9 @@ func TestPluginFor(t *testing.T) {
 	if p, err := PluginFor("cloudflare", ""); err != nil || p != "dns_cf" {
 		t.Errorf("cloudflare → %q, err=%v", p, err)
 	}
+	if p, err := PluginFor("tencent", ""); err != nil || p != "dns_tencent" {
+		t.Errorf("tencent → %q, err=%v", p, err)
+	}
 	if p, err := PluginFor("custom", "dns_he"); err != nil || p != "dns_he" {
 		t.Errorf("custom dns_he → %q, err=%v", p, err)
 	}
@@ -81,6 +84,13 @@ func TestTempEnvPath(t *testing.T) {
 func TestGetProvider(t *testing.T) {
 	if p, ok := GetProvider("dnspod"); !ok || p.Plugin != "dns_dp" || len(p.Fields) != 2 {
 		t.Errorf("dnspod provider: %+v ok=%v", p, ok)
+	}
+	p, ok := GetProvider("tencent")
+	if !ok || p.Plugin != "dns_tencent" || len(p.Fields) != 2 {
+		t.Errorf("tencent provider: %+v ok=%v", p, ok)
+	}
+	if p.Fields[0].Key != "Tencent_SecretId" || p.Fields[1].Key != "Tencent_SecretKey" {
+		t.Errorf("tencent field keys: %+v", p.Fields)
 	}
 	if _, ok := GetProvider("nope"); ok {
 		t.Error("unknown provider should not be found")

@@ -52,20 +52,20 @@ func (m *Manager) Detect(ctx context.Context, connectionID string) (models.CertE
 }
 
 // ListCerts lists the certs managed by acme.sh on the server. It parses
-// `--list`, falls back to directory enumeration when the table format is
-// unrecognised or acme.sh is not installed (the `ls` fallback with `|| true`
-// then yields an empty list instead of an error), and enriches every row
-// with `--info` renewal data.
+// `--list`, and enriches every row with `--info` renewal data. The
+// directory-enumeration fallback only runs when the `--list` table itself is
+// unrecognised (format drift or acme.sh missing) — an empty table means
+// genuinely no certs.
 func (m *Manager) ListCerts(ctx context.Context, connectionID string) ([]models.RemoteCert, error) {
 	res, err := m.Run(ctx, connectionID, BuildListCmd(), RunOptions{Timeout: seconds(timeoutQuick)})
-	certs := ParseListOutput(res.Combined)
-	if len(certs) == 0 {
+	certs, recognized := ParseListOutput(res.Combined)
+	if !recognized {
 		if err != nil && res.ExitCode < 0 {
 			// Transport-level failure (no exit status): surface it.
 			return nil, wrapStageError("list", res, err)
 		}
-		// Format drift fallback or acme.sh missing: enumerate
-		// ~/.acme.sh/<domain>[_ecc] dirs; always exits 0.
+		// Format drift or acme.sh missing: enumerate ~/.acme.sh/<domain>[_ecc]
+		// dirs; always exits 0 and yields an empty list on a fresh install.
 		dirRes, dirErr := m.Run(ctx, connectionID, BuildListDomainsCmd(), RunOptions{Timeout: seconds(timeoutQuick)})
 		if dirErr != nil {
 			return nil, wrapStageError("list", dirRes, dirErr)
