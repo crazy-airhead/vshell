@@ -36,6 +36,16 @@ async function copyLog() {
 
 <template>
   <div class="flex flex-col min-h-0 h-full">
+    <div class="flex justify-end pb-1.5">
+      <NTooltip>
+        <template #trigger>
+          <NButton size="tiny" quaternary @click="copyLog">
+            <template #icon><IconCopy :width="14" :height="14" /></template>
+          </NButton>
+        </template>
+        {{ t('certs.copyLog') }}
+      </NTooltip>
+    </div>
     <div
       ref="containerRef"
       class="flex-1 min-h-0 overflow-y-auto rounded-[var(--border-radius)] bg-[var(--bg-primary)] border border-[var(--border-color)] px-2 py-1.5"
@@ -47,16 +57,6 @@ async function copyLog() {
         v-else
         class="font-mono text-[11px] leading-[1.5] text-[var(--text-primary)] whitespace-pre-wrap break-all m-0"
       >{{ lines.join('\n') }}</pre>
-    </div>
-    <div class="flex justify-end pt-1.5">
-      <NTooltip>
-        <template #trigger>
-          <NButton size="tiny" quaternary @click="copyLog">
-            <template #icon><IconCopy :width="14" :height="14" /></template>
-          </NButton>
-        </template>
-        {{ t('certs.copyLog') }}
-      </NTooltip>
     </div>
   </div>
 </template>
