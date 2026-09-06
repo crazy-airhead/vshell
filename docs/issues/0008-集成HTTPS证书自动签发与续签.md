@@ -152,6 +152,15 @@
 - **教训**：新增剪贴板相关功能前先查 `utils/clipboard.ts`——项目已有统一封装。
 - **追加**（同日）：两个复制按钮统一放右上角（`CertLogView` 从底部移到顶部，对齐服务器日志页）。
 
+**第 6 轮**（2026-09-06，续签无法切换 DNS 提供商）
+
+- **反馈 / 触发**：用户改任务提供商后点续签，服务器日志仍 `_currentRoot='dns_dp'`，继续对 dnsapi.cn 发 AKID 凭据 → 401。
+- **根因**：acme.sh 的 `--renew` **原样复用首次签发时写入域名 conf 的 `Le_Webroot`（插件）与凭据**——对服务器上已登记的域名，`--renew` 永远无法应用 vShell 里改过的提供商/凭据，第 4 轮「续签推送凭据」的修复因此对换提供商场景完全无效（env 只影响插件内部读取，不改变用哪个插件）。
+- **处理**（提交 `a6643b9`）：续签改为走 `--issue --force`（`BuildIssueCmd` 增加 force 参数）——`--issue` 按命令行参数**重写域名 conf** 的插件与凭据，任务配置始终生效；`--force` 保证未到期也强制重签。手动「签发/重试」同样带 `--force`（否则已有未到期证书时 acme.sh 直接 Skip，配置同样不生效）。`Renew` 编排解析插件、显式重跑 install-cert 部署（不依赖 conf hook 在 `--issue` 路径下的自动行为）；`BuildRenewCmd` 删除。
+- **校验**：`go test ./...`（含 --force 出现/缺席断言）、`go build`、`go vet`、`pnpm typecheck` 全绿。
+- **给用户**：重建后编辑任务（提供商 → Tencent Cloud DNS，AKID 两串，测试模式勾选）→ 点「签发」或「续签」均可，现在两条路径都会应用 dns_tencent。操作日志出现 `dns_tencent.sh` / `dnspod.tencentcloudapi.com` 即为生效标志。
+- **遗留**：全链路待实机确认。
+
 ---
 
 ## 附录：完整需求与设计文档（登记原文，2026-09-06）
