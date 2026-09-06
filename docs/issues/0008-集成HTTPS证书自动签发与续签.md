@@ -93,10 +93,20 @@
 - **范围裁剪**：FR-2 的「网络受限 SFTP 上传离线安装包」为可选项，本轮未做。
 - **校验**：`go test ./internal/cert/`（命令构建 golden 断言含无 `--save`/无 `/root`/`--ecc` 联动/shQuote 转义，解析器竖线/定宽/空 fixture）、`go build ./...`、`go vet ./...`、`pnpm typecheck`、`pnpm build` 全部通过，0 新错。
 - **提交**：artifacts 分支 `ae89ab5`。
-- **遗留 / 待实机验收**：
-  - 需真实 Linux 服务器（或 docker ubuntu + openssh-server）+ 真实域名与 DNS API 凭据跑通：安装 → staging 签发 → 部署 → cron → 续签全链路。
-  - `acme.sh --list` 输出格式随版本漂移的实测确认（解析已有回退路径）。
-  - 非 root 用户部署到 `/etc/nginx/ssl` 的权限场景（错误会原样透出 acme.sh 输出尾部）。
+
+**第 2 轮**（2026-09-06，容器实机集成验证）
+
+- **反馈 / 触发**：按验收计划做无 GUI 的实机验证——docker 起 openssh-server 容器（Alpine 非 root + Ubuntu root 两种），以 `integration` build tag 的集成测试直连真实 sshd 跑 detect / list / exit code / stderr 分流 / 真实安装 acme.sh 全链路。
+- **根因**（发现 3 个真缺陷 + 1 个 UX 缺陷，均已修复，提交 `2c27610`）：
+  1. **runner 漏调 `sess.Start(cmd)`**（最严重）——只建 Stdout/StderrPipe 即 `Wait`，exec 请求从未发出，远程命令不执行、所有远程操作无限挂死；goroutine 堆栈定位后补上 Start。
+  2. **非零退出码未转 error**——`exit=7 err=nil`，意味着 `acme.sh --issue` 失败（DNS 凭据错误等）会被编排层当成功签发；现 exit ≠ 0 一律返回 error（Combined 输出保留供诊断）。
+  3. **`curl | sh` 管道陷阱**——curl/wget 缺失或下载失败时 `sh` 读空输入退出 0，安装"假成功"；且 get.acme.sh 引导脚本自身在缺 crontab 时打印 "Pre-check failed, cannot install" 仍退出 0。改为 `mktemp` 下载临时文件 → 校验下载退出码 → 再执行；编排层安装后复核兜底，缺 cron 场景给出明确错误提示。
+  4. **ListCerts UX**——acme.sh 未安装时 `--list` exit 127 会报错；改为目录枚举回退优雅返回空列表，仅传输级错误才上报。
+- **校验**：容器实测（Alpine 非 root：detect/列表优雅空/cron 权限错误如实透出；Ubuntu root：真实安装 acme.sh 成功、安装器自动注册 cron、`--set-default-ca` 成功、真实 `--list` 表头解析通过）；`go test ./...`、`go build`、`go vet`、`pnpm typecheck` 全绿。
+- **实测确认的 `--list` 真实格式**（acme.sh 3.x，2026-09）：Tab 分隔，列为 Main_Domain / KeyLength / SAN_Domains / **Profile** / CA / Created / Renew——比设计文档多一列 `Profile`；解析器按空白定宽切列对该格式天然兼容（域名/密钥/日期列均正确，CA 列会多带上 Profile 值，仅展示层面可忽略），已把真实表头固化为 fixture。
+- **遗留**：
+  - 完整签发仍需真实域名 + DNS API 凭据（staging `--test`），无法在容器内无域名验证——待用户提供实机验收。
+  - 非 root 部署到 `/etc/nginx/ssl` 的权限场景（错误会原样透出 acme.sh 输出尾部）。
 
 ---
 
