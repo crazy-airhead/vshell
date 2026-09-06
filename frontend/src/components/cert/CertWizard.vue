@@ -354,7 +354,9 @@ async function cancelRun() {
 
 <template>
   <NModal v-model:show="visible" preset="card" :title="t('certs.wizardTitle')" style="width: 640px" :mask-closable="false">
-    <div class="flex flex-col gap-3 min-h-[420px]">
+    <!-- Fixed-height content: log areas must be bounded so they scroll
+         instead of stretching the modal as streamed lines accumulate. -->
+    <div class="flex flex-col gap-3 h-[520px]">
       <NSteps :current="step" size="small">
         <NStep :title="t('certs.stepConnection')" />
         <NStep :title="t('certs.stepDomains')" />
@@ -363,7 +365,7 @@ async function cancelRun() {
       </NSteps>
 
       <!-- Step 1: server + environment -->
-      <div v-if="step === 1" class="flex flex-col gap-3">
+      <div v-if="step === 1" class="flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto pr-1">
         <NFormItem :label="t('portForward.connection')" label-placement="top">
           <NSelect v-model:value="connectionID" :options="connectionOptions" :placeholder="t('certs.connectionPlaceholder')" filterable />
         </NFormItem>
@@ -402,7 +404,7 @@ async function cancelRun() {
       </div>
 
       <!-- Step 2: domains + DNS -->
-      <div v-else-if="step === 2" class="flex flex-col gap-1">
+      <div v-else-if="step === 2" class="flex flex-col gap-1 flex-1 min-h-0 overflow-y-auto pr-1">
         <NFormItem :label="t('certs.taskName')" label-placement="top">
           <NInput v-model:value="form.name" :placeholder="t('certs.taskNamePlaceholder')" />
         </NFormItem>
@@ -440,7 +442,7 @@ async function cancelRun() {
       </div>
 
       <!-- Step 3: deployment -->
-      <div v-else-if="step === 3" class="flex flex-col gap-1">
+      <div v-else-if="step === 3" class="flex flex-col gap-1 flex-1 min-h-0 overflow-y-auto pr-1">
         <NCheckbox v-model:checked="form.autoInstall">{{ t('certs.autoInstall') }}</NCheckbox>
         <template v-if="form.autoInstall">
           <NFormItem :label="t('certs.certDir')" label-placement="top">
@@ -474,7 +476,7 @@ async function cancelRun() {
       </div>
 
       <!-- Step 4: run -->
-      <div v-else class="flex flex-col gap-2 min-h-[380px]">
+      <div v-else class="flex flex-col gap-2 flex-1 min-h-0">
         <template v-if="runTaskID">
           <div class="flex items-center gap-2 flex-wrap">
             <template v-if="runFinished === 'success'">
@@ -500,7 +502,7 @@ async function cancelRun() {
               </span>
             </div>
           </div>
-          <div class="flex-1 min-h-[180px]">
+          <div class="flex-1 min-h-0">
             <CertLogView :log-key="runTaskID" />
           </div>
           <div v-if="currentTask?.last_error && runFinished === 'failed'" class="text-[11px] text-[var(--color-error)] whitespace-pre-wrap break-all max-h-[80px] overflow-y-auto">
