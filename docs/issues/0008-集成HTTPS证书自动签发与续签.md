@@ -1,6 +1,6 @@
 # ISSUE-0008 — 集成 HTTPS 证书自动签发与续签（acme.sh 远程管理）
 
-> **编号**：0008　**状态**：🔴 未处理　**严重程度**：💡 体验（新功能需求，非缺陷）
+> **编号**：0008　**状态**：🟡 进行中（功能已实现，待实机验收）　**严重程度**：💡 体验（新功能需求，非缺陷）
 > **发现日期**：2026-09-06　**相关任务**：证书管理 / acme.sh 集成
 
 ## 问题描述
@@ -78,10 +78,25 @@
 
 ## 解决记录
 
-- 修复提交 / PR：
-- 改动：
-- 校验：`go build ./...` / `go vet ./...` / `pnpm typecheck` 改动文件 0 新错
-- 验收：
+**第 1 轮**（2026-09-06，功能实现）
+
+- **处理**（按「建议方案」全量落地，5 条登记评审备注逐条落实）：
+  - **后端 `internal/cert/`（新包，6 文件 + 3 测试）**：
+    - `runner.go` — 流式远程执行：`GetSSHClient` → 新 session（不申请 PTY）→ Stdout/StderrPipe 各起 goroutine 按行读 → `cert:log` 事件逐行推送 → `sess.Wait` 取退出码；取消/超时以 `sess.Close()` 兜底。
+    - `commands.go` — 纯函数命令构建：`shQuote` POSIX 单引号安全引用；`BuildIssueCmd` 为 `chmod 600 env && . env && rm -f env && acme.sh --issue … ; rc=$?; rm -f env 兜底; exit $rc`（凭据 source 后即删、失败也删、退出码保真）；`BuildInstallCertCmd`（`mkdir -p` + reloadcmd）；`BuildRenewCmd --force`；`BuildEnsureCronCmd`（`grep -q acme.sh` 缺失才补加，运行时 `$HOME`）；`BuildTailLogCmd`。acme.sh 一律 `"$HOME"/.acme.sh/acme.sh` 绝对路径（备注 2），**无 `--save`**（备注 1，核实官方 README 确认该参数不存在，凭据首次调用 DNS API 自动写入 `account.conf`），ECC 密钥自动附 `--ecc`，issue/renew 带 `--log` 支撑 FR-7。
+    - `parser.go` — 宽容解析：`--list` 兼容竖线/多空格两种版式、找不到表头返回空不报错，格式漂移时回退 `ls ~/.acme.sh/*/` 目录枚举；`--info` key=value 解析（剥引号，`Le_NextRenewTime` epoch → 剩余天数）；检测脚本 `vshell:key=value` 行解析。
+    - `dnsproviders.go` — 注册表：aliyun(dns_ali)/dnspod(dns_dp)/cloudflare(dns_cf)/custom（自填 `dns_xx` 插件名 + 任意 env 键值对）；`ValidateCredentials` 校验必填项与 env 键名合法性（防注入）；`BuildEnvFileContent` 生成 `export KEY='value'`；临时文件 `/tmp/.vshell_acme_<uuid>.env` 随机名。
+    - `manager.go` + `issue.go` — 编排状态机：detect →（未装则装 + `--set-default-ca --server letsencrypt`）→ SFTP 上传凭据 → issue（20min 超时）→（auto_install：install-cert）→ cron 检查补加（备注 5）→ done；每步 emit `cert:stage`，命令输出逐行 emit `cert:log`。`Renew`/`Remove`/`InstallAcmeSh` 同构。
+  - **后端模型/绑定**：`internal/models/cert.go`（CertTask/CertTaskForm 读写分离、凭据字段 `json:"-"`）；`db/migrations.go` 追加 `cert_tasks` 表；`internal/app/cert.go` 同步方法（ListCertTasks/Create/Update/Delete/GetCertTaskCredentials/ListDNSProviders/DetectCertEnvironment/ListRemoteCerts/GetCertServerLog/CancelCertOp）+ 异步方法（StartAcmeShInstall/StartCertIssue/StartCertRenew/StartCertRemove：goroutine + 事件，IsRunning 防重入，收尾更新 last_status 并 emit `cert:task-updated`）。凭据 AES-256-GCM 加密落库、复用 `db.Crypto()`（备注 3，未引入 go-keyring）。启动时 `resetInterruptedCertTasks` 把卡在 running 的任务复位为 failed。
+  - **前端**：`stores/cert.ts`（`cert:log/cert:stage/cert:task-updated/cert:task-deleted/cert:op-done` 一次性订阅守卫，日志 cap 2000 行）；`components/cert/` 五组件——CertPanel（按连接分组列表、状态/剩余天数 NTag、<30 天黄色提示、行内续签/日志/编辑/移除/删除）、CertWizard（NSteps 四步：连接+环境检测+在线装 acme.sh→域名+DNS 凭据（数据驱动表单，custom 自填）→部署设置（certDir/文件名/reloadcmd preset：nginx/apache/caddy/自定义；高级折叠含 keyLength/dnsSleep/**testMode 默认开**走 staging）→执行+阶段进度+实时日志+失败重试）、CertEditModal（凭据留空=保留，reveal 按钮解密回显）、CertLogModal（本地操作日志 + 服务器 acme.sh.log 双页签）、CertLogView；入口 3 处（layout.ts `'certs'`、ActivityBar shield-check 图标、App.vue 条件渲染）；i18n en/zh-CN `certs` 块 ~70 key 对齐。
+- **评审备注落实**：1 无 `--save`（参数已对照官方 README 核实）；2 无 `/root` 硬编码（单测断言）；3 复用 `internal/crypto`；4 长流程全部走 Events（签发含 DNS 等待最长 20min，不阻塞 UI，可取消）；5 cron 仅检查补加。
+- **范围裁剪**：FR-2 的「网络受限 SFTP 上传离线安装包」为可选项，本轮未做。
+- **校验**：`go test ./internal/cert/`（命令构建 golden 断言含无 `--save`/无 `/root`/`--ecc` 联动/shQuote 转义，解析器竖线/定宽/空 fixture）、`go build ./...`、`go vet ./...`、`pnpm typecheck`、`pnpm build` 全部通过，0 新错。
+- **提交**：artifacts 分支 `ae89ab5`。
+- **遗留 / 待实机验收**：
+  - 需真实 Linux 服务器（或 docker ubuntu + openssh-server）+ 真实域名与 DNS API 凭据跑通：安装 → staging 签发 → 部署 → cron → 续签全链路。
+  - `acme.sh --list` 输出格式随版本漂移的实测确认（解析已有回退路径）。
+  - 非 root 用户部署到 `/etc/nginx/ssl` 的权限场景（错误会原样透出 acme.sh 输出尾部）。
 
 ---
 
