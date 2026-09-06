@@ -150,6 +150,7 @@
 - **反馈 / 触发**：「日志复制报错 NotAllowedError: The request is not allowed by the user agent or the platform…」——Wails 的 WKWebView 中 `navigator.clipboard.writeText` 即使在用户手势内也会被拒。
 - **处理**（提交 `3d667e6`）：证书日志窗口改为复用项目现成的 `utils/clipboard.writeClipboard`（问题 0004 已为此建立：Wails 原生 `Clipboard.SetText` 优先、web API 兜底），不再各自调用 `navigator.clipboard`；复制失败给出明确 toast（新增 `certs.copyFailed` 文案）。
 - **教训**：新增剪贴板相关功能前先查 `utils/clipboard.ts`——项目已有统一封装。
+- **追加**（同日）：两个复制按钮统一放右上角（`CertLogView` 从底部移到顶部，对齐服务器日志页）。
 
 ---
 
