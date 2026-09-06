@@ -178,6 +178,12 @@
 - **校验**：`go test ./...`、`go build`、`go vet`、bindings 再生成、`pnpm typecheck`、`pnpm build` 全绿。
 - **遗留**：全链路待实机确认。
 
+**验收进展**（2026-09-06 17:43，zai500.com 实机签发成功）
+
+- **签发链路全部打通**：dns_tencent（腾讯云 SecretId/SecretKey）验证通过 → Let's Encrypt **生产环境**签发成功（90 天，至 2026-12-05）→ 证书/私钥部署至 `/etc/nginx/ssl/zai500.com.{crt,key}` → acme.sh 已注册 cron 自动续签。问题 0008 的核心链路（FR-1~FR-6）实机验证通过。
+- **残留一项环境问题（非本功能缺陷）**：服务器无 systemd `nginx.service`（`Unit not found`），reload 命令失败导致任务状态显示 failed（证书本体已就位不受影响）——待用户确认服务器 web 服务形态（docker / 服务名不同 / 未装）后修改任务的 reload 命令。
+- 提醒已告知用户：该次签发走的**生产环境**（测试模式未勾选），LE 对同域名 168 小时内最多 5 张重复证书，后续调试应走 staging。
+
 ---
 
 ## 附录：完整需求与设计文档（登记原文，2026-09-06）
