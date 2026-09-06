@@ -33,6 +33,8 @@ A desktop SSH client management tool built with **Wails 3** (Go + Vue 3). A pure
 
 ## Development
 
+> **Workspace / artifacts split**: source code lives on the `artifacts` branch, checked out as the sibling worktree `../vshell-artifacts`. This `main` branch holds only docs and Claude/skills config — run the commands below in the artifacts worktree.
+
 ```bash
 # Install Wails 3 CLI
 go install github.com/wailsapp/wails/v3/cmd/wails3@latest
@@ -54,8 +56,10 @@ npm run dev          # Start Vite dev server on port 9245
 
 ## Project Structure
 
+The repo is split in two: `main` (this workspace) holds `docs/` and `skills/`; the `artifacts` branch (`../vshell-artifacts` worktree) holds the source:
+
 ```
-vshell/
+vshell-artifacts/
 ├── main.go                  # Application entry point, window config, native menu
 ├── build/
 │   └── config.yml           # Wails 3 build configuration
@@ -77,7 +81,6 @@ vshell/
 │       ├── styles/          # Global CSS with theme variables
 │       ├── types/           # TypeScript type definitions
 │       └── utils/           # Utility functions
-└── doc/                     # Architecture documentation
 ```
 
 ## Database

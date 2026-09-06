@@ -1,12 +1,6 @@
-.task
-bin
-frontend/dist
-frontend/node_modules
 node_modules
 docs/.vitepress/dist
 docs/.vitepress/cache
-build/linux/appimage/build
-build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 .DS_Store
 .idea/
 *.swp

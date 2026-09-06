@@ -6,7 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 vShell is a desktop SSH client management tool (similar to FinalShell) built with **Wails 3** (Go backend + Vue 3 frontend). It is a **purely local application** — no cloud/server components.
 
+## Workspace / Artifacts Split
+
+This repository uses a split workflow:
+
+- **Workspace** — this checkout, `main` branch: design docs (`docs/`), skills (`skills/`), and Claude config only. No source code.
+- **Artifacts** — `artifacts` branch, checked out as the sibling worktree `../vshell-artifacts`: application source only (`internal/`, `frontend/`, `build/`, `main.go`, `go.mod`). No design docs.
+
+All code changes happen in `../vshell-artifacts`; design docs and issue tracking happen here. The architecture described below refers to the code in the artifacts worktree.
+
 ## Development Commands
+
+> Application commands below run in the artifacts worktree (`../vshell-artifacts`). Docs commands run in this workspace: `cd docs && pnpm dev`.
 
 This project uses **pnpm** for frontend package management (declared in `frontend/package.json` → `packageManager`). `wails3 dev` / `wails3 build` auto-detect the runner from the lockfile, so keep `pnpm-lock.yaml` (not `package-lock.json`).
 

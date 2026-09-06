@@ -1,6 +1,6 @@
 # 构建与开发环境
 
-本文记录 vShell 的工具链、构建任务与开发工作流。项目结构分三层：**Go 后端**（`internal/`）、**Vue 3 前端**（`frontend/`，独立 pnpm 项目）、**文档站**（`docs/`，独立 pnpm 项目）。
+本文记录 vShell 的工具链、构建任务与开发工作流。仓库采用**工作区/制品区分离**：`main` 分支（工作区）只含文档站与设计文档；应用源码在 `artifacts` 分支，检出为同级 worktree `../vshell-artifacts`。项目结构分三层：**Go 后端**（`internal/`）、**Vue 3 前端**（`frontend/`，独立 pnpm 项目）、**文档站**（`docs/`，独立 pnpm 项目）。
 
 ---
 
@@ -13,11 +13,13 @@
 | Node.js | 20+ | 前端与文档站 |
 | pnpm | 9+ | `frontend/package.json` 与 `docs/package.json` 各自声明 `packageManager` |
 | SQLite | modernc.org/sqlite | 纯 Go 驱动，**无 CGO** |
-| Task | [go-task/task](https://taskfile.dev) | 构建任务入口（`Taskfile.yml`） |
+| Task | [go-task/task](https://taskfile.dev) | 构建任务入口（制品区 `Taskfile.yml`） |
 
 > **为什么是 pnpm 而不是 npm**：`wails3 build` 依据 lockfile 自动选择前端包管理器，仓库必须携带 `pnpm-lock.yaml`（见 `frontend/`）。文档站同样使用 pnpm。
 
 ## 2. 常用命令
+
+> 应用开发、前端、Go 后端的命令在**制品区** `../vshell-artifacts`（`artifacts` 分支）执行；文档站命令在**工作区**（本目录）执行。
 
 ### 应用开发
 
@@ -46,28 +48,21 @@ go test ./...
 go vet ./...
 ```
 
-### 文档站（docs/，独立 pnpm 项目）
-
-```bash
-wails3 task docs:install    # 安装文档站依赖（等价 cd docs && pnpm install）
-wails3 task docs:dev        # VitePress 开发服务器
-wails3 task docs:build      # 构建到 docs/.vitepress/dist
-wails3 task docs:preview    # 本地预览构建产物
-```
-
-也直接用 pnpm：
+### 文档站（docs/，独立 pnpm 项目，工作区执行）
 
 ```bash
 cd docs
-pnpm install
-pnpm dev / build / preview
+pnpm install             # 安装依赖
+pnpm dev                 # VitePress 开发服务器
+pnpm build               # 构建到 docs/.vitepress/dist
+pnpm preview             # 本地预览构建产物
 ```
 
 ## 3. 构建配置文件
 
 | 文件 | 职责 |
 |------|------|
-| `Taskfile.yml` | 顶层任务（build / dev / run / docs:*），include `build/Taskfile.yml` 等 |
+| `Taskfile.yml` | 制品区顶层任务（build / dev / run / package 等），include `build/Taskfile.yml` 等 |
 | `build/Taskfile.yml` | 通用任务：前端依赖安装与构建（`dir: frontend`）、bindings 生成 |
 | `build/config.yml` | Wails 3 项目信息（productName: vShell、identifier: `dev.vshell.app`）与 dev_mode 配置 |
 | `main.go` | 窗口选项（`application.Options`）与服务注册 |
@@ -79,10 +74,11 @@ pnpm dev / build / preview
 仓库内有两个相互独立的 pnpm 项目，**均不在仓库根**：
 
 ```text
-vshell/
-├── frontend/          # 前端：package.json + pnpm-lock.yaml
-├── docs/              # 文档站：package.json + pnpm-lock.yaml + pnpm-workspace.yaml
-└── （根目录无 package.json / pnpm-workspace.yaml）
+vshell/                # 工作区（main）：根目录无 package.json / pnpm-workspace.yaml
+└── docs/              # 文档站：package.json + pnpm-lock.yaml + pnpm-workspace.yaml
+
+vshell-artifacts/      # 制品区（artifacts 分支）
+└── frontend/          # 前端：package.json + pnpm-lock.yaml
 ```
 
 - 根目录**不放** `pnpm-workspace.yaml`：一旦存在，`frontend/` 内执行的 `pnpm install` 会被重定向到 workspace 根，破坏 `wails3 build` 的前端构建
@@ -92,7 +88,7 @@ vshell/
 
 文档站由 GitHub Actions 自动部署（`.github/workflows/docs.yml`）：
 
-- 触发条件：`main` 分支上 `docs/**`、`Taskfile.yml` 或 workflow 文件变更，或手动触发
+- 触发条件：`main` 分支上 `docs/**` 或 workflow 文件变更，或手动触发
 - 流程：`pnpm install --frozen-lockfile` → `vitepress build` → 发布到 `gh-pages` 分支（孤儿分支，删除的页面会同步消失）
 - 访问地址：<https://crazy-airhead.github.io/vshell/>
 
