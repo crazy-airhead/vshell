@@ -211,15 +211,15 @@ func (m *Manager) Issue(ctx context.Context, conn *models.Connection, task *mode
 		// itself (sourced then deleted; a trailing rm guards the failure
 		// paths).
 		m.stage(taskID, "", connectionID, StageIssue, "start", "")
-		_, err = m.stream(ctx, connectionID, taskID, "", StageIssue, BuildIssueCmd(envFile, task, plugin), timeoutIssue)
+		_, err = m.stream(ctx, connectionID, taskID, "", StageIssue, BuildIssueCmd(envFile, task, plugin, true), timeoutIssue)
 		if err != nil {
 			return fail(err)
 		}
 	} else {
-		// Renewal-style re-issue: credentials already persisted by acme.sh
-		// in account.conf, no temporary file needed.
+		// Re-issue with credentials already persisted by acme.sh in
+		// account.conf, no temporary file needed.
 		m.stage(taskID, "", connectionID, StageIssue, "start", "")
-		if _, err := m.stream(ctx, connectionID, taskID, "", StageIssue, BuildIssueCmd("", task, plugin), timeoutIssue); err != nil {
+		if _, err := m.stream(ctx, connectionID, taskID, "", StageIssue, BuildIssueCmd("", task, plugin, true), timeoutIssue); err != nil {
 			return fail(err)
 		}
 	}
@@ -244,16 +244,23 @@ func (m *Manager) Issue(ctx context.Context, conn *models.Connection, task *mode
 	return nil
 }
 
-// Renew forces an immediate renewal. acme.sh re-runs the saved install-cert
-// and reload command automatically. Task credentials, when present, are
-// pushed via a temporary env file so the renewal heals stale server-side
-// credentials (a failed earlier issue may have persisted wrong ones).
+// Renew forces an immediate re-issue. It deliberately uses the --issue flow
+// (not `--renew`): --renew replays the DNS plugin saved in the server-side
+// domain conf at first-issue time, so a provider/credential change in
+// vShell would never reach the server for an already-registered domain.
+// --issue --force re-applies the task's current plugin and credentials and
+// rewrites the conf. Task credentials are pushed via a temporary env file.
 func (m *Manager) Renew(ctx context.Context, conn *models.Connection, task *models.CertTask, creds map[string]string) error {
 	connectionID := conn.ID
 	taskID := task.ID
 	fail := func(err error) error {
 		m.stage(taskID, "", connectionID, StageRenew, "fail", err.Error())
 		return err
+	}
+
+	plugin, err := PluginFor(task.DNSProvider, task.DNSPlugin)
+	if err != nil {
+		return fail(err)
 	}
 
 	env, err := m.Detect(ctx, connectionID)
@@ -280,10 +287,20 @@ func (m *Manager) Renew(ctx context.Context, conn *models.Connection, task *mode
 	}
 
 	m.stage(taskID, "", connectionID, StageRenew, "start", "")
-	if _, err := m.stream(ctx, connectionID, taskID, "", StageRenew, BuildRenewCmd(envFile, task), timeoutIssue); err != nil {
+	if _, err := m.stream(ctx, connectionID, taskID, "", StageRenew, BuildIssueCmd(envFile, task, plugin, true), timeoutIssue); err != nil {
 		return fail(err)
 	}
 	m.stage(taskID, "", connectionID, StageRenew, "ok", "")
+
+	// The saved install hook may only auto-run on --renew; make deployment
+	// explicit so a forced re-issue always refreshes the installed files.
+	if task.AutoInstall && task.CertDir != "" && task.KeyFile != "" && task.FullchainFile != "" {
+		m.stage(taskID, "", connectionID, StageInstallCert, "start", "")
+		if _, err := m.stream(ctx, connectionID, taskID, "", StageInstallCert, BuildInstallCertCmd(task), timeoutInstallCert); err != nil {
+			return fail(err)
+		}
+		m.stage(taskID, "", connectionID, StageInstallCert, "ok", "")
+	}
 
 	if err := m.ensureCronStage(ctx, connectionID, taskID); err != nil {
 		return fail(err)

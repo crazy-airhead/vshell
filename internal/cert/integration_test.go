@@ -183,7 +183,7 @@ func TestIntegrationIssueCmdShape(t *testing.T) {
 	// references a missing env file (chmod fails) — proves the rc=$?/exit
 	// chain works under a real shell.
 	task := newTestTask()
-	res, err := run(t, client, BuildIssueCmd("/tmp/.vshell_acme_missing.env", task, "dns_cf"), 60*time.Second)
+	res, err := run(t, client, BuildIssueCmd("/tmp/.vshell_acme_missing.env", task, "dns_cf", false), 60*time.Second)
 	if err == nil || res.ExitCode == 0 {
 		t.Errorf("issue with missing env file should fail, got exit=%d err=%v", res.ExitCode, err)
 	}

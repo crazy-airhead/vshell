@@ -58,7 +58,7 @@ func TestBuildIssueCmd(t *testing.T) {
 		KeyLength:     "ec-256",
 		DNSSleep:      120,
 	}
-	cmd := BuildIssueCmd("/tmp/.vshell_acme_abc.env", task, "dns_cf")
+	cmd := BuildIssueCmd("/tmp/.vshell_acme_abc.env", task, "dns_cf", true)
 
 	for _, want := range []string{
 		`f='/tmp/.vshell_acme_abc.env'`,
@@ -71,6 +71,7 @@ func TestBuildIssueCmd(t *testing.T) {
 		`--dnssleep 120`,
 		`--server letsencrypt`,
 		`--log`,
+		` --force`,
 		`; rc=$?; rm -f "$f" 2>/dev/null; exit $rc`,
 	} {
 		if !strings.Contains(cmd, want) {
@@ -88,8 +89,11 @@ func TestBuildIssueCmd(t *testing.T) {
 	}
 
 	task.TestMode = true
-	if !strings.Contains(BuildIssueCmd("/tmp/x.env", task, "dns_ali"), "--test") {
+	if !strings.Contains(BuildIssueCmd("/tmp/x.env", task, "dns_ali", true), "--test") {
 		t.Error("issue cmd must contain --test when TestMode is true")
+	}
+	if strings.Contains(BuildIssueCmd("", task, "dns_ali", false), "--force") {
+		t.Error("issue cmd must not contain --force when force is false")
 	}
 }
 
@@ -128,28 +132,7 @@ func TestBuildInstallCertCmd(t *testing.T) {
 	}
 }
 
-func TestBuildRenewAndRemoveCmd(t *testing.T) {
-	task := &models.CertTask{PrimaryDomain: "example.com", KeyLength: "ec-384"}
-	renew := BuildRenewCmd("", task)
-	for _, want := range []string{`--renew`, `-d 'example.com'`, `--force`, ` --ecc`, `--log`} {
-		if !strings.Contains(renew, want) {
-			t.Errorf("renew cmd missing %q: %s", want, renew)
-		}
-	}
-
-	// With an env file, credentials are sourced and cleaned up like issue.
-	renewEnv := BuildRenewCmd("/tmp/.vshell_acme_env", task)
-	for _, want := range []string{
-		`f='/tmp/.vshell_acme_env'`,
-		`chmod 600 "$f" && . "$f" && rm -f "$f"`,
-		`--renew -d 'example.com' --force --ecc --log`,
-		`; rc=$?; rm -f "$f" 2>/dev/null; exit $rc`,
-	} {
-		if !strings.Contains(renewEnv, want) {
-			t.Errorf("renew-with-env cmd missing %q:\n%s", want, renewEnv)
-		}
-	}
-
+func TestBuildRemoveCmd(t *testing.T) {
 	remove := BuildRemoveCmd("example.com", true)
 	if !strings.Contains(remove, `--remove -d 'example.com' --ecc`) {
 		t.Errorf("unexpected remove cmd: %s", remove)

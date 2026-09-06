@@ -67,9 +67,13 @@ func BuildSetDefaultCACmd() string {
 // no --save flag), so later cron renewals work unattended. The trailing
 // rc=$?/rm/exit chain guarantees cleanup and exit-code fidelity even when
 // sourcing or chmod fails. An empty envFile skips the credential part
-// entirely (re-issue relying on credentials already stored in account.conf).
-func BuildIssueCmd(envFile string, t *models.CertTask, plugin string) string {
-	args := buildIssueArgs(t, plugin)
+// entirely (relying on credentials already stored in account.conf). With
+// force the command carries --force: manual runs must re-apply even when a
+// cert is not yet due — and, critically, --issue (unlike --renew) re-applies
+// the given --dns plugin, overwriting the provider recorded in the domain
+// conf at first-issue time.
+func BuildIssueCmd(envFile string, t *models.CertTask, plugin string, force bool) string {
+	args := buildIssueArgs(t, plugin, force)
 	if envFile == "" {
 		return acmeSh + " " + args
 	}
@@ -77,7 +81,7 @@ func BuildIssueCmd(envFile string, t *models.CertTask, plugin string) string {
 		"rc=$?; rm -f \"$f\" 2>/dev/null; exit $rc", shQuote(envFile), acmeSh, args)
 }
 
-func buildIssueArgs(t *models.CertTask, plugin string) string {
+func buildIssueArgs(t *models.CertTask, plugin string, force bool) string {
 	var b strings.Builder
 	b.WriteString("--issue")
 	fmt.Fprintf(&b, " --dns %s", shQuote(plugin))
@@ -88,6 +92,9 @@ func buildIssueArgs(t *models.CertTask, plugin string) string {
 	fmt.Fprintf(&b, " --keylength %s", shQuote(t.KeyLength))
 	fmt.Fprintf(&b, " --dnssleep %d", t.DNSSleep)
 	b.WriteString(" --server letsencrypt --log")
+	if force {
+		b.WriteString(" --force")
+	}
 	if t.TestMode {
 		b.WriteString(" --test")
 	}
@@ -114,29 +121,11 @@ func BuildInstallCertCmd(t *models.CertTask) string {
 	return b.String()
 }
 
-// BuildRenewCmd forces a renewal now. If install-cert was configured, acme.sh
-// re-deploys the files and runs the reload command by itself. An optional
-// envFile sources the task's DNS credentials first: acme.sh dns plugins read
-// env vars before account.conf, so a renewal also heals stale server-side
-// credentials after an edit (otherwise a renewal keeps replaying whatever
-// wrong credentials a failed earlier issue persisted). Empty envFile = bare
-// renew relying on account.conf.
-func BuildRenewCmd(envFile string, t *models.CertTask) string {
-	var b strings.Builder
-	b.WriteString(acmeSh)
-	b.WriteString(" --renew")
-	fmt.Fprintf(&b, " -d %s", shQuote(t.PrimaryDomain))
-	b.WriteString(" --force")
-	if isECC(t.KeyLength) {
-		b.WriteString(" --ecc")
-	}
-	b.WriteString(" --log")
-	if envFile == "" {
-		return b.String()
-	}
-	return fmt.Sprintf("f=%s; chmod 600 \"$f\" && . \"$f\" && rm -f \"$f\" && %s; "+
-		"rc=$?; rm -f \"$f\" 2>/dev/null; exit $rc", shQuote(envFile), b.String())
-}
+// BuildRenewCmd was removed: `acme.sh --renew` replays the DNS plugin saved
+// in the domain conf at first-issue time (Le_Webroot), so changing the
+// provider in vShell never took effect on already-registered domains.
+// Renewals now go through BuildIssueCmd with force=true, which re-applies
+// the task's current plugin and credentials and rewrites the conf.
 
 // BuildRemoveCmd drops a domain from acme.sh's renewal list. Certificate
 // files on disk (both ~/.acme.sh and installed copies) are kept.
