@@ -283,6 +283,7 @@ export default {
     statusIssued: 'Issued',
     statusFailed: 'Failed',
     daysLeft: '{n} days left',
+    autoRenewIn: 'auto-renews in {n} days',
     expired: 'Expired',
     unknownExpiry: 'Expiry unknown',
     expiringSoon: 'Expiring soon',

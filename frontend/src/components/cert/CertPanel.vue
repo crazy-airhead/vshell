@@ -68,21 +68,31 @@ function statusLabel(task: CertTask): string {
   }
 }
 
+// Expiry tag shows the REAL certificate expiry (from the stored cert file),
+// not acme.sh's next-renewal date — ARI moves the renewal point to ~1/3 of
+// the lifetime, which would otherwise read as "expiring soon" on day one.
 function expiry(task: CertTask): { text: string; type: 'default' | 'success' | 'warning' | 'error' } {
   const remote = certStore.remoteForTask(task)
   if (!remote) {
     return { text: t('certs.remoteMissing'), type: 'default' }
   }
-  if (remote.days_left == null) {
+  if (remote.days_to_expiry == null) {
     return { text: t('certs.unknownExpiry'), type: 'default' }
   }
-  if (remote.days_left < 0) {
+  if (remote.days_to_expiry < 0) {
     return { text: t('certs.expired'), type: 'error' }
   }
-  if (remote.days_left < 30) {
-    return { text: t('certs.expiringSoon') + ` (${t('certs.daysLeft', { n: remote.days_left })})`, type: 'warning' }
+  if (remote.days_to_expiry < 30) {
+    return { text: t('certs.expiringSoon') + ` (${t('certs.daysLeft', { n: remote.days_to_expiry })})`, type: 'warning' }
   }
-  return { text: t('certs.daysLeft', { n: remote.days_left }), type: 'success' }
+  return { text: t('certs.daysLeft', { n: remote.days_to_expiry }), type: 'success' }
+}
+
+// Secondary hint: when the server's cron will renew (much earlier than expiry).
+function renewHint(task: CertTask): string {
+  const remote = certStore.remoteForTask(task)
+  if (!remote || remote.days_left == null || remote.days_left < 0) return ''
+  return t('certs.autoRenewIn', { n: remote.days_left })
 }
 
 function domainsText(task: CertTask): string {
@@ -182,6 +192,7 @@ onMounted(() => {
               <div class="text-[11px] text-[var(--text-secondary)] truncate">
                 {{ task.auto_install ? `${task.cert_dir}/${task.key_file ? task.key_file : ''}` : t('certs.stepInstall') + ' · acme.sh' }}
                 <span v-if="task.reload_cmd"> · {{ task.reload_cmd }}</span>
+                <span v-if="renewHint(task)"> · {{ renewHint(task) }}</span>
               </div>
               <div v-if="task.last_status === 'failed' && task.last_error" class="text-[11px] text-[var(--color-error)] truncate" :title="task.last_error">
                 {{ task.last_error.split('\n')[0] }}

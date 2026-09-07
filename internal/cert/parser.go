@@ -238,6 +238,25 @@ func DaysLeft(unixSeconds int64, now time.Time) *int {
 	return &days
 }
 
+// ParseExpiryOutput parses `openssl x509 -enddate` output
+// ("notAfter=Dec  5 08:44:56 2026 GMT") into an epoch timestamp; 0 when
+// unavailable.
+func ParseExpiryOutput(output string) int64 {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		const prefix = "notAfter="
+		if !strings.HasPrefix(line, prefix) {
+			continue
+		}
+		t, err := time.Parse("Jan _2 15:04:05 2006 MST", strings.TrimSpace(strings.TrimPrefix(line, prefix)))
+		if err != nil {
+			return 0
+		}
+		return t.Unix()
+	}
+	return 0
+}
+
 func unquote(s string) string {
 	if len(s) >= 2 {
 		if (s[0] == '\'' && s[len(s)-1] == '\'') || (s[0] == '"' && s[len(s)-1] == '"') {

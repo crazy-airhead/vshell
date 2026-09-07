@@ -283,6 +283,7 @@ export default {
     statusIssued: '已签发',
     statusFailed: '失败',
     daysLeft: '剩余 {n} 天',
+    autoRenewIn: '{n} 天后自动续签',
     expired: '已过期',
     unknownExpiry: '到期时间未知',
     expiringSoon: '即将到期',

@@ -266,6 +266,8 @@ export interface RemoteCert {
   renew: string
   next_renew_time: number
   days_left: number | null
+  expires_at: number
+  days_to_expiry: number | null
   ecc: boolean
 }
 

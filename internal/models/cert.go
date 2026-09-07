@@ -61,7 +61,10 @@ type CertTaskForm struct {
 }
 
 // RemoteCert is one row of `acme.sh --list` output, optionally enriched with
-// `--info` data (NextRenewTime/DaysLeft).
+// `--info` data and the real certificate expiry. DaysLeft/DaysToExpiry are
+// distinct: acme.sh renews early (ARI suggests a window around 1/3 of the
+// cert lifetime), so the renewal countdown is much shorter than the expiry
+// countdown and the two must not be conflated in the UI.
 type RemoteCert struct {
 	MainDomain    string   `json:"main_domain"`
 	KeyLength     string   `json:"key_length"`
@@ -70,7 +73,9 @@ type RemoteCert struct {
 	Created       string   `json:"created"`
 	Renew         string   `json:"renew"`
 	NextRenewTime int64    `json:"next_renew_time"` // epoch seconds, 0 = unknown
-	DaysLeft      *int     `json:"days_left"`       // nil = unknown
+	DaysLeft      *int     `json:"days_left"`       // days until next renewal; nil = unknown
+	ExpiresAt     int64    `json:"expires_at"`      // real cert notAfter, epoch seconds, 0 = unknown
+	DaysToExpiry  *int     `json:"days_to_expiry"`  // days until the cert actually expires; nil = unknown
 	ECC           bool     `json:"ecc"`
 }
 

@@ -210,6 +210,22 @@ func TestParseAcmeDirsOutput(t *testing.T) {
 	}
 }
 
+func TestParseExpiryOutput(t *testing.T) {
+	ts := ParseExpiryOutput("notAfter=Dec  5 08:44:56 2026 GMT\n")
+	if ts == 0 {
+		t.Fatal("want parsed timestamp, got 0")
+	}
+	want := time.Date(2026, 12, 5, 8, 44, 56, 0, time.UTC)
+	if ts != want.Unix() {
+		t.Errorf("timestamp = %d, want %d (openssl GMT parses as UTC)", ts, want.Unix())
+	}
+	for _, out := range []string{"", "vshell:expiry=none\n", "random text\n", "notAfter=not a date\n"} {
+		if got := ParseExpiryOutput(out); got != 0 {
+			t.Errorf("ParseExpiryOutput(%q) = %d, want 0", out, got)
+		}
+	}
+}
+
 func TestDaysLeft(t *testing.T) {
 	now := time.Unix(1700000000, 0)
 	if d := DaysLeft(0, now); d != nil {

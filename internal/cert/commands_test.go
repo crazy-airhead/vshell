@@ -132,6 +132,24 @@ func TestBuildInstallCertCmd(t *testing.T) {
 	}
 }
 
+func TestBuildCertExpiryCmd(t *testing.T) {
+	cmd := BuildCertExpiryCmd("example.com", true)
+	for _, want := range []string{
+		`d="$HOME"/.acme.sh/'example.com'_ecc`,
+		`[ -f "$d/fullchain.cer" ] || d="${d%%_ecc}"`,
+		`openssl x509 -noout -enddate -in "$d/fullchain.cer"`,
+		`vshell:expiry=none`,
+	} {
+		if !strings.Contains(cmd, want) {
+			t.Errorf("expiry cmd missing %q:\n%s", want, cmd)
+		}
+	}
+	plain := BuildCertExpiryCmd("example.com", false)
+	if !strings.Contains(plain, `d="$HOME"/.acme.sh/'example.com'; `) {
+		t.Errorf("RSA expiry cmd should reference the plain dir: %s", plain)
+	}
+}
+
 func TestBuildRemoveCmd(t *testing.T) {
 	remove := BuildRemoveCmd("example.com", true)
 	if !strings.Contains(remove, `--remove -d 'example.com' --ecc`) {

@@ -80,13 +80,21 @@ func (m *Manager) enrichWithInfo(ctx context.Context, connectionID string, certs
 	now := time.Now()
 	for i := range certs {
 		info, err := m.CertInfo(ctx, connectionID, certs[i].MainDomain, certs[i].ECC)
-		if err != nil || info == nil {
-			continue
+		if err == nil && info != nil {
+			certs[i].NextRenewTime = info.NextRenewTime
+			certs[i].DaysLeft = DaysLeft(info.NextRenewTime, now)
+			if certs[i].CA == "" && info.Fields["Le_API"] != "" {
+				certs[i].CA = caNameFromAPI(info.Fields["Le_API"])
+			}
 		}
-		certs[i].NextRenewTime = info.NextRenewTime
-		certs[i].DaysLeft = DaysLeft(info.NextRenewTime, now)
-		if certs[i].CA == "" && info.Fields["Le_API"] != "" {
-			certs[i].CA = caNameFromAPI(info.Fields["Le_API"])
+		// The real expiry, from the stored certificate itself — renewal
+		// dates (above) run ~1/3 into the lifetime and are not the expiry.
+		res, err := m.Run(ctx, connectionID, BuildCertExpiryCmd(certs[i].MainDomain, certs[i].ECC), RunOptions{Timeout: seconds(timeoutInfo)})
+		if err == nil {
+			if expiresAt := ParseExpiryOutput(res.Combined); expiresAt > 0 {
+				certs[i].ExpiresAt = expiresAt
+				certs[i].DaysToExpiry = DaysLeft(expiresAt, now)
+			}
 		}
 	}
 }

@@ -142,6 +142,20 @@ func BuildListCmd() string {
 	return acmeSh + " --list"
 }
 
+// BuildCertExpiryCmd reads the real notAfter date from the stored fullchain
+// file (prefers the layout matching the ecc flag, falls back to the other).
+// acme.sh's renewal dates (Le_NextRenewTime) are NOT the expiry: ARI moves
+// the renewal point to ~1/3 of the cert lifetime, so the UI must show the
+// actual expiry separately.
+func BuildCertExpiryCmd(domain string, ecc bool) string {
+	suffix := ""
+	if ecc {
+		suffix = "_ecc"
+	}
+	return fmt.Sprintf(`d="$HOME"/.acme.sh/%s%s; [ -f "$d/fullchain.cer" ] || d="${d%%%%_ecc}"; `, shQuote(domain), suffix) +
+		`openssl x509 -noout -enddate -in "$d/fullchain.cer" 2>/dev/null || echo "vshell:expiry=none"`
+}
+
 // BuildInfoCmd prints the domain.conf key=value pairs for one cert.
 func BuildInfoCmd(domain string, ecc bool) string {
 	cmd := acmeSh + " --info -d " + shQuote(domain)

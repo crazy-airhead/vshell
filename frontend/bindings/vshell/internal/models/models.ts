@@ -655,7 +655,10 @@ export class QuickCommand {
 
 /**
  * RemoteCert is one row of `acme.sh --list` output, optionally enriched with
- * `--info` data (NextRenewTime/DaysLeft).
+ * `--info` data and the real certificate expiry. DaysLeft/DaysToExpiry are
+ * distinct: acme.sh renews early (ARI suggests a window around 1/3 of the
+ * cert lifetime), so the renewal countdown is much shorter than the expiry
+ * countdown and the two must not be conflated in the UI.
  */
 export class RemoteCert {
     "main_domain": string;
@@ -671,9 +674,19 @@ export class RemoteCert {
     "next_renew_time": number;
 
     /**
-     * nil = unknown
+     * days until next renewal; nil = unknown
      */
     "days_left": number | null;
+
+    /**
+     * real cert notAfter, epoch seconds, 0 = unknown
+     */
+    "expires_at": number;
+
+    /**
+     * days until the cert actually expires; nil = unknown
+     */
+    "days_to_expiry": number | null;
     "ecc": boolean;
 
     /** Creates a new RemoteCert instance. */
@@ -701,6 +714,12 @@ export class RemoteCert {
         }
         if (!("days_left" in $$source)) {
             this["days_left"] = null;
+        }
+        if (!("expires_at" in $$source)) {
+            this["expires_at"] = 0;
+        }
+        if (!("days_to_expiry" in $$source)) {
+            this["days_to_expiry"] = null;
         }
         if (!("ecc" in $$source)) {
             this["ecc"] = false;
