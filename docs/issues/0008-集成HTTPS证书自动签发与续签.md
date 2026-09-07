@@ -184,6 +184,7 @@
 - **残留一项环境问题（非本功能缺陷）**：服务器无 systemd `nginx.service`（`Unit not found`），reload 命令失败导致任务状态显示 failed（证书本体已就位不受影响）——待用户确认服务器 web 服务形态（docker / 服务名不同 / 未装）后修改任务的 reload 命令。
 - 提醒已告知用户：该次签发走的**生产环境**（测试模式未勾选），LE 对同域名 168 小时内最多 5 张重复证书，后续调试应走 staging。
 - **追加修复**（同日，提交 `5a18c8f`）：签发/安装阶段 acme.sh 会把整张证书 PEM 打进日志（数百行），向导内容区只有 min-h 无上限，日志区把弹窗一直撑高——改为内容区固定 `h-[520px]`，各步内容/日志在边界内滚动。
+- **第 9 轮**（2026-09-07，提交 `57117c8`）：用户问「证书只有 28 天了？最长多久？」——面板把 `Le_NextRenewTime`（下次续签时间）当到期显示。LE 的 ARI（RFC 9773）建议窗口约在证书生命周期 1/3 处开放，acme.sh 在窗口内取点，新签 90 天证书显示 ~28 天属正常。修复：新增 `BuildCertExpiryCmd`（openssl 读服务器 fullchain.cer 真实 notAfter，ecc/非 ecc 目录互为回退）+ `ParseExpiryOutput`，`RemoteCert` 增加 `expires_at`/`days_to_expiry`；面板到期标签改用真实到期，续签时间降级为行内「N 天后自动续签」辅助文案。已答复用户：证书最长 90 天（LE classic profile），续签全自动无需人工干预。
 
 ---
 
