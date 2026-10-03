@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@wailsio/runtime':
-        specifier: 3.0.0-beta.16
-        version: 3.0.0-beta.16
+        specifier: 3.0.0-beta.27
+        version: 3.0.0-beta.27
       '@xterm/addon-fit':
         specifier: ^0.11.0
         version: 0.11.0
@@ -675,8 +675,8 @@ packages:
   '@vue/shared@3.5.34':
     resolution: {integrity: sha512-24uqU4OIiX29ryC3MeWid/Xf2fa2EFRUVLb77nRhk+UrTVrh/XiGtFAFmJBAtBRbjwNdsPRP+jj/OL27Eg1NDA==}
 
-  '@wailsio/runtime@3.0.0-beta.16':
-    resolution: {integrity: sha512-IzaYrUKYDmvWDXf3Pqfl0onT1R5T5YHTx+AnK9vX4MyuE1PF3lXZmQrtvtfYNAsBnL+9e+iCJvIROGhjyf1rew==}
+  '@wailsio/runtime@3.0.0-beta.27':
+    resolution: {integrity: sha512-QUXfpr04hXzQa/yGavoJTP1UAwpGzvwysoKGwdMIEmyHgwSHtF+k4MfHbV0olRdw0+nbDQtcBM/SkKqb8tvQsw==}
 
   '@xterm/addon-fit@0.11.0':
     resolution: {integrity: sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==}
@@ -1914,7 +1914,7 @@ snapshots:
 
   '@vue/shared@3.5.34': {}
 
-  '@wailsio/runtime@3.0.0-beta.16': {}
+  '@wailsio/runtime@3.0.0-beta.27': {}
 
   '@xterm/addon-fit@0.11.0': {}
 
