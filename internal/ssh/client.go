@@ -13,6 +13,7 @@ import (
 
 type Manager struct {
 	mu       sync.RWMutex
+	dialMu   sync.Mutex // 串行化同连接的并发拨号（双击连开多标签场景）
 	clients  map[string]*ssh.Client // connectionID -> SSH client
 	sessions map[string]*Session    // sessionID -> terminal session
 	connSess map[string][]string    // connectionID -> []sessionID
@@ -44,31 +45,24 @@ func (m *Manager) Connect(conn *models.Connection, sessionID string) (*Session, 
 
 	addr := fmt.Sprintf("%s:%d", conn.Host, conn.Port)
 
-	m.mu.Lock()
-	// Reuse existing client if we already have one for this connection
-	client, exists := m.clients[conn.ID]
-	m.mu.Unlock()
-
-	if !exists {
-		client, err = ssh.Dial("tcp", addr, config)
-		if err != nil {
-			return nil, fmt.Errorf("dial %s: %w", addr, err)
-		}
-		m.mu.Lock()
-		m.clients[conn.ID] = client
-		m.mu.Unlock()
+	client, err := m.clientFor(conn.ID, addr, config)
+	if err != nil {
+		return nil, err
 	}
 
 	session, err := newSession(client, sessionID, m.onEvent)
 	if err != nil {
-		// If this was the first session and it failed, clean up the client
-		if !exists {
-			m.mu.Lock()
-			delete(m.clients, conn.ID)
-			m.mu.Unlock()
-			client.Close()
+		// 缓存的 client 可能已被服务端断开（空闲超时等）：驱逐后重拨一次
+		m.evictClient(conn.ID, client)
+		client, err = m.clientFor(conn.ID, addr, config)
+		if err != nil {
+			return nil, err
 		}
-		return nil, fmt.Errorf("create session: %w", err)
+		session, err = newSession(client, sessionID, m.onEvent)
+		if err != nil {
+			m.evictClient(conn.ID, client)
+			return nil, fmt.Errorf("create session: %w", err)
+		}
 	}
 
 	m.mu.Lock()
@@ -77,6 +71,42 @@ func (m *Manager) Connect(conn *models.Connection, sessionID string) (*Session, 
 	m.mu.Unlock()
 
 	return session, nil
+}
+
+// clientFor returns the SSH client for the connection, dialing at most once
+// even under concurrent calls (double-click multi-tab scenario: two Connects
+// used to race past the exists-check and dial twice, leaking a client).
+func (m *Manager) clientFor(connectionID, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	m.dialMu.Lock()
+	defer m.dialMu.Unlock()
+
+	m.mu.RLock()
+	client, exists := m.clients[connectionID]
+	m.mu.RUnlock()
+	if exists {
+		return client, nil
+	}
+
+	client, err := ssh.Dial("tcp", addr, config)
+	if err != nil {
+		return nil, fmt.Errorf("dial %s: %w", addr, err)
+	}
+	m.mu.Lock()
+	m.clients[connectionID] = client
+	m.mu.Unlock()
+	return client, nil
+}
+
+// evictClient removes the client from the cache (only if it is still the
+// cached instance) and closes it. Session-create failure means the client is
+// suspect; sessions still living on it share its fate either way.
+func (m *Manager) evictClient(connectionID string, client *ssh.Client) {
+	m.mu.Lock()
+	if cur, ok := m.clients[connectionID]; ok && cur == client {
+		delete(m.clients, connectionID)
+	}
+	m.mu.Unlock()
+	client.Close()
 }
 
 // DisconnectSession closes a single session. If it's the last session for the

@@ -83,7 +83,7 @@ async function copyServerLog() {
                 {{ t('certs.copyLog') }}
               </NTooltip>
             </div>
-            <div class="flex-1 min-h-0 overflow-y-auto rounded-[var(--border-radius)] bg-[var(--bg-primary)] border border-[var(--border-color)] px-2 py-1.5">
+            <div class="flex-1 min-h-0 overflow-y-auto rounded-[var(--radius-s)] bg-[var(--bg-component)] border border-[var(--border-color)] px-2 py-1.5">
               <pre class="font-mono text-[11px] leading-[1.5] text-[var(--text-primary)] whitespace-pre-wrap break-all m-0">{{ serverLog || t('certs.logEmpty') }}</pre>
             </div>
           </div>

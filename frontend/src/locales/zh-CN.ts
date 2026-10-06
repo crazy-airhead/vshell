@@ -12,6 +12,7 @@ export default {
     username: '用户名',
     password: '密码',
     close: '关闭',
+    hide: '隐藏',
   },
   connection: {
     title: '连接',
@@ -73,6 +74,8 @@ export default {
   },
   terminal: {
     empty: '暂无终端会话，点击左侧连接开始。',
+    emptyTitle: '暂无打开的会话',
+    emptyHint: '双击左侧面板中的连接，即可开始终端会话。',
     copy: '复制',
     paste: '粘贴',
     selectAll: '全选',
@@ -88,8 +91,10 @@ export default {
     close: '关闭',
     closeOthers: '关闭其他',
     closeAll: '关闭所有',
+    showAll: '显示全部标签页',
   },
   monitor: {
+    title: '监控',
     noConnection: '无活动连接',
     waitingStats: '等待状态数据...',
     uptime: '在线',
@@ -138,6 +143,7 @@ export default {
     trend: '趋势',
   },
   sftp: {
+    title: 'SFTP',
     noSession: '暂无活动会话，请先连接服务器以浏览文件。',
     name: '名称',
     size: '大小',
@@ -376,6 +382,16 @@ export default {
     runningHint: '续签由服务器上的 cron 每日执行，无需保持 vShell 在线。',
     reveal: '查看已存凭据',
   },
+  status: {
+    noConnection: '无连接',
+    connecting: '连接中…',
+    online: '已连接',
+    offline: '已断开',
+    sessions: '{n} 个会话',
+    leftPanel: '切换左面板（⌘B）',
+    bottomMonitor: '切换监控',
+    bottomSftp: '切换 SFTP',
+  },
   settings: {
     title: '设置',
     theme: '主题',
@@ -387,7 +403,6 @@ export default {
     shortcuts: '快捷键',
     uiFontFamily: '字体',
     uiFontSize: '字体大小',
-    accentColor: '主题色',
     terminalFontFamily: '字体',
     terminalFontSize: '字体大小',
     colorScheme: '配色方案',

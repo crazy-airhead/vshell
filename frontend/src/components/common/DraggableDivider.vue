@@ -117,13 +117,52 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- 岛间拖拽热区（设计语言 §3.3）：可见 6px 与接缝同宽，负 margin 抵消相邻
+       flex gap（视觉与非拖拽接缝一致），透明伪元素两侧各扩 4px 命中。 -->
   <div
     ref="handleEl"
-    class="shrink-0 relative bg-transparent transition-colors duration-150 hover:bg-[var(--color-primary)] resize-handle"
-    :class="direction === 'horizontal' ? 'h-[3px] w-full cursor-ns-resize rounded-[1.5px] resize-handle-h' : 'w-[3px] h-full cursor-ew-resize rounded-[1.5px] resize-handle-v'"
+    class="divider shrink-0 relative bg-transparent"
+    :class="direction === 'horizontal' ? 'divider-h' : 'divider-v'"
     @mousedown="onMouseDown"
   ></div>
 </template>
 
 <style scoped>
+.divider {
+  transition: background-color 150ms ease;
+}
+.divider:hover,
+.divider:active {
+  background: var(--selection);
+}
+
+.divider-v {
+  width: var(--island-bw);
+  height: 100%;
+  margin: 0 calc(-1 * var(--island-bw));
+  cursor: ew-resize;
+}
+.divider-v::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+}
+
+.divider-h {
+  height: var(--island-bw);
+  width: 100%;
+  margin: calc(-1 * var(--island-bw)) 0;
+  cursor: ns-resize;
+}
+.divider-h::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  bottom: -4px;
+}
 </style>

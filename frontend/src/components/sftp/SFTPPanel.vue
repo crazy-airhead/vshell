@@ -608,7 +608,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-[var(--bg-secondary)] text-[var(--text-primary)] text-[var(--font-size-sm)]">
+  <div class="flex flex-col h-full bg-[var(--bg-island)] text-[var(--text-primary)] text-[var(--font-size-sm)]">
     <div class="flex-1 flex overflow-hidden min-h-0">
       <!-- Remote side -->
       <div class="flex flex-col min-w-0 thin-border-r" :style="{ flex: 6 }">
@@ -622,7 +622,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
               </template>
             </span>
           </template>
-          <input v-else v-model="editRemotePath" class="flex-1 bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
+          <input v-else v-model="editRemotePath" class="flex-1 bg-[var(--bg-component)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
             @keyup.enter="commitRemoteEdit" @keyup.escape="editingRemotePath = false" @blur="commitRemoteEdit" />
           <NButton size="tiny" quaternary @click="refreshRemote" title="Refresh"><IconRefreshCw :width="14" :height="14" /></NButton>
           <NButton size="tiny" quaternary :type="selectedRemote.size > 0 ? 'primary' : 'default'" @click="handleDownload" title="Download selected">
@@ -692,7 +692,7 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
               </template>
             </span>
           </template>
-          <input v-else v-model="localEditPath" class="flex-1 bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
+          <input v-else v-model="localEditPath" class="flex-1 bg-[var(--bg-component)] border border-solid border-[var(--border-color)] rounded-[3px] text-[var(--text-primary)] text-[var(--font-size-sm)] font-mono px-[6px] py-[2px] outline-none"
             @keyup.enter="commitLocalEdit" @keyup.escape="localEditing = false" @blur="commitLocalEdit" />
           <NButton size="tiny" quaternary @click="refreshLocal" title="Refresh"><IconRefreshCw :width="14" :height="14" /></NButton>
           <NButton size="tiny" quaternary @click="handleOpenInFileManager" :title="t('sftp.openInFileManager')"><IconFolderOpen :width="14" :height="14" /></NButton>
@@ -762,9 +762,9 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 .toolbar-wrapper {
   position: relative;
   overflow: hidden;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+  border-bottom: 1px solid var(--border-color);
 }
-.thin-border-r { border-right: 1px solid rgba(128, 128, 128, 0.12); }
+.thin-border-r { border-right: 1px solid var(--border-color); }
 
 /* File tree: allow horizontal scroll so deep/long names don't wrap */
 .sftp-tree :deep(.n-tree) {
@@ -808,15 +808,14 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 }
 
 .file-row { cursor: default; }
-.file-row:nth-child(even) { background: var(--hover-overlay-strong); }
 .file-row.dir-row .dir-name { cursor: default; }
 .file-row:hover { background: var(--hover-overlay); }
-.file-row.selected { background: var(--action-hover-bg); }
+.file-row.selected { background: var(--selection); }
 
 .drag-over, :global(.file-drop-target-active) {
-  outline: 2px dashed rgba(100, 108, 255, 0.5);
+  outline: 2px dashed var(--color-primary);
   outline-offset: -2px;
-  background: rgba(100, 108, 255, 0.06) !important;
+  background: var(--selection) !important;
 }
 
 .status-bar {
@@ -833,12 +832,12 @@ watch(() => sftpStore.treeVersion, rebuildTree, { immediate: true })
 .status-bg {
   position: absolute;
   inset: 0;
-  background: var(--stat-bar-bg);
+  background: var(--stat-bar-track);
   overflow: hidden;
 }
 .status-fill {
   height: 100%;
-  background: rgba(100, 108, 255, 0.35);
+  background: var(--selection);
   transition: width 0.15s ease;
 }
 .status-path {

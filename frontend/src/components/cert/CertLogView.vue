@@ -48,7 +48,7 @@ async function copyLog() {
     </div>
     <div
       ref="containerRef"
-      class="flex-1 min-h-0 overflow-y-auto rounded-[var(--border-radius)] bg-[var(--bg-primary)] border border-[var(--border-color)] px-2 py-1.5"
+      class="flex-1 min-h-0 overflow-y-auto rounded-[var(--radius-s)] bg-[var(--bg-component)] border border-[var(--border-color)] px-2 py-1.5"
     >
       <div v-if="lines.length === 0" class="text-[11px] text-[var(--text-secondary)] py-2 flex-center">
         {{ t('certs.logEmpty') }}

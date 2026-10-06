@@ -89,10 +89,11 @@ func main() {
 		Title:          "vShell",
 		EnableFileDrop: true,
 		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 30,
+			// 48 对齐 GMark：红绿灯纵向位置与 40px 工具栏视觉居中（见设计语言 §3.5）
+			InvisibleTitleBarHeight: 48,
 			TitleBar:                application.MacTitleBarHidden,
 		},
-		BackgroundColour: application.NewRGB(30, 30, 30),
+		BackgroundColour: application.NewRGB(43, 45, 48),
 		Width:            1280,
 		Height:           800,
 		MinWidth:         960,

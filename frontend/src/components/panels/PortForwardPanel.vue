@@ -34,7 +34,6 @@ import IconPlay from '~icons/lucide/play'
 import IconSquare from '~icons/lucide/square'
 import IconPencil from '~icons/lucide/pencil'
 import IconTrash2 from '~icons/lucide/trash-2'
-import IconPlus from '~icons/lucide/plus'
 
 interface ServicePreset {
   label: string
@@ -264,23 +263,16 @@ onMounted(() => {
   loadForwards()
   loadRunningState()
 })
+
+/* 壳层头部动作（AppShell #actions，设计语言 §4.3） */
+defineExpose({
+  openCreate,
+  refresh: () => loadForwards(),
+})
 </script>
 
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <!-- Toolbar -->
-    <div class="flex items-center justify-between px-3 py-2 shrink-0">
-      <span class="text-[var(--font-size-sm)] font-semibold text-[var(--text-secondary)]">{{ t('portForward.title') }}</span>
-      <NTooltip>
-        <template #trigger>
-          <NButton size="tiny" quaternary @click="openCreate">
-            <template #icon><IconPlus :width="14" :height="14" /></template>
-          </NButton>
-        </template>
-        {{ t('portForward.add') }}
-      </NTooltip>
-    </div>
-
     <!-- Forwards List grouped by connection -->
     <div class="flex-1 min-h-0 overflow-auto px-3">
       <div v-if="forwards.length === 0" class="flex-center py-12">
@@ -293,7 +285,7 @@ onMounted(() => {
             <span class="text-[11px] text-[var(--text-secondary)]">{{ group.items.length }} {{ t('portForward.rules') }}</span>
           </template>
           <div v-for="fwd in group.items" :key="fwd.id"
-            class="group flex items-center gap-2 py-1.5 px-1 border-b border-[var(--border-color)] last:border-b-0 rounded-[var(--border-radius)] transition-colors duration-150 hover:bg-[var(--hover-overlay)]">
+            class="group flex items-center gap-2 py-1.5 px-1 border-b border-[var(--border-color)] last:border-b-0 rounded-[var(--radius-s)] transition-colors duration-150 hover:bg-[var(--hover-overlay)]">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
                 <NTag :bordered="false" size="tiny" type="info">{{ typeLabel(fwd.type) }}</NTag>

@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { TreeNode } from '../types'
 
 export type TabType = 'terminal' | 'editor'
 export type EditorMode = 'ssh-config' | 'remote-sftp' | 'local-file'
@@ -22,14 +21,10 @@ export interface TerminalTab {
 export const useTerminalStore = defineStore('terminal', () => {
   const tabs = ref<TerminalTab[]>([])
   const activeTabID = ref<string | null>(null)
-  const splitTree = ref<TreeNode | null>(null)
 
   function addTab(tab: TerminalTab) {
     tabs.value.push(tab)
     activeTabID.value = tab.id
-    if (!splitTree.value) {
-      splitTree.value = { type: 'leaf', sessionID: tab.id }
-    }
   }
 
   function addEditorTab(
@@ -79,11 +74,6 @@ export const useTerminalStore = defineStore('terminal', () => {
     if (activeTabID.value === id) {
       activeTabID.value = tabs.value.length > 0 ? tabs.value[0].id : null
     }
-    if (splitTree.value?.type === 'leaf' && splitTree.value.sessionID === id) {
-      splitTree.value = tabs.value.length > 0
-        ? { type: 'leaf', sessionID: tabs.value[0].id }
-        : null
-    }
   }
 
   function markTabDisconnected(sessionID: string) {
@@ -102,13 +92,11 @@ export const useTerminalStore = defineStore('terminal', () => {
   function closeAllTabs() {
     tabs.value = []
     activeTabID.value = null
-    splitTree.value = null
   }
 
   return {
     tabs,
     activeTabID,
-    splitTree,
     addTab,
     addEditorTab,
     updateTabContent,

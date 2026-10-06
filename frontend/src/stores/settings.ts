@@ -42,7 +42,6 @@ export const useSettingsStore = defineStore('settings', () => {
   const localeCode = ref<LocaleCode>((localStorage.getItem('locale') as LocaleCode) || 'zh-CN')
   const uiFontSize = ref<number>(loadJSON<number>('uiFontSize', 13))
   const uiFontFamily = ref<string>(localStorage.getItem('uiFontFamily') || 'system-ui')
-  const accentColor = ref<string>(localStorage.getItem('accentColor') || '#0078d4')
   const terminalFontSize = ref<number>(loadJSON<number>('terminalFontSize', 14))
   const terminalFontFamily = ref<string>(localStorage.getItem('terminalFontFamily') || 'Menlo')
   const terminalColorScheme = ref<string>(localStorage.getItem('terminalColorScheme') || 'default')
@@ -76,11 +75,6 @@ export const useSettingsStore = defineStore('settings', () => {
     localStorage.setItem('uiFontFamily', family)
   }
 
-  function setAccentColor(color: string) {
-    accentColor.value = color
-    localStorage.setItem('accentColor', color)
-  }
-
   function setTerminalFontSize(size: number) {
     terminalFontSize.value = size
     localStorage.setItem('terminalFontSize', JSON.stringify(size))
@@ -107,11 +101,11 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   return {
-    themeMode, localeCode, uiFontSize, uiFontFamily, accentColor,
+    themeMode, localeCode, uiFontSize, uiFontFamily,
     terminalFontSize, terminalFontFamily, terminalColorScheme, shortcuts,
     isDark,
     setTheme, toggleTheme, setLocale,
-    setUIFontSize, setUIFontFamily, setAccentColor,
+    setUIFontSize, setUIFontFamily,
     setTerminalFontSize, setTerminalFontFamily, setTerminalColorScheme,
     setShortcut, resetShortcuts,
   }

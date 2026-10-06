@@ -1,94 +1,169 @@
-:root {
-  /* Layout tokens from doc/*.json */
-  --border-radius: 6px;
+/* ═══════════════════════════════════════════════════════════════
+   vShell Islands 设计语言 · Token 单源
+   规范见 workspace docs/ui/vshell-design-language.md §2
+   规则：亮暗镜像命名，只改值不改名；组件零裸色值。
+   ═══════════════════════════════════════════════════════════════ */
 
-  /* Typography */
+:root,
+[data-theme="light"] {
+  /* —— 层级背景：画布/铬条（融为一体外框）→ 岛（内容面板）→ 嵌入控件 —— */
+  --bg-canvas: #E9EAEE;
+  --bg-chrome: #E9EAEE;
+  --bg-island: #FFFFFF;
+  --bg-component: #FFFFFF;
+  --bg-inverted: #27282E;
+
+  /* —— 文字 —— */
+  --text-primary: #000000;
+  --text-secondary: #494B57;
+  --text-muted: #6C707E;
+  --text-disabled: #A8ADBD;
+  --text-inverted: #F0F1F2;
+
+  /* —— 强调与交互（IDEA 蓝）—— */
+  --color-primary: #3871E1;
+  --selection: #D0DFFE;
+  --tab-selected-bg: #E3EBFE;
+  --hover: #EDF3FF;
+  --hover-gray: #EBECF0;
+  --hover-overlay: rgba(0, 0, 0, 0.04);
+  --pressed-overlay: rgba(0, 0, 0, 0.08);
+  --link: #315FBD;
+
+  /* —— 边框 —— */
+  --border-color: #DFE1E5;
+  --border-strong: #C9CCD6;
+  --border-input: #C9CCD6;
+
+  /* —— 语义 —— */
+  --color-success: #208A3C;
+  --color-warning: #A46704;
+  --warning-accent: #FFAF0F;
+  --color-error: #DB3B4B;
+  --color-info: #3369D6;
+
+  /* —— 连接状态 —— */
+  --status-connecting: #C77D0B;
+  --status-online: #208A3C;
+  --status-offline: #A8ADBD;
+  --status-error: #DB3B4B;
+
+  /* —— 监控图表（ECharts 经 cssVar() 解析）—— */
+  --chart-cpu: #3871E1;
+  --chart-mem: #208A3C;
+  --chart-disk: #8C5CE0;
+  --chart-net-rx: #0E9CB8;
+  --chart-net-tx: #D9632E;
+  --stat-bar-track: #EBECF0;
+
+  /* —— 传输方向 —— */
+  --transfer-up: #3871E1;
+  --transfer-down: #208A3C;
+
+  /* —— 阴影（仅浮动层）—— */
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+[data-theme="dark"] {
+  /* —— 层级背景 —— */
+  --bg-canvas: #2B2D30;
+  --bg-chrome: #2B2D30;
+  --bg-island: #1E1F22;
+  --bg-component: #2B2D30;
+  --bg-inverted: #393B40;
+
+  /* —— 文字 —— */
+  --text-primary: #DFE1E5;
+  --text-secondary: #B4B8BF;
+  --text-muted: #9DA0A8;
+  --text-disabled: #5A5D63;
+  --text-inverted: #CED0D6;
+
+  /* —— 强调与交互 —— */
+  --color-primary: #3574F0;
+  --selection: #2E436E;
+  --tab-selected-bg: #2E436E;
+  --hover: #393B40;
+  --hover-gray: #43454A;
+  --hover-overlay: rgba(255, 255, 255, 0.10);
+  --pressed-overlay: rgba(255, 255, 255, 0.15);
+  --link: #6B9BFA;
+
+  /* —— 边框（暗色提亮决策：岛内 1px 分隔线需可见）—— */
+  --border-color: #323538;
+  --border-strong: #43454A;
+  --border-input: #4E5157;
+
+  /* —— 语义 —— */
+  --color-success: #57965C;
+  --color-warning: #BA9752;
+  --warning-accent: #F2C55C;
+  --color-error: #DB5C5C;
+  --color-info: #6B9BFA;
+
+  /* —— 连接状态 —— */
+  --status-connecting: #F2C55C;
+  --status-online: #57965C;
+  --status-offline: #6F737A;
+  --status-error: #DB5C5C;
+
+  /* —— 监控图表 —— */
+  --chart-cpu: #6E9FF7;
+  --chart-mem: #5CA56B;
+  --chart-disk: #A98BEB;
+  --chart-net-rx: #4FC3F7;
+  --chart-net-tx: #FF8A65;
+  --stat-bar-track: #393B40;
+
+  /* —— 传输方向 —— */
+  --transfer-up: #3574F0;
+  --transfer-down: #57965C;
+
+  /* —— 阴影 —— */
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* —— 岛度量（主题无关常量）—— */
+:root {
+  --island-arc: 12px;
+  --island-arc-compact: 12px;
+  --island-bw: 6px;
+  --island-bw-compact: 4px;
+  --bar-arc: 12px;
+  --traffic-light-w: 76px;
+}
+
+/* —— 控件度量（主题无关常量）—— */
+:root {
+  --toolbar-h: 40px;
+  --toolwindow-header-h: 41px;
+  --statusbar-h: 28px;
+  --tab-row-h: 40px;
+  --tab-h: 32px;
+  --control-h: 28px;
+  --control-h-compact: 24px;
+  --row-h: 24px;
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --focus-width: 2px;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+}
+
+/* —— 排版（运行时由 App.vue 按设置覆写）—— */
+:root {
   --font-size-base: 13px;
   --font-size-sm: 11px;
+  --font-size-xs: 10px;
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-  /* Layout dimensions */
-  --terminal-bar-height: 36px;
-  --title-bar-height: 30px;
-  --activity-bar-width: 48px;
-}
-
-/* ── Dark theme (from doc/dark.json tokens) ── */
-[data-theme="dark"] {
-  /* Semantic colors */
-  --color-primary: #646cff;
-  --color-info: #2080f0;
-  --color-success: #52c41a;
-  --color-warning: #faad14;
-  --color-error: #f5222d;
-
-  /* Background tokens → dark.container=rgb(28,28,28), dark.layout=rgb(18,18,18) */
-  --bg-primary: rgb(18, 18, 18);
-  --bg-secondary: rgb(28, 28, 28);
-  --bg-tertiary: #2d2d2d;
-  --bg-hover: #3d3d3d;
-
-  /* Text tokens → dark.base-text=rgb(224,224,224) */
-  --text-primary: rgb(224, 224, 224);
-  --text-secondary: #858585;
-
-  /* Borders */
-  --border-color: #3d3d3d;
-
-  /* Shadows (dark context) */
-  --shadow-header: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sider: 2px 0 8px 0 rgba(0, 0, 0, 0.25);
-  --shadow-tab: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.4);
-
-  /* Interaction overlays */
-  --hover-overlay: rgba(255, 255, 255, 0.06);
-  --hover-overlay-strong: rgba(255, 255, 255, 0.04);
-  --action-hover-bg: rgba(100, 108, 255, 0.15);
-  --delete-hover-color: #f5222d;
-  --delete-hover-bg: rgba(245, 34, 45, 0.15);
-
-  /* Status indicator */
-  --stat-bar-bg: #3a3a3a;
-}
-
-/* ── Light theme (from doc/default.json tokens) ── */
-[data-theme="light"] {
-  /* Semantic colors */
-  --color-primary: #646cff;
-  --color-info: #2080f0;
-  --color-success: #52c41a;
-  --color-warning: #faad14;
-  --color-error: #f5222d;
-
-  /* Background tokens → light.container=rgb(255,255,255), light.layout=rgb(247,250,252) */
-  --bg-primary: rgb(247, 250, 252);
-  --bg-secondary: rgb(255, 255, 255);
-  --bg-tertiary: #e8e8e8;
-  --bg-hover: #e0e0e0;
-
-  /* Text tokens → light.base-text=rgb(31,31,31) */
-  --text-primary: rgb(31, 31, 31);
-  --text-secondary: #666666;
-
-  /* Borders */
-  --border-color: #d9d9d9;
-
-  /* Shadows (from tokens.light.boxShadow) */
-  --shadow-header: 0 1px 2px rgb(0, 21, 41, 0.08);
-  --shadow-sider: 2px 0 8px 0 rgb(29, 35, 41, 0.05);
-  --shadow-tab: 0 1px 2px rgb(0, 21, 41, 0.08);
-  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.08);
-
-  /* Interaction overlays */
-  --hover-overlay: rgba(0, 0, 0, 0.04);
-  --hover-overlay-strong: rgba(0, 0, 0, 0.03);
-  --action-hover-bg: rgba(100, 108, 255, 0.1);
-  --delete-hover-color: #f5222d;
-  --delete-hover-bg: rgba(245, 34, 45, 0.1);
-
-  /* Status indicator */
-  --stat-bar-bg: #e0e0e0;
+  --font-mono: 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
 }
 
 /* ── Global resets ── */
@@ -104,7 +179,7 @@ html, body {
   overflow: hidden;
   font-family: var(--font-family);
   font-size: var(--font-size-base);
-  background: var(--bg-primary);
+  background: var(--bg-canvas);
   color: var(--text-primary);
 }
 
@@ -124,28 +199,28 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-hover);
-  border-radius: 4px;
+  background: var(--hover-gray);
+  border-radius: var(--radius-s);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--text-muted);
 }
 
-/* ── Drag ghost ── */
+/* ── Drag ghost（SFTP 拖拽浮影：深色反转层）── */
 .drag-ghost {
   position: fixed;
   pointer-events: none;
   z-index: 99997;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--color-primary);
-  border-radius: var(--border-radius);
+  gap: var(--space-3);
+  padding: var(--space-2) 10px;
+  background: var(--bg-inverted);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-m);
   font-size: 12px;
-  color: var(--text-primary);
+  color: var(--text-inverted);
   box-shadow: var(--shadow-elevated);
   white-space: nowrap;
   opacity: 0.92;
@@ -153,14 +228,14 @@ html, body {
 .drag-ghost-icon { font-size: 14px; }
 .drag-ghost-label { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .drag-ghost-count {
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   background: var(--color-primary);
   color: #fff;
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   padding: 1px 5px;
 }
 
-/* ── Title bar connecting progress bar ── */
+/* ── 工具栏岛连接进度条 ── */
 @keyframes connecting-slide {
   0% { background-position: 0% 0%; }
   100% { background-position: 200% 0%; }
@@ -180,4 +255,17 @@ html, body {
   background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
   background-size: 200% 100%;
   animation: connecting-slide 1.6s ease-in-out 0.4s infinite;
+}
+
+/* ── 会话标签全局类（h() 渲染器使用）── */
+.tab-tag-remote {
+  color: var(--color-info);
+  font-weight: 600;
+}
+.tab-tag-local {
+  color: var(--color-success);
+  font-weight: 600;
+}
+.tab-dirty {
+  color: var(--warning-accent);
 }

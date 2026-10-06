@@ -2,10 +2,6 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NEmpty, NModal, NCheckbox, NButton, NSpace, useMessage } from 'naive-ui'
-import IconRefreshCw from '~icons/lucide/refresh-cw'
-import IconPencil from '~icons/lucide/pencil'
-import IconPlus from '~icons/lucide/plus'
-import IconFileInput from '~icons/lucide/file-input'
 import IconCheckCircle from '~icons/lucide/check-circle'
 import IconXCircle from '~icons/lucide/x-circle'
 import { useSSHConfigStore } from '../../stores/sshconfig'
@@ -147,28 +143,18 @@ async function handleEditRaw() {
     message.error(e.message || String(e))
   }
 }
+
+/* 壳层头部动作（AppShell #actions，设计语言 §4.3） */
+defineExpose({
+  refresh: () => store.loadEntries(),
+  handleEditRaw,
+  handleAdd,
+  openImportModal,
+})
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-secondary)]">
-    <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0">
-      <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('sshConfig.title') }}</span>
-      <div class="flex items-center gap-[2px]">
-        <button class="panel-action-btn" @click="store.loadEntries()" :title="t('common.refresh')">
-          <IconRefreshCw :width="14" :height="14" />
-        </button>
-        <button class="panel-action-btn" @click="handleEditRaw" :title="t('sshConfig.editRaw')">
-          <IconPencil :width="14" :height="14" />
-        </button>
-        <button class="panel-action-btn" @click="handleAdd" :title="t('sshConfig.addHost')">
-          <IconPlus :width="14" :height="14" />
-        </button>
-        <button class="panel-action-btn" @click="openImportModal" :title="t('sshConfig.importHosts')">
-          <IconFileInput :width="14" :height="14" />
-        </button>
-      </div>
-    </div>
-
+  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-island)]">
     <div class="flex-1 overflow-y-auto py-1">
       <div v-if="store.entries.length === 0 && !store.loading" class="px-3 py-10 flex-center">
         <NEmpty :description="t('sshConfig.noEntries')" />
@@ -249,21 +235,4 @@ async function handleEditRaw() {
 </template>
 
 <style scoped>
-.panel-action-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 2px 8px;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s, background 0.15s;
-}
-.panel-action-btn:hover {
-  color: var(--text-primary);
-  background: var(--hover-overlay);
-}
 </style>

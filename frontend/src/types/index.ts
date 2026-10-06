@@ -149,22 +149,6 @@ export interface TransferProgress {
   error?: string
 }
 
-export type SplitDirection = 'h' | 'v'
-
-export interface SplitNode {
-  type: 'split'
-  direction: SplitDirection
-  children: TreeNode[]
-  ratio: number
-}
-
-export interface LeafNode {
-  type: 'leaf'
-  sessionID: string
-}
-
-export type TreeNode = SplitNode | LeafNode
-
 export interface SSHKeyInfo {
   name: string
   type: string

@@ -15,9 +15,6 @@ import {
   NDropdown,
   useMessage,
 } from 'naive-ui'
-import IconRefreshCw from '~icons/lucide/refresh-cw'
-import IconKeyRound from '~icons/lucide/key-round'
-import IconPlus from '~icons/lucide/plus'
 import IconLock from '~icons/lucide/lock'
 import IconCopy from '~icons/lucide/copy'
 import IconPencil from '~icons/lucide/pencil'
@@ -203,25 +200,17 @@ function formatType(keyType: string): string {
   }
   return map[keyType] || keyType
 }
+
+/* 壳层头部动作（AppShell #actions，设计语言 §4.3） */
+defineExpose({
+  refresh: () => store.loadKeys(),
+  openGenerate,
+  openCreate,
+})
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-secondary)]">
-    <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0">
-      <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('keys.title') }}</span>
-      <div class="flex items-center gap-[2px]">
-        <button class="panel-action-btn" @click="store.loadKeys()" :title="t('common.refresh')">
-          <IconRefreshCw :width="14" :height="14" />
-        </button>
-        <button class="panel-action-btn" @click="openGenerate" :title="t('keys.generateKey')">
-          <IconKeyRound :width="14" :height="14" />
-        </button>
-        <button class="panel-action-btn" @click="openCreate" :title="t('keys.newKey')">
-          <IconPlus :width="14" :height="14" />
-        </button>
-      </div>
-    </div>
-
+  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-island)]">
     <div class="flex-1 overflow-y-auto py-1">
       <div v-if="store.keys.length === 0" class="px-3 py-10 flex-center">
         <span class="text-[var(--font-size-sm)] text-[var(--text-secondary)]">{{ t('keys.noKeys') }}</span>
@@ -351,24 +340,6 @@ function formatType(keyType: string): string {
 </template>
 
 <style scoped>
-.panel-action-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 2px 8px;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s, background 0.15s;
-}
-.panel-action-btn:hover {
-  color: var(--text-primary);
-  background: var(--hover-overlay);
-}
-
 .key-action-btn {
   background: none;
   border: none;

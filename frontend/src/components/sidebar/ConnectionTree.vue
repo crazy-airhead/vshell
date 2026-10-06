@@ -3,7 +3,6 @@ import { ref, computed, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NTree, NButton, NInputGroup, NInput, useMessage, useDialog } from 'naive-ui'
 import type { TreeOption, TreeDropInfo } from 'naive-ui'
-import IconFolderPlus from '~icons/lucide/folder-plus'
 import IconPlus from '~icons/lucide/plus'
 import IconFolder from '~icons/lucide/folder'
 import IconPencil from '~icons/lucide/pencil'
@@ -60,6 +59,7 @@ const treeData = computed<TreeOption[]>(() => {
     const node: TreeOption = {
       key: group.id,
       label: group.name,
+      // 分组图标 14px / 间距 4px；状态点同占位（14px 槽 + 4px），文字起点对齐
       prefix: () => h(IconFolder, { width: 14, height: 14, style: 'margin-right: 4px; opacity: 0.7' }),
       children: [],
     }
@@ -80,6 +80,14 @@ const treeData = computed<TreeOption[]>(() => {
     const node: TreeOption = {
       key: conn.id,
       label: conn.name,
+      // 状态点（设计语言 §8）：外层 14px 占位槽，内层 7px 圆点显色——
+      // 有绿点 = 在线；未连接不显点但保留占位，与分组行文字起点对齐
+      prefix: () => h('span', { class: 'conn-status-dot' }, [
+        h('span', {
+          class: 'conn-status-dot-dot',
+          style: `background:${connectionStore.connectedIDs.has(conn.id) ? 'var(--status-online)' : 'transparent'}`,
+        }),
+      ]),
     }
     if (conn.group_id && groupNodeMap.has(conn.group_id)) {
       groupNodeMap.get(conn.group_id)!.children!.push(node)
@@ -146,10 +154,23 @@ function renderLabel({ option }: { option: TreeOption }) {
 }
 
 function nodeProps({ option }: { option: TreeOption }) {
-  if (isGroupKey(option.key as string)) return {}
+  const key = option.key as string
+  if (isGroupKey(key)) {
+    return {
+      // 分组双击展开/收起（§8）
+      onDblclick: () => {
+        const i = expandedKeys.value.indexOf(key)
+        expandedKeys.value = i >= 0
+          ? expandedKeys.value.filter(k => k !== key)
+          : [...expandedKeys.value, key]
+      },
+    }
+  }
   return {
+    // 连接行双行（名称 + IP），行高自适应；分组行保持单行 24
+    class: 'conn-node',
     onDblclick: () => {
-      handleConnect(option.key as string)
+      handleConnect(key)
     },
   }
 }
@@ -314,6 +335,9 @@ function startNewGroup(parentID: string | null) {
   showGroupInput.value = true
 }
 
+/* 壳层头部动作（AppShell #actions，设计语言 §4.3） */
+defineExpose({ handleNew, startNewGroup })
+
 async function confirmNewGroup() {
   const name = newGroupName.value.trim()
   if (!name) {
@@ -358,18 +382,10 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-secondary)]">
-    <div class="px-3 py-[10px] bg-[var(--bg-tertiary)] flex items-center justify-between shrink-0 relative thin-border-b">
-      <span class="text-[var(--font-size-base)] font-semibold text-[var(--text-primary)]">{{ t('connection.title') }}</span>
-      <div class="flex gap-[2px]">
-        <NButton size="tiny" quaternary @click="startNewGroup(null)" :title="t('group.newGroup')">
-          <IconFolderPlus :width="14" :height="14" />
-        </NButton>
-        <NButton size="tiny" quaternary @click="handleNew" :title="t('connection.newConnection')">
-          <IconPlus :width="14" :height="14" />
-        </NButton>
-      </div>
-      <div v-if="loading" class="loading-bar"></div>
+  <div class="flex flex-col h-full overflow-hidden bg-[var(--bg-island)]">
+    <!-- 头部标题与动作由壳层 ToolWindow 提供（设计语言 §4.3）；加载条保留在顶部 -->
+    <div v-if="loading" class="relative shrink-0" style="height: 0">
+      <div class="loading-bar"></div>
     </div>
 
     <div v-if="showGroupInput" class="px-3 py-[6px] thin-border-b shrink-0">
@@ -407,6 +423,7 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
         :expanded-keys="expandedKeys"
         :render-label="renderLabel"
         :node-props="nodeProps"
+        :indent="8"
         selectable
         block-line
         draggable
@@ -422,8 +439,8 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 </template>
 
 <style scoped>
-.thin-border-b { border-bottom: 1px solid rgba(128, 128, 128, 0.12); }
-.thin-border-t { border-top: 1px solid rgba(128, 128, 128, 0.12); }
+.thin-border-b { border-bottom: 1px solid var(--border-color); }
+.thin-border-t { border-top: 1px solid var(--border-color); }
 
 .loading-bar {
   position: absolute;
@@ -450,15 +467,54 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
   100% { transform: translateX(100%); }
 }
 
+/* 行高：分组 24 单行；连接行双行自适应（内容 31px + 余量，防挤） */
+.tree-content :deep(.n-tree-node) {
+  height: var(--row-h);
+  border-radius: var(--radius-m);
+  transition: background-color 150ms ease;
+}
+.tree-content :deep(.n-tree-node.conn-node) {
+  height: auto;
+  min-height: 34px;
+}
+
+/* 单层全行高亮（§8）：统一上在 node 级（覆盖缩进+折叠箭头区，压掉
+   Naive 自带的小圆角底色），content 级不再单独上色——避免双层观感 */
+.tree-content :deep(.n-tree-node:hover) {
+  background: var(--hover) !important;
+}
+.tree-content :deep(.n-tree-node--selected),
+.tree-content :deep(.n-tree-node--selected:hover) {
+  background: var(--selection) !important;
+}
 .tree-content :deep(.n-tree-node-content) {
   font-size: var(--font-size-base);
   user-select: none;
   -webkit-user-select: none;
 }
+/* 状态点：外层 14px 占位槽（间距 4px，与分组图标一致，文字起点对齐）；
+   背景色只上内层 7px 圆点，未连接透明但保留占位 */
+.tree-content :deep(.conn-status-dot) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+.tree-content :deep(.conn-status-dot-dot) {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
 
+/* 双行标签：名称（主色）/ host:port（次要色）上下排布，行距 1.3 */
 .tree-content :deep(.conn-label) {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  gap: 1px;
   width: 100%;
   min-width: 0;
   line-height: 1.3;
@@ -473,8 +529,8 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 }
 
 .tree-content :deep(.conn-host) {
-  font-size: 11px;
-  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -489,7 +545,7 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
   transition: opacity 0.15s;
 }
 
-.tree-content :deep(.n-tree-node-content:hover .conn-actions),
+.tree-content :deep(.n-tree-node:hover .conn-actions),
 .tree-content :deep(.n-tree-node--selected .conn-actions) {
   opacity: 1;
 }
@@ -511,24 +567,5 @@ async function handleDrop({ node, dragNode, dropPosition }: TreeDropInfo) {
 }
 .tree-content :deep(.conn-hover-btn-danger:hover) {
   color: var(--color-error);
-}
-
-.action-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  padding: 2px 8px;
-  border-radius: 3px;
-  transition: color 0.15s, background 0.15s;
-}
-.action-btn:hover {
-  color: var(--color-primary);
-  background: var(--action-hover-bg);
-}
-.action-btn-danger:hover {
-  color: var(--delete-hover-color);
-  background: var(--delete-hover-bg);
 }
 </style>

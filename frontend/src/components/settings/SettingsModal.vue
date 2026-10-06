@@ -19,11 +19,6 @@ const showModal = computed({
   set: (v: boolean) => emit('update:show', v),
 })
 
-const accentColors = [
-  '#0078d4', '#0dbf8a', '#e040fb', '#ff6d00',
-  '#e53935', '#00acc1', '#7cb342', '#fdd835',
-]
-
 const uiFonts = [
   { label: 'System', value: 'system-ui' },
   { label: 'PingFang SC', value: '"PingFang SC", "Helvetica Neue", sans-serif' },
@@ -117,18 +112,6 @@ function findFontValue(options: { value: string }[], current: string): string {
             <NSlider v-model:value="settings.uiFontSize" :min="11" :max="18" :step="1" :marks="{ 11: '11', 13: '13', 16: '16', 18: '18' }" style="flex: 1" @update:value="settings.setUIFontSize" />
             <span class="w-8 text-right" style="font-variant-numeric: tabular-nums">{{ settings.uiFontSize }}</span>
           </NFormItem>
-
-          <NFormItem :label="t('settings.accentColor')" label-placement="left" :show-feedback="false">
-            <div class="flex gap-2 flex-wrap">
-              <button
-                v-for="c in accentColors" :key="c"
-                class="w-6 h-6 rounded-full border-2 border-transparent cursor-pointer transition-all duration-150 hover:scale-115"
-                :class="{ '!border-[var(--text-primary)]': settings.accentColor === c }"
-                :style="{ background: c }"
-                @click="settings.setAccentColor(c)"
-              />
-            </div>
-          </NFormItem>
         </NSpace>
       </NTabPane>
 
@@ -161,7 +144,7 @@ function findFontValue(options: { value: string }[], current: string): string {
           <div v-for="s in shortcutActions" :key="s.key" class="flex items-center justify-between">
             <span class="text-[var(--font-size-base)] text-[var(--text-primary)]">{{ t(s.label) }}</span>
             <button
-              class="bg-[var(--bg-tertiary)] border border-solid border-[var(--border-color)] text-[var(--text-primary)] text-[var(--font-size-sm)] px-3 py-1 rounded-[4px] cursor-pointer min-w-[120px] text-center font-mono transition-colors duration-150 hover:border-[var(--color-primary)]"
+              class="bg-[var(--bg-component)] border border-solid border-[var(--border-color)] text-[var(--text-primary)] text-[var(--font-size-sm)] px-3 py-1 rounded-[4px] cursor-pointer min-w-[120px] text-center font-mono transition-colors duration-150 hover:border-[var(--color-primary)]"
               :class="{ '!border-[var(--color-primary)] text-[var(--text-secondary)] !font-sans': capturingKey === s.key }"
               @click="startCapture(s.key)"
             >

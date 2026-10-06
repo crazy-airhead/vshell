@@ -3,89 +3,90 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NConfigProvider, darkTheme, NMessageProvider, NDialogProvider, type GlobalThemeOverrides } from 'naive-ui'
 import { Events } from '@wailsio/runtime'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Window is exported at runtime
-import { Window } from '@wailsio/runtime'
-import IconSun from '~icons/lucide/sun'
-import IconMoon from '~icons/lucide/moon'
-import ActivityBar from './components/activity/ActivityBar.vue'
-import ConnectionTree from './components/sidebar/ConnectionTree.vue'
-import KeyManagementPanel from './components/keys/KeyManagementPanel.vue'
-import SSHConfigPanel from './components/config/SSHConfigPanel.vue'
-import PortForwardPanel from './components/panels/PortForwardPanel.vue'
-import CertPanel from './components/cert/CertPanel.vue'
-import TerminalPane from './components/terminal/TerminalPane.vue'
-import BottomPanel from './components/panels/BottomPanel.vue'
-import DraggableDivider from './components/common/DraggableDivider.vue'
+import AppShell from './components/shell/AppShell.vue'
 import SettingsModal from './components/settings/SettingsModal.vue'
 import { useSettingsStore } from './stores/settings'
 import { useLayoutStore } from './stores/layout'
 import { useTerminalStore } from './stores/terminal'
 import { useConnectionStore } from './stores/connection'
 import { useShortcuts } from './composables/useShortcuts'
-import type { LocaleCode } from './stores/settings'
 
-const { locale, t } = useI18n()
+const { locale } = useI18n()
 const settings = useSettingsStore()
 const layout = useLayoutStore()
 const terminalStore = useTerminalStore()
 const connectionStore = useConnectionStore()
 
-const sidebarVisible = ref(true)
 const showSettings = ref(false)
 
 const naiveTheme = computed(() => settings.isDark ? darkTheme : null)
-const themeIcon = computed(() => settings.isDark ? IconMoon : IconSun)
-const localeLabel = computed(() => settings.localeCode === 'zh-CN' ? 'EN' : '中')
 
+/**
+ * Naive 主题桥接（设计语言 §2.1）：CSS 变量单源，此处经 getComputedStyle
+ * 现读真实值注入——禁传 var() 字符串（Naive 需可运算的颜色值）。
+ * 显式依赖 settings.themeMode：主题切换后 data-theme 已由 syncCSSVars
+ * 的 watcher（pre-flush，先于渲染）更新，此处重读才拿到新值。
+ */
 const naiveThemeOverrides = computed<GlobalThemeOverrides>(() => {
+  void settings.themeMode
   const s = getComputedStyle(document.documentElement)
-  const primary = s.getPropertyValue('--color-primary').trim() || '#646cff'
-  const info = s.getPropertyValue('--color-info').trim() || '#2080f0'
-  const success = s.getPropertyValue('--color-success').trim() || '#52c41a'
-  const warning = s.getPropertyValue('--color-warning').trim() || '#faad14'
-  const error = s.getPropertyValue('--color-error').trim() || '#f5222d'
-  const borderRadius = s.getPropertyValue('--border-radius').trim() || '6px'
-  const border = s.getPropertyValue('--border-color').trim()
+  const read = (name: string, fallback: string) => s.getPropertyValue(name).trim() || fallback
+  const primary = read('--color-primary', '#3871E1')
+  const island = read('--bg-island', '#FFFFFF')
+  const component = read('--bg-component', '#FFFFFF')
+  const inverted = read('--bg-inverted', '#27282E')
+  const radiusM = read('--radius-m', '8px')
 
   return {
     common: {
       primaryColor: primary,
       primaryColorHover: primary + 'cc',
       primaryColorPressed: primary + 'aa',
-      infoColor: info,
-      successColor: success,
-      warningColor: warning,
-      errorColor: error,
-      borderRadius,
-      borderColor: border || undefined,
+      primaryColorSuppl: primary,
+      infoColor: read('--color-info', '#3369D6'),
+      successColor: read('--color-success', '#208A3C'),
+      warningColor: read('--color-warning', '#A46704'),
+      errorColor: read('--color-error', '#DB3B4B'),
+      borderRadius: radiusM,
+      borderRadiusSmall: read('--radius-s', '4px'),
+      borderColor: read('--border-color', '#DFE1E5'),
+      bodyColor: island,
+      cardColor: island,
+      popoverColor: island,
+      tableColor: island,
+      inputColor: component,
+      actionColor: component,
+      hoverColor: read('--hover-gray', '#EBECF0'),
+    },
+    Card: { borderRadius: read('--radius-l', '12px') },
+    Dropdown: { borderRadius: radiusM },
+    Tooltip: {
+      color: inverted,
+      borderRadius: radiusM,
     },
   }
 })
 
-function handleLocaleSelect(key: string) {
-  settings.setLocale(key as LocaleCode)
-  locale.value = key
-}
-
+/** CSS 变量用户覆盖层：data-theme 切换 + 字体跟随设置 */
 function syncCSSVars() {
   const root = document.documentElement
   root.setAttribute('data-theme', settings.themeMode)
   root.style.setProperty('--font-size-base', settings.uiFontSize + 'px')
   root.style.setProperty('--font-size-sm', Math.max(9, settings.uiFontSize - 2) + 'px')
+  root.style.setProperty('--font-size-xs', Math.max(8, settings.uiFontSize - 3) + 'px')
   root.style.setProperty('--font-family', settings.uiFontFamily)
 }
 
 watch(
-  () => [settings.themeMode, settings.uiFontSize, settings.uiFontFamily, settings.accentColor],
+  () => [settings.themeMode, settings.uiFontSize, settings.uiFontFamily],
   syncCSSVars,
-  { immediate: true, deep: true },
+  { immediate: true },
 )
 
 // Register global shortcuts
 useShortcuts({
   toggleTheme: () => settings.toggleTheme(),
-  toggleSidebar: () => { sidebarVisible.value = !sidebarVisible.value },
+  toggleSidebar: () => layout.toggleSidebar(),
 })
 
 onMounted(() => {
@@ -108,83 +109,7 @@ onMounted(() => {
   <NConfigProvider :theme="naiveTheme" :theme-overrides="naiveThemeOverrides">
     <NMessageProvider>
       <NDialogProvider>
-        <div class="flex flex-col w-screen h-screen overflow-hidden bg-[var(--bg-primary)]">
-          <!-- Title bar -->
-          <div
-            class="h-[30px] flex items-center justify-center px-2 bg-[var(--bg-tertiary)] shrink-0 relative overflow-hidden"
-            style="-webkit-app-region: drag"
-            @dblclick="Window.ToggleMaximise()"
-          >
-            <span class="text-xs font-semibold text-[var(--text-primary)]">vShell</span>
-            <div class="absolute right-2 flex items-center gap-[2px]" style="-webkit-app-region: no-drag">
-              <button
-                class="bg-transparent border-none text-[var(--text-secondary)] text-[11px] cursor-pointer px-2 py-[2px] rounded-[3px] transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
-                :title="settings.isDark ? t('settings.light') : t('settings.dark')"
-                @click="settings.toggleTheme()"
-              ><component :is="themeIcon" :width="14" :height="14" /></button>
-              <button
-                class="bg-transparent border-none text-[var(--text-secondary)] text-[11px] cursor-pointer px-2 py-[2px] rounded-[3px] transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
-                :title="t('settings.language')"
-                @click="handleLocaleSelect(settings.localeCode === 'zh-CN' ? 'en' : 'zh-CN')"
-              >{{ localeLabel }}</button>
-            </div>
-            <!-- Connection progress bar -->
-            <div
-              v-if="connectionStore.connecting"
-              class="absolute bottom-0 h-[2px] animate-connecting-bar"
-              style="left: 48px; right: 0; width: auto;"
-            />
-          </div>
-
-          <div class="flex flex-1 min-h-0">
-            <!-- Activity Bar -->
-            <ActivityBar @open-settings="showSettings = true" />
-
-            <!-- Main Area: Sidebar + Terminal + Bottom Panel -->
-            <div class="flex-1 flex flex-col min-w-0 p-1.5">
-              <div class="flex flex-1 min-h-0">
-                <!-- Sidebar -->
-                <template v-if="sidebarVisible">
-                  <div class="shrink-0 overflow-hidden rounded-[var(--border-radius)] bg-[var(--bg-secondary)]" :style="{ width: layout.sidebarWidth + 'px' }">
-                    <ConnectionTree v-if="layout.activeSidebar === 'connections'" />
-                    <KeyManagementPanel v-else-if="layout.activeSidebar === 'keys'" />
-                    <SSHConfigPanel v-else-if="layout.activeSidebar === 'ssh-config'" />
-                    <PortForwardPanel v-else-if="layout.activeSidebar === 'port-forward'" />
-                    <CertPanel v-else-if="layout.activeSidebar === 'certs'" />
-                  </div>
-                  <DraggableDivider
-                    direction="vertical"
-                    :modelValue="layout.sidebarWidth"
-                    @update:modelValue="(v: number) => layout.setSidebarWidth(v)"
-                    :min="200"
-                    :max="500"
-                  />
-                </template>
-
-                <!-- Terminal -->
-                <div class="flex-1 min-w-0 min-h-0 overflow-hidden rounded-[var(--border-radius)] bg-[var(--bg-secondary)]">
-                  <TerminalPane />
-                </div>
-              </div>
-
-              <!-- Bottom Panel -->
-              <template v-if="layout.bottomAnyVisible">
-                <DraggableDivider
-                  direction="horizontal"
-                  :modelValue="layout.bottomPanelHeight"
-                  @update:modelValue="(v: number) => layout.setBottomPanelHeight(v)"
-                  :min="80"
-                  :max="600"
-                  :invert="true"
-                />
-                <div class="overflow-hidden bg-[var(--bg-secondary)] rounded-t-[var(--border-radius)]" :style="{ height: layout.bottomPanelHeight + 'px', flexShrink: 0, minHeight: 0 }">
-                  <BottomPanel />
-                </div>
-              </template>
-            </div>
-          </div>
-        </div>
-
+        <AppShell @open-settings="showSettings = true" />
         <SettingsModal v-model:show="showSettings" />
       </NDialogProvider>
     </NMessageProvider>

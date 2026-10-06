@@ -41,16 +41,16 @@ const ctxCanCopy = ref(false)
 
 const colorSchemes: Record<string, Record<string, string>> = {
   'default-dark': {
-    background: '#1e1e1e',
-    foreground: '#cccccc',
-    cursor: '#ffffff',
-    selectionBackground: '#264f78',
+    background: '#1E1F22',
+    foreground: '#DFE1E5',
+    cursor: '#FFFFFF',
+    selectionBackground: '#2E436E',
   },
   'default-light': {
-    background: '#ffffff',
-    foreground: '#1e1e1e',
-    cursor: '#1e1e1e',
-    selectionBackground: '#add6ff',
+    background: '#FFFFFF',
+    foreground: '#1F2329',
+    cursor: '#1F2329',
+    selectionBackground: '#D0DFFE',
   },
   'solarized-dark': {
     background: '#002b36',
@@ -311,6 +311,7 @@ defineExpose({ fit })
 .xterminal-container {
   width: 100%;
   height: 100%;
-  padding: 4px;
+  /* 岛式 §5：内容与 20px 岛圆角之间留 ≥6px，防角部字形被裁 */
+  padding: var(--space-3);
 }
 </style>

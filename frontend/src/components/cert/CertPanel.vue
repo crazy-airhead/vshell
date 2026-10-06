@@ -11,7 +11,6 @@ import {
   NCollapseItem,
   useMessage,
 } from 'naive-ui'
-import IconPlus from '~icons/lucide/plus'
 import IconPencil from '~icons/lucide/pencil'
 import IconTrash2 from '~icons/lucide/trash-2'
 import IconRefreshCw from '~icons/lucide/refresh-cw'
@@ -135,6 +134,12 @@ function handleWizardClosed(connectionID?: string) {
   if (connectionID) refreshGroup(connectionID)
 }
 
+/* 壳层头部动作（AppShell #actions，设计语言 §4.3） */
+defineExpose({
+  openWizard: () => { showWizard.value = true },
+  refresh: () => certStore.loadTasks(),
+})
+
 onMounted(() => {
   certStore.registerListeners()
   certStore.loadTasks()
@@ -144,19 +149,6 @@ onMounted(() => {
 
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <!-- Toolbar -->
-    <div class="flex items-center justify-between px-3 py-2 shrink-0">
-      <span class="text-[var(--font-size-sm)] font-semibold text-[var(--text-secondary)]">{{ t('certs.title') }}</span>
-      <NTooltip>
-        <template #trigger>
-          <NButton size="tiny" quaternary @click="showWizard = true">
-            <template #icon><IconPlus :width="14" :height="14" /></template>
-          </NButton>
-        </template>
-        {{ t('certs.add') }}
-      </NTooltip>
-    </div>
-
     <!-- Task list grouped by connection -->
     <div class="flex-1 min-h-0 overflow-auto px-3">
       <div v-if="certStore.tasks.length === 0" class="flex-center py-12">
@@ -181,7 +173,7 @@ onMounted(() => {
             {{ t('certs.cronMissing') }}
           </div>
           <div v-for="task in group.items" :key="task.id"
-            class="group flex items-center gap-2 py-1.5 px-1 border-b border-[var(--border-color)] last:border-b-0 rounded-[var(--border-radius)] transition-colors duration-150 hover:bg-[var(--hover-overlay)]">
+            class="group flex items-center gap-2 py-1.5 px-1 border-b border-[var(--border-color)] last:border-b-0 rounded-[var(--radius-s)] transition-colors duration-150 hover:bg-[var(--hover-overlay)]">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <NTag :bordered="false" size="tiny" :type="statusTagType(task)">{{ statusLabel(task) }}</NTag>

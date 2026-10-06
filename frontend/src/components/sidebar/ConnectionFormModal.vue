@@ -333,7 +333,7 @@ async function handleSave() {
             />
           </NFormItem>
           <NFormItem v-if="selectedKeyHasPassphrase" label=" " style="margin-top: -16px">
-            <span style="color: var(--warning-color); font-size: 12px">
+            <span style="color: var(--color-warning); font-size: 12px">
               {{ t('connection.keyHasPassphrase') }}
             </span>
           </NFormItem>

@@ -10,6 +10,7 @@ import { useMonitorStore } from '../../stores/monitor'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalStore } from '../../stores/terminal'
 import { useLayoutStore } from '../../stores/layout'
+import { useSettingsStore } from '../../stores/settings'
 import type { ProcessInfo, NetConnProcess, NetHistoryPoint, NetIO } from '../../types'
 import type { DataTableColumns } from 'naive-ui'
 
@@ -26,6 +27,13 @@ const monitorStore = useMonitorStore()
 const connectionStore = useConnectionStore()
 const terminalStore = useTerminalStore()
 const layoutStore = useLayoutStore()
+const settingsStore = useSettingsStore()
+
+/** ECharts 画布吃不了 var() 字符串——现读计算样式的真实值（设计语言 §2.1） */
+function cssVar(name: string, fallback: string): string {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return v || fallback
+}
 
 const lastConnID = ref<string | null>(null)
 type DetailType = 'cpu' | 'memory' | 'disk' | 'network' | 'processes' | null
@@ -59,7 +67,11 @@ function recalcTableHeight() {
 }
 
 onMounted(() => {
-  resizeObserver = new ResizeObserver(() => recalcTableHeight())
+  resizeObserver = new ResizeObserver(() => {
+    recalcTableHeight()
+    // 面板经 v-show 隐藏/拖岛变尺寸后图表需手动跟随（§7 监控）
+    chartInstance?.resize()
+  })
 })
 
 watch(netContentRef, (el) => {
@@ -78,8 +90,8 @@ const activeConnectionID = computed(() => {
   const resolved = connID || lastConnID.value
   if (resolved && !terminalStore.tabs.some(t => t.connectionID === resolved)) {
     lastConnID.value = null
-    if (layoutStore.activeBottomTool === 'monitor') {
-      layoutStore.activeBottomTool = null
+    if (layoutStore.bottomTool === 'monitor') {
+      layoutStore.bottomTool = null
     }
     return null
   }
@@ -352,6 +364,8 @@ const hasChartData = computed(() => {
 // ECharts trend chart
 function renderChart() {
   if (!chartRef.value || !selectedIface.value || !netHistoryMap.value) return
+  // 隐藏态（v-show 收起/切到 SFTP 标签）不 init：尺寸为 0 的实例画不出内容
+  if (chartRef.value.offsetParent === null) return
   if (!hasChartData.value) {
     if (chartInstance) {
       chartInstance.clear()
@@ -387,19 +401,30 @@ function renderChart() {
 
   chartInstance.setOption({
     grid: { top: 20, right: 12, bottom: 24, left: 50 },
-    textStyle: { fontSize: 10, color: 'var(--text-secondary)' },
+    textStyle: { fontSize: 10, color: cssVar('--text-secondary', '#9DA0A8') },
     xAxis: { type: 'category', data: chartTimes, boundaryGap: false },
     yAxis: { type: 'value', axisLabel: { formatter: '{value} KB/s' } },
     tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
     series: [
-      { name: '↓ RX', type: 'line', data: rxRates, smooth: true, symbol: 'none', lineStyle: { width: 1.5 }, itemStyle: { color: '#4fc3f7' } },
-      { name: '↑ TX', type: 'line', data: txRates, smooth: true, symbol: 'none', lineStyle: { width: 1.5 }, itemStyle: { color: '#ff8a65' } },
+      { name: '↓ RX', type: 'line', data: rxRates, smooth: true, symbol: 'none', lineStyle: { width: 1.5 }, itemStyle: { color: cssVar('--chart-net-rx', '#4FC3F7') } },
+      { name: '↑ TX', type: 'line', data: txRates, smooth: true, symbol: 'none', lineStyle: { width: 1.5 }, itemStyle: { color: cssVar('--chart-net-tx', '#FF8A65') } },
     ],
   })
 }
 
 watch([selectedIface, netHistoryMap], () => {
   nextTick(() => renderChart())
+})
+
+// 主题翻转 / 底部标签回切后重渲：轴文字与系列色需按新 token 现读重注入，
+// v-show 隐藏期间错过的渲染也在此补上（§7）
+watch([() => settingsStore.themeMode, () => layoutStore.bottomTool], () => {
+  nextTick(() => {
+    if (chartInstance) {
+      chartInstance.resize()
+    }
+    renderChart()
+  })
 })
 
 // Save/restore selectedIface when switching net tabs
@@ -450,7 +475,7 @@ const swapPercent = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-[var(--bg-secondary)] text-[var(--text-primary)] text-[var(--font-size-sm)]">
+  <div class="flex flex-col h-full bg-[var(--bg-island)] text-[var(--text-primary)] text-[var(--font-size-sm)]">
     <div v-if="!activeConnectionID" class="flex-1 flex-center">
       <NEmpty :description="t('monitor.noConnection')" size="small" />
     </div>
@@ -487,7 +512,7 @@ const swapPercent = computed(() => {
               <span>{{ t('monitor.cpu') }}</span>
               <span class="font-mono">{{ stats.cpu_percent.toFixed(1) }}%</span>
             </div>
-            <div class="h-[5px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+            <div class="h-[5px] bg-[var(--stat-bar-track)] rounded-[3px] overflow-hidden">
               <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: stats.cpu_percent + '%', background: barColor(stats.cpu_percent) }"></div>
             </div>
           </div>
@@ -502,7 +527,7 @@ const swapPercent = computed(() => {
               <span>{{ t('monitor.memory') }}</span>
               <span class="font-mono">{{ formatBytes(stats.mem_used * 1024) }} / {{ formatBytes(stats.mem_total * 1024) }}</span>
             </div>
-            <div class="h-[5px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+            <div class="h-[5px] bg-[var(--stat-bar-track)] rounded-[3px] overflow-hidden">
               <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: stats.mem_percent + '%', background: barColor(stats.mem_percent) }"></div>
             </div>
           </div>
@@ -536,7 +561,7 @@ const swapPercent = computed(() => {
               <span>{{ t('monitor.disk') }}</span>
               <span class="font-mono">{{ formatBytes(diskTotal.used) }} / {{ formatBytes(diskTotal.total) }}</span>
             </div>
-            <div class="h-[5px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+            <div class="h-[5px] bg-[var(--stat-bar-track)] rounded-[3px] overflow-hidden">
               <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: diskTotal.pct + '%', background: barColor(diskTotal.pct) }"></div>
             </div>
           </div>
@@ -574,7 +599,7 @@ const swapPercent = computed(() => {
                     <span>CPU {{ c.core }}</span>
                     <span class="font-mono">{{ c.percent.toFixed(1) }}%</span>
                   </div>
-                  <div class="h-[5px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+                  <div class="h-[5px] bg-[var(--stat-bar-track)] rounded-[3px] overflow-hidden">
                     <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: c.percent + '%', background: barColor(c.percent) }"></div>
                   </div>
                 </div>
@@ -593,7 +618,7 @@ const swapPercent = computed(() => {
                   <span class="text-[var(--text-secondary)]">{{ t('monitor.used') }}</span>
                   <span class="font-mono">{{ formatBytes(stats.mem_used * 1024) }} / {{ formatBytes(stats.mem_total * 1024) }}</span>
                 </div>
-                <div class="h-[6px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+                <div class="h-[6px] bg-[var(--stat-bar-track)] rounded-[3px] overflow-hidden">
                   <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: stats.mem_percent + '%', background: barColor(stats.mem_percent) }"></div>
                 </div>
               </div>
@@ -605,7 +630,7 @@ const swapPercent = computed(() => {
                     <span class="text-[var(--text-secondary)]">{{ t('monitor.used') }}</span>
                     <span class="font-mono">{{ formatBytes(stats.swap_used * 1024) }} / {{ formatBytes(stats.swap_total * 1024) }}</span>
                   </div>
-                  <div class="h-[6px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+                  <div class="h-[6px] bg-[var(--stat-bar-track)] rounded-[3px] overflow-hidden">
                     <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: swapPercent + '%', background: barColor(swapPercent) }"></div>
                   </div>
                 </template>
@@ -622,7 +647,7 @@ const swapPercent = computed(() => {
                   <span class="font-mono text-[var(--text-primary)]">{{ d.mount_point }}</span>
                   <span class="font-mono text-[var(--text-secondary)]">{{ d.percent.toFixed(1) }}%</span>
                 </div>
-                <div class="h-[5px] bg-[var(--stat-bar-bg)] rounded-[3px] overflow-hidden">
+                <div class="h-[5px] bg-[var(--stat-bar-track)] rounded-[3px] overflow-hidden">
                   <div class="h-full rounded-[3px] transition-[width] duration-500 ease-out" :style="{ width: d.percent + '%', background: barColor(d.percent) }"></div>
                 </div>
                 <div class="flex justify-between text-[var(--text-secondary)]">
@@ -676,7 +701,7 @@ const swapPercent = computed(() => {
               <!-- Right: icon tabs (ActivityBar style) -->
               <div class="shrink-0 flex flex-col items-center border-l border-[var(--border-color)] ml-2">
                 <button
-                  class="w-9 h-9 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
+                  class="w-9 h-9 flex-center bg-transparent border-none rounded-[var(--radius-m)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
                   :class="{ '!text-[var(--color-primary)]': netTab === 'interface' }"
                   @click="netTab = 'interface'"
                   :title="t('monitor.byInterface')"
@@ -685,7 +710,7 @@ const swapPercent = computed(() => {
                   <span v-if="netTab === 'interface'" class="absolute right-0 top-2 bottom-2 w-[2px] bg-[var(--color-primary)] rounded-l-[2px]" />
                 </button>
                 <button
-                  class="w-9 h-9 flex-center bg-transparent border-none rounded-[var(--border-radius)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
+                  class="w-9 h-9 flex-center bg-transparent border-none rounded-[var(--radius-m)] cursor-pointer text-[var(--text-secondary)] relative transition-colors duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--hover-overlay)]"
                   :class="{ '!text-[var(--color-primary)]': netTab === 'process' }"
                   @click="netTab = 'process'"
                   :title="t('monitor.byProcess')"

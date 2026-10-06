@@ -12,6 +12,7 @@ export default {
     username: 'Username',
     password: 'Password',
     close: 'Close',
+    hide: 'Hide',
   },
   connection: {
     title: 'Connections',
@@ -73,6 +74,8 @@ export default {
   },
   terminal: {
     empty: 'No active terminal sessions. Click a connection to start.',
+    emptyTitle: 'No Open Sessions',
+    emptyHint: 'Double-click a connection in the left panel to start a terminal session.',
     copy: 'Copy',
     paste: 'Paste',
     selectAll: 'Select All',
@@ -88,8 +91,10 @@ export default {
     close: 'Close',
     closeOthers: 'Close Others',
     closeAll: 'Close All',
+    showAll: 'Show all tabs',
   },
   monitor: {
+    title: 'Monitor',
     noConnection: 'No active connection',
     waitingStats: 'Waiting for stats...',
     uptime: 'Uptime',
@@ -138,6 +143,7 @@ export default {
     trend: 'Trend',
   },
   sftp: {
+    title: 'SFTP',
     noSession: 'No active session. Connect to a server to browse files.',
     name: 'Name',
     size: 'Size',
@@ -376,6 +382,16 @@ export default {
     runningHint: 'Renewals run daily via cron on the server - vShell does not need to stay open.',
     reveal: 'Show stored credentials',
   },
+  status: {
+    noConnection: 'No connection',
+    connecting: 'Connecting…',
+    online: 'Connected',
+    offline: 'Disconnected',
+    sessions: '{n} session | {n} sessions',
+    leftPanel: 'Toggle left panel (⌘B)',
+    bottomMonitor: 'Toggle monitor',
+    bottomSftp: 'Toggle SFTP',
+  },
   settings: {
     title: 'Settings',
     theme: 'Theme',
@@ -387,7 +403,6 @@ export default {
     shortcuts: 'Shortcuts',
     uiFontFamily: 'Font',
     uiFontSize: 'Font Size',
-    accentColor: 'Accent Color',
     terminalFontFamily: 'Font',
     terminalFontSize: 'Font Size',
     colorScheme: 'Color Scheme',

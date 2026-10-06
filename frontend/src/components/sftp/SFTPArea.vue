@@ -24,8 +24,8 @@ const activeConnectionID = computed(() => {
   if (resolved && !terminalStore.tabs.some(t => t.connectionID === resolved)) {
     lastConnectionID.value = null
     sftpStore.closePanel(resolved)
-    if (layoutStore.activeBottomTool === 'sftp') {
-      layoutStore.activeBottomTool = null
+    if (layoutStore.bottomTool === 'sftp') {
+      layoutStore.bottomTool = null
     }
     return null
   }
@@ -43,7 +43,7 @@ watch(activeConnectionID, (newID) => {
 </script>
 
 <template>
-  <div class="h-full overflow-hidden bg-[var(--bg-secondary)]">
+  <div class="h-full overflow-hidden bg-[var(--bg-island)]">
     <div v-if="!activeConnectionID" class="h-full flex-center">
       <NEmpty :description="t('sftp.noSession')" size="small" />
     </div>
