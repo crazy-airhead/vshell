@@ -65,14 +65,15 @@ go test ./...           # Run tests
 - **UI Library**: Naive UI (strict — never use Element Plus, Ant Design, or browser native dialogs).
 - **CSS Framework**: UnoCSS (presetUno + custom theme colors/shortcuts in `uno.config.ts`).
 - **State**: Pinia stores in `stores/` — `connection.ts`, `terminal.ts`, `sftp.ts`, `monitor.ts`, `settings.ts`, `layout.ts`, `transfers.ts`, `sshkey.ts`, `sshconfig.ts`.
-- **Routing**: Vue Router.
+- **Routing**: none — store-driven navigation (`layout.ts` holds active view; no vue-router).
+- **Design language**: Islands (island layout) — spec at `docs/ui/vshell-design-language.md` (workspace repo). Canvas + floating rounded islands, all seams 6px, CSS token single-source in `styles/global.css` (light/dark mirrored), Naive theme bridged at runtime from computed styles in `App.vue`.
 - **i18n**: `vue-i18n` with `locales/zh-CN.ts` and `locales/en.ts`.
 - **Terminal**: xterm.js (`@xterm/xterm` v6) with addons: fit, search, serialize, web-links, webgl.
 - **Editor**: Monaco Editor for remote file editing (`components/terminal/EditorTab.vue`).
 - **Charts**: ECharts for server resource monitoring.
 - **Icons**: Iconify with Lucide icon set, loaded via `unplugin-icons`.
-- **Components**: Organized by domain — `sidebar/`, `terminal/`, `sftp/`, `monitor/`, `settings/`, `keys/`, `config/`, `activity/`, `panels/`, `common/`.
-- **Composables**: `useTerminal.ts`, `useTerminalManager.ts`, `useEvents.ts`, `useShortcuts.ts`, `useDragTransfer.ts`.
+- **Components**: Organized by domain — `shell/` (island shell: AppShell, ToolbarIsland, LeftStripe, ToolWindow, EditorIsland, EditorTabs, StatusBarIsland), `sidebar/`, `terminal/`, `sftp/`, `monitor/`, `settings/`, `keys/`, `config/`, `panels/`, `common/`.
+- **Composables**: `useTerminalManager.ts`, `useEvents.ts`, `useShortcuts.ts`, `useDragTransfer.ts`.
 
 ### Critical Data Flow: Terminal I/O
 
