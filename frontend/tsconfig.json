@@ -14,7 +14,8 @@
     "lib": ["ESNext", "DOM"],
     "skipLibCheck": true,
     "noEmit": true,
+    "allowJs": true,
     "types": ["unplugin-icons/types/vue3"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "bindings/**/*.ts", "bindings/**/*.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "bindings/**/*.ts", "bindings/**/*.d.ts", "bindings/**/*.js"],
 }

@@ -214,16 +214,16 @@ export interface CertTaskForm {
   primary_domain: string
   san_domains: string[]
   dns_provider: string
-  dns_plugin?: string
-  dns_credentials?: Record<string, string>
+  dns_plugin: string
+  dns_credentials: Record<string, string>
   key_length: string
   dns_sleep: number
   test_mode: boolean
   auto_install: boolean
-  cert_dir?: string
-  key_file?: string
-  fullchain_file?: string
-  reload_cmd?: string
+  cert_dir: string
+  key_file: string
+  fullchain_file: string
+  reload_cmd: string
 }
 
 export interface DNSFieldSpec {
