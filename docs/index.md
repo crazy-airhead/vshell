@@ -50,7 +50,4 @@ features:
   - icon: 📝
     title: SSH Config 导入
     details: 结构化编辑 ~/.ssh/config，一键导入主机为连接（自动识别 IdentityFile）。
-  - icon: 🌍
-    title: 中英双语
-    details: vue-i18n 完整国际化，浅色 / 深色主题与 7 套终端配色随心切换。
 ---
