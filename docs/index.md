@@ -13,6 +13,9 @@ hero:
       text: 快速开始
       link: /guide/getting-started
     - theme: alt
+      text: 下载
+      link: https://github.com/crazy-airhead/vshell/releases/latest
+    - theme: alt
       text: 使用指南
       link: /guide/
     - theme: alt

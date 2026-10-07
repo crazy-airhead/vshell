@@ -2,6 +2,10 @@
 
 vShell 的版本更新记录，新版本在顶部追加。版本号与应用仓库的 git 标签一致。
 
+**下载**：[GitHub Releases 最新版](https://github.com/crazy-airhead/vshell/releases/latest) —— macOS（通用二进制 · Apple Silicon / Intel）、Windows（安装包 / 便携版）、Linux（deb · rpm · 便携版）。
+
+> macOS 包未做公证：首次打开若被拦截，右键 App →「打开」，或执行 `xattr -d com.apple.quarantine /Applications/vshell.app` 后再打开。
+
 ## v0.2.0 · 2026-10-07
 
 - **布局**：整体界面重构为岛屿（Islands）设计语言 —— 画布 + 浮动圆角岛，统一 6px 接缝，浅色 / 深色主题令牌单源同步。

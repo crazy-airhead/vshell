@@ -21,6 +21,13 @@ export default defineConfig({
       { text: '使用指南', link: '/guide/', activeMatch: '/guide/' },
       { text: '开发文档', link: '/dev/', activeMatch: '/dev/' },
       { text: '更新记录', link: '/changelog' },
+      {
+        text: '下载',
+        items: [
+          { text: '最新版本', link: 'https://github.com/crazy-airhead/vshell/releases/latest' },
+          { text: '全部版本', link: 'https://github.com/crazy-airhead/vshell/releases' },
+        ],
+      },
     ],
     sidebar: {
       '/guide/': [
