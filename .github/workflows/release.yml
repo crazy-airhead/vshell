@@ -70,15 +70,15 @@ jobs:
         run: |
           plutil -replace CFBundleVersion -string "${GITHUB_REF_NAME#v}" build/darwin/Info.plist
           plutil -replace CFBundleShortVersionString -string "${GITHUB_REF_NAME#v}" build/darwin/Info.plist
-          wails3 task -dir build/darwin package:universal
+          wails3 task darwin:package:universal
 
       - name: Build & package (Linux, deb/rpm/portable)
         if: matrix.platform == 'linux'
-        run: wails3 task -dir build/linux create:deb create:rpm
+        run: wails3 task linux:create:deb linux:create:rpm
 
       - name: Build & package (Windows, nsis + portable)
         if: matrix.platform == 'windows'
-        run: wails3 task -dir build/windows package
+        run: wails3 task windows:package
         shell: bash
 
       - name: Collect release files
@@ -87,15 +87,15 @@ jobs:
           mkdir -p release
           case "${{ matrix.platform }}" in
             darwin)
-              ditto -c -k --keepParent bin/vShell.app "release/vShell-${VERSION}-macos-universal.zip"
+              ditto -c -k --keepParent bin/vshell.app "release/vShell-${VERSION}-macos-universal.zip"
               ;;
             linux)
-              tar -czf "release/vShell-${VERSION}-linux-amd64.tar.gz" -C bin vShell
+              tar -czf "release/vShell-${VERSION}-linux-amd64.tar.gz" -C bin vshell
               cp bin/*.deb bin/*.rpm release/
               ;;
             windows)
-              cp bin/vShell.exe "release/vShell-${VERSION}-windows-amd64-portable.exe"
-              cp build/windows/nsis/vShell-installer.exe "release/vShell-${VERSION}-windows-amd64-installer.exe"
+              cp bin/vshell.exe "release/vShell-${VERSION}-windows-amd64-portable.exe"
+              cp build/windows/nsis/vshell-installer.exe "release/vShell-${VERSION}-windows-amd64-installer.exe"
               ;;
           esac
           ls -l release
