@@ -4,6 +4,28 @@ import { defineConfig } from 'vitepress'
 // idea-ui / gmark 两份参考文档经 srcExclude 排除，不发布到站点）。
 // docs/issues 与 **/_*.md（写作规范等）通过 srcExclude 排除，不发布到站点；
 // prompt.md / default.json / dark.json 为开发内部文件，同样不发布。
+// /ui/ 下的设计语言页复用开发文档侧栏，避免进入 /ui/ 后侧栏消失、布局突变
+const devSidebar = [
+  {
+    text: '开发',
+    collapsed: false,
+    items: [
+      { text: '开发文档总览', link: '/dev/' },
+      { text: '架构总览', link: '/dev/architecture' },
+      { text: '终端 I/O 数据流', link: '/dev/terminal-io' },
+      { text: '数据存储与加密', link: '/dev/storage-crypto' },
+      { text: '构建与开发环境', link: '/dev/development' },
+    ],
+  },
+  {
+    text: '设计规范',
+    collapsed: false,
+    items: [
+      { text: '设计语言', link: '/ui/vshell-design-language' },
+    ],
+  },
+]
+
 export default defineConfig({
   lang: 'zh-CN',
   title: 'vShell',
@@ -94,26 +116,8 @@ export default defineConfig({
           ],
         },
       ],
-      '/dev/': [
-        {
-          text: '开发',
-          collapsed: false,
-          items: [
-            { text: '开发文档总览', link: '/dev/' },
-            { text: '架构总览', link: '/dev/architecture' },
-            { text: '终端 I/O 数据流', link: '/dev/terminal-io' },
-            { text: '数据存储与加密', link: '/dev/storage-crypto' },
-            { text: '构建与开发环境', link: '/dev/development' },
-          ],
-        },
-        {
-          text: '设计规范',
-          collapsed: false,
-          items: [
-            { text: '设计语言', link: '/ui/vshell-design-language' },
-          ],
-        },
-      ],
+      '/dev/': devSidebar,
+      '/ui/': devSidebar,
     },
     socialLinks: [
       { icon: 'github', link: 'https://github.com/crazy-airhead/vshell' },
