@@ -33,20 +33,12 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - uses: pnpm/action-setup@v6
-        with:
-          package_json_file: frontend/package.json
-
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Install wails3 CLI (version pinned to go.mod)
-        run: |
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+      - name: Install pnpm (npm 全局，确保进入任务子进程的 PATH)
+        run: npm install -g pnpm@11.17.0
         shell: bash
 
       - name: Install Linux build dependencies (GTK4 / WebKit)
@@ -54,6 +46,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+
+      - name: Install wails3 CLI (version pinned to go.mod)
+        run: |
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+        shell: bash
 
       - name: Install NSIS (Windows installer)
         if: matrix.platform == 'windows'
