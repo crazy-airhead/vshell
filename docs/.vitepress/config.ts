@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 
-// 站点内容：docs/guide（使用指南）+ docs/dev（开发文档）+ docs/ui（设计规范）。
+// 站点内容：docs/guide（使用指南）+ docs/dev（开发文档）+ docs/ui（设计规范，仅 vShell 自有篇；
+// idea-ui / gmark 两份参考文档经 srcExclude 排除，不发布到站点）。
 // docs/issues 与 **/_*.md（写作规范等）通过 srcExclude 排除，不发布到站点；
 // prompt.md / default.json / dark.json 为开发内部文件，同样不发布。
 export default defineConfig({
@@ -11,7 +12,14 @@ export default defineConfig({
   base: '/vshell/',
   lastUpdated: true,
   sitemap: { hostname: 'https://crazy-airhead.github.io/vshell/' },
-  srcExclude: ['**/issues/**', '**/_*.md', 'prompt.md', '*.json'],
+  srcExclude: [
+    '**/issues/**',
+    '**/_*.md',
+    'prompt.md',
+    '*.json',
+    'ui/idea-ui-design-language.md',
+    'ui/gmark-design-language.md',
+  ],
   // head 标签不会自动加 base 前缀，favicon 需写全路径
   head: [['link', { rel: 'icon', href: '/vshell/logo.png' }]],
   themeConfig: {
@@ -103,8 +111,6 @@ export default defineConfig({
           collapsed: false,
           items: [
             { text: '岛屿设计语言（vShell）', link: '/ui/vshell-design-language' },
-            { text: 'IDEA 设计语言参考', link: '/ui/idea-ui-design-language' },
-            { text: 'GMark 设计语言参考', link: '/ui/gmark-design-language' },
           ],
         },
       ],

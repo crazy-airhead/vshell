@@ -1,9 +1,8 @@
 # vShell 设计语言（Islands 岛式）
 
 > **定位**：本文档是 vShell 自有设计语言的**落地规范**——以 IntelliJ IDEA
-> 设计语言（见 [idea-ui-design-language.md](./idea-ui-design-language.md)，
-> 下称「IDEA 参考」）为源头、GMark 岛式实现（见
-> [gmark-design-language.md](./gmark-design-language.md)，下称「GMark 参考」）
+> 设计语言（见仓库内 `idea-ui-design-language.md`，下称「IDEA 参考」）为源头、
+> GMark 岛式实现（见仓库内 `gmark-design-language.md`，下称「GMark 参考」）
 > 为岛式落地参照，针对 SSH 客户端形态定制。数值与规则以本文档为准。
 > **基线**：artifacts 分支界面重写（2026-10），vShell 1.x。
 > **维护**：改 token / 组件规格 / 交互规则时同步更新本文档对应条目，
