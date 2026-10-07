@@ -143,9 +143,25 @@ jobs:
 
             | 平台 | 文件 | 说明 |
             |------|------|------|
-            | macOS (Intel + Apple Silicon) | `*-macos-universal.zip` | 通用二进制，未公证（首次打开需右键 → 打开） |
+            | macOS (Intel + Apple Silicon) | `*-macos-universal.zip` | 通用二进制，未公证（首次打开见下方说明） |
             | Windows | `*-windows-amd64-installer.exe` | NSIS 安装包 |
             | Windows | `*-windows-amd64-portable.exe` | 免安装单文件 |
             | Linux | `*.deb` / `*.rpm` | 系统包 |
             | Linux | `*-linux-amd64.tar.gz` | 便携版 |
+
+            ### macOS 首次打开（未公证）
+
+            解压后将 `vshell.app` 拖入「应用程序」，任选其一：
+
+            - 右键点击 `vshell.app` →「打开」→ 再点「打开」；
+            - 或终端执行（移除下载隔离标记后即可正常双击打开）：
+
+              ```bash
+              xattr -d com.apple.quarantine /Applications/vshell.app
+              ```
+
+              若提示权限不足可递归清理：`xattr -cr /Applications/vshell.app`；
+            - 若已被系统拦截：系统设置 → 隐私与安全性 → 底部点「仍要打开」。
+
+            > 未公证意味着 Gatekeeper 会拦截首次打开，应用本身无开发者签名，介意者可自行源码构建。
           files: release/*
