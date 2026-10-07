@@ -42,6 +42,14 @@ go build .              # Build Go backend
 go test ./...           # Run tests
 ```
 
+### Release Process (app)
+
+Releases are tag-driven; the artifacts repo's `.github/workflows/release.yml` builds and publishes GitHub Releases (macOS universal / Windows nsis+portable / Linux deb+rpm+portable) when a `v*` tag is pushed to `github`. Steps:
+
+1. In the artifacts repo: bump `build/config.yml` `info.version` to the new version (other packaging configs — Info.plist, info.json, nfpm.yaml — are injected from the tag by the workflow), commit, tag `vX.Y.Z`, push the branch and tag to `github` (cnb.cool origin is backup only and runs no CI).
+2. In this workspace repo: move the "未发布" section of `docs/changelog.md` into `## vX.Y.Z · <date>`, commit, push to `origin` and `github` (the latter triggers the docs deploy).
+3. Docs site deploys via GitHub Actions from this repo's `main` (`docs/**` paths); the app repo has no docs.
+
 ## Architecture
 
 ### Backend (Go) — `internal/`
