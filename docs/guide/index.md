@@ -13,23 +13,22 @@ vShell 是一个**纯本地**的桌面 SSH 客户端管理工具（类似 FinalS
 | 远程编辑 | Monaco Editor 编辑远程文件 | [远程文件编辑](editor.md) |
 | SFTP | 浏览、传输、拖拽、进度跟踪 | [SFTP 文件管理](sftp.md) |
 | 服务器监控 | CPU / 内存 / 磁盘 / 进程 / 网络实时图表 | [服务器监控](monitor.md) |
-| 端口转发 | 本地端口转发、服务预设、自动启动 | [端口转发](port-forwarding.md) |
+| 端口转发 | 本地端口转发、服务预设 | [端口转发](port-forwarding.md) |
+| HTTPS 证书 | acme.sh 远程签发 / 续签、DNS 提供商配置、日志可追溯 | [HTTPS 证书管理](certificates.md) |
 | 个性化 | 中英双语、主题、终端配色等 | [设置与主题](settings.md) |
 
 ## 数据安全
 
 - 所有数据存储在本地 SQLite 数据库（macOS 位于 `~/Library/Application Support/vshell/vshell.db`）
-- 密码、私钥、口令等敏感字段使用 AES-256-GCM 加密后落库，绝不存明文
+- 密码、私钥、口令、DNS API 凭据等敏感字段使用 AES-256-GCM 加密后落库，绝不存明文
 - 不联网上报任何信息
 
 ## 环境要求
 
 | 项目 | 要求 |
 |------|------|
-| 操作系统 | macOS（Windows / Linux 支持随 Wails 3 跨平台能力提供） |
-| Go | 1.25+ |
-| Node.js | 20+ |
-| 包管理 | pnpm（前端与文档站均使用） |
+| 操作系统 | macOS / Windows / Linux（自 v0.2.0 起提供三平台安装包，见[快速开始](getting-started.md)） |
+| Go / Node.js / pnpm | 仅从源码构建时需要（Go 1.25+、Node 20+、pnpm） |
 
 ## 反馈与问题追踪
 

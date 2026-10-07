@@ -9,7 +9,7 @@
 | 工具 | 版本 | 说明 |
 |------|------|------|
 | Go | 1.25.0 | 见 `go.mod` |
-| Wails | v3.0.0-beta.16 | Go module、`@wailsio/runtime`、`wails3` CLI 三者需同版本 |
+| Wails | v3.0.0-beta.28 | Go module、`@wailsio/runtime`、`wails3` CLI 三者需同版本 |
 | Node.js | 20+ | 前端与文档站 |
 | pnpm | 9+ | `frontend/package.json` 与 `docs/package.json` 各自声明 `packageManager` |
 | SQLite | modernc.org/sqlite | 纯 Go 驱动，**无 CGO** |
@@ -91,6 +91,16 @@ vshell-artifacts/      # 制品区（artifacts 分支）
 - 触发条件：`main` 分支上 `docs/**` 或 workflow 文件变更，或手动触发
 - 流程：`pnpm install --frozen-lockfile` → `vitepress build` → 发布到 `gh-pages` 分支（孤儿分支，删除的页面会同步消失）
 - 访问地址：<https://crazy-airhead.github.io/vshell/>
+
+## 6. 发布流程（应用）
+
+发布由 tag 驱动，制品区 `.github/workflows/release.yml` 监听 `v*` 标签并三平台自动打包：
+
+1. **制品区**：把 `build/config.yml` 的 `info.version` 改为新版本（Info.plist / info.json / nfpm.yaml 的版本号由 CI 从 tag 注入），提交
+2. **制品区**：打 `vX.Y.Z` 标签并随分支推送到 `github` 远程（`origin`（cnb.cool）仅备份，不跑 CI）→ Actions 产出 macOS 通用二进制 zip、Windows NSIS 安装包 + 便携版、Linux deb / rpm / tar.gz，并发布 GitHub Release
+3. **工作区（本仓库）**：把 `docs/changelog.md` 的「未发布」条目落为 `## vX.Y.Z · <日期>`，提交并推送到 `origin` 与 `github`（后者触发文档站部署）
+
+产物命名：`vShell-<版本>-macos-universal.zip`、`vShell-<版本>-windows-amd64-{installer,portable}.exe`、`vShell-<版本>-linux-amd64.{deb,rpm}` 与 `vShell-<版本>-linux-amd64.tar.gz`。macOS 包未公证，Release 说明附 `xattr -d com.apple.quarantine` 解除隔离方法。
 
 ---
 

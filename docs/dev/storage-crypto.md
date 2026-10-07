@@ -8,7 +8,7 @@ vShell 的全部持久化都在本机：一个 SQLite 数据库 + 一个加密�
 
 | 文件 | 路径 | 内容 |
 |------|------|------|
-| 数据库 | `~/Library/Application Support/vshell/vshell.db` | 连接 / 分组 / 快捷命令 / 端口转发 |
+| 数据库 | `~/Library/Application Support/vshell/vshell.db` | 连接 / 分组 / 快捷命令 / 端口转发 / 证书任务 |
 | 加密密钥 | `~/Library/Application Support/vshell/.enc_key` | base64 的 32 字节 AES 密钥（目录 0700、文件 0600） |
 
 路径由 `os.UserConfigDir()` 推导，Linux 下为 `~/.config/vshell/`，Windows 为 `%AppData%\vshell\`。
@@ -57,6 +57,26 @@ vShell 的全部持久化都在本机：一个 SQLite 数据库 + 一个加密�
 
 `quick_commands(id, name, command NOT NULL, connection_id, sort_order, …)` 与 `port_forwards(id, name, connection_id NOT NULL, type NOT NULL, local_host, local_port, remote_host, remote_port, auto_start DEFAULT 0)`。两者的 `connection_id` **未设外键**（手工删除连接记录不会级联）。
 
+### cert_tasks
+
+证书任务（acme.sh 远程签发 / 续签）：
+
+| 列 | 类型 | 约束 / 说明 |
+|----|------|-------------|
+| id | TEXT | PRIMARY KEY |
+| connection_id | TEXT | NOT NULL，目标服务器连接 |
+| name / primary_domain | TEXT | NOT NULL |
+| san_domains | TEXT | 附加域名（序列化存储） |
+| dns_provider / dns_plugin | TEXT | DNS 服务商与 acme.sh 插件名 |
+| dns_credentials | TEXT | **AES-256-GCM 密文**（JSON map，模型上 `json:"-"` 永不出后端） |
+| key_length | TEXT | NOT NULL DEFAULT 'ec-256' |
+| dns_sleep | INTEGER | NOT NULL DEFAULT 120（DNS 传播等待秒数） |
+| test_mode / auto_install | INTEGER | 布尔，默认 0 / 1 |
+| cert_dir / key_file / fullchain_file / reload_cmd | TEXT | 部署配置 |
+| last_status / last_error / last_run_at | — | 最近一次执行结果（idle / running / issued / failed） |
+| last_log | TEXT | 附加迁移列：操作日志持久化 |
+| created_at / updated_at | DATETIME | DEFAULT CURRENT_TIMESTAMP |
+
 ### 迁移机制
 
 无版本表：每次启动重放 `CREATE TABLE IF NOT EXISTS` + 容错的 `ALTER TABLE ADD COLUMN`（列已存在时忽略错误）。适合当前规模；引入破坏性变更前需要升级为版本化迁移。
@@ -88,7 +108,7 @@ Encrypt(plain)                          Decrypt(cipher)
 
 ### 4.3 哪些字段加密
 
-仅 `connections` 表的 `password` / `private_key` / `key_passphrase` 三列。分组名、命令、端口转发等均为明文（不含凭证）。
+`connections` 表的 `password` / `private_key` / `key_passphrase` 三列，以及 `cert_tasks.dns_credentials`（DNS API 凭据）。分组名、命令、端口转发等其余字段均为明文（不含凭证）。
 
 ### 4.4 读写路径
 
@@ -99,6 +119,7 @@ Encrypt(plain)                          Decrypt(cipher)
 | 表单回显 | `GetPassword` / `GetPrivateKey` / `GetKeyPassphrase` 解密返回 |
 | 建立连接 | `buildSSHConfig` 取全列解密后用于认证 |
 | 密钥删除保护 | `GetSSHKeyUsage` 除按 `key_name` 匹配外，解密各连接私钥逐字节比对内容 |
+| 证书凭据 | `CreateCertTask` / `UpdateCertTask` 先 `Encrypt` 再入库；签发 / 续签时后端解密，经 SFTP 写入服务器临时 env 文件（0600，命令结束自删）；`GetCertTaskCredentials` 为专用查看通道 |
 
 ## 5. 数据安全边界（如实说明）
 

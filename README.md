@@ -11,15 +11,15 @@ A desktop SSH client management tool built with **Wails 3** (Go + Vue 3). A pure
 - **Server Resource Monitoring** — Real-time CPU and memory charts via ECharts
 - **SSH Key Management** — Generate, import, and manage SSH key pairs
 - **SSH Config Import/Export** — Import connections from `~/.ssh/config`
-- **Port Forwarding** — Local port forwarding with auto-start option
-- **Quick Commands** — Save and execute frequently used commands
+- **Port Forwarding** — Local port forwarding with common service presets
+- **HTTPS Certificate Management** — Issue and renew Let's Encrypt certificates on remote servers via acme.sh
 - **i18n** — Chinese and English language support
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Wails 3 (alpha) |
+| Framework | Wails 3 (v3.0.0-beta.28) |
 | Backend | Go 1.25 |
 | Frontend | Vue 3 + TypeScript |
 | UI Library | Naive UI |
@@ -50,8 +50,8 @@ Frontend-only development:
 
 ```bash
 cd frontend
-npm install
-npm run dev          # Start Vite dev server on port 9245
+pnpm install
+pnpm dev            # Start Vite dev server on port 9245
 ```
 
 ## Project Structure

@@ -43,7 +43,10 @@ features:
     details: 生成（Ed25519 / RSA / ECDSA）、导入、管理 SSH 密钥对；被连接引用的密钥受删除保护。
   - icon: 🔀
     title: 端口转发
-    details: 本地端口转发（SSH 隧道），按连接分组管理，内置常用服务预设（MySQL / Redis / PostgreSQL…），支持自动启动。
+    details: 本地端口转发（SSH 隧道），按连接分组管理，内置常用服务预设（MySQL / Redis / PostgreSQL…），规则手动启停。
+  - icon: 🛡️
+    title: HTTPS 证书管理
+    details: 集成 acme.sh，在远程服务器签发 / 续签 Let's Encrypt 证书；DNS 提供商凭据加密存储，操作日志完整可追溯。
   - icon: 📝
     title: SSH Config 导入
     details: 结构化编辑 ~/.ssh/config，一键导入主机为连接（自动识别 IdentityFile）。

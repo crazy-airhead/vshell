@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress'
 
-// 站点内容：docs/guide（使用指南）+ docs/dev（开发文档）。
+// 站点内容：docs/guide（使用指南）+ docs/dev（开发文档）+ docs/ui（设计规范）。
 // docs/issues 与 **/_*.md（写作规范等）通过 srcExclude 排除，不发布到站点；
 // prompt.md / default.json / dark.json 为开发内部文件，同样不发布。
 export default defineConfig({
@@ -72,6 +72,13 @@ export default defineConfig({
           ],
         },
         {
+          text: 'HTTPS 证书',
+          collapsed: false,
+          items: [
+            { text: '证书管理（acme.sh）', link: '/guide/certificates' },
+          ],
+        },
+        {
           text: '个性化',
           collapsed: false,
           items: [
@@ -89,6 +96,15 @@ export default defineConfig({
             { text: '终端 I/O 数据流', link: '/dev/terminal-io' },
             { text: '数据存储与加密', link: '/dev/storage-crypto' },
             { text: '构建与开发环境', link: '/dev/development' },
+          ],
+        },
+        {
+          text: '设计规范',
+          collapsed: false,
+          items: [
+            { text: '岛屿设计语言（vShell）', link: '/ui/vshell-design-language' },
+            { text: 'IDEA 设计语言参考', link: '/ui/idea-ui-design-language' },
+            { text: 'GMark 设计语言参考', link: '/ui/gmark-design-language' },
           ],
         },
       ],

@@ -1,6 +1,6 @@
 # ~/.ssh/config 导入导出
 
-侧栏「SSH 配置」面板（ActivityBar 第三个图标）直接管理 `~/.ssh/config`：结构化编辑主机条目，或把主机一键导入为 vShell 连接。
+左条的「SSH 配置」图标打开配置面板，直接管理 `~/.ssh/config`：结构化编辑主机条目，或把主机一键导入为 vShell 连接。
 
 ---
 

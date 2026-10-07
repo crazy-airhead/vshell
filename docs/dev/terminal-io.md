@@ -37,6 +37,8 @@ stdinPipe ──► 远端 PTY ──► Shell            term.write(data) 渲�
 5. stdout / stderr 各接一个 `flushingWriter`，各起 goroutine `io.Copy`
 6. 第三个 goroutine `sess.Wait()` 结束后发 `terminal:closed {sessionID}`，前端据此显示断连提示
 
+> 同一连接的多个会话复用同一条 SSH TCP 连接，受服务端 `MaxSessions`（OpenSSH 默认 10）限制：超限时 `NewSession()` 失败，错误经 `friendlySessionError` 转译为「关闭该连接的未用标签或调大 sshd_config」的可操作提示，且不影响已打开的会话（问题 0010，含回归测试）。
+
 ## 3. flushingWriter：50ms 批量合并
 
 PTY 输出常以字节级碎包到达（vim / top 等全屏程序尤其明显），逐字节 Emit 事件会造成大量跨语言序列化开销。`flushingWriter` 的做法：

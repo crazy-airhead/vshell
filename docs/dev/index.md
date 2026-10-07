@@ -6,10 +6,11 @@
 
 | 文档 | 内容 |
 |------|------|
-| [架构总览](architecture.md) | Wails 3 前后端分层、服务绑定与事件通信全景、目录结构 |
+| [架构总览](architecture.md) | Wails 3 前后端分层、岛屿（Islands）前端结构、服务绑定与事件通信全景、证书模块编排 |
 | [终端 I/O 数据流](terminal-io.md) | 终端输入 / 输出 / 调整大小的事件链路与缓冲机制 |
 | [数据存储与加密](storage-crypto.md) | SQLite 表结构、迁移机制、AES-256-GCM 凭证加密 |
-| [构建与开发环境](development.md) | 工具链、Taskfile 任务、pnpm 项目隔离、文档站部署 |
+| [构建与开发环境](development.md) | 工具链、Taskfile 任务、pnpm 项目隔离、文档站部署、tag 驱动发布流程 |
+| [岛屿设计语言](../ui/vshell-design-language.md) | Islands 岛式布局落地规范：Token、布局系统、组件规格与交互模型 |
 
 ## 核心约束（开发红线）
 
