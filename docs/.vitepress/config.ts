@@ -20,6 +20,7 @@ export default defineConfig({
       { text: '首页', link: '/' },
       { text: '使用指南', link: '/guide/', activeMatch: '/guide/' },
       { text: '开发文档', link: '/dev/', activeMatch: '/dev/' },
+      { text: '更新记录', link: '/changelog' },
     ],
     sidebar: {
       '/guide/': [
