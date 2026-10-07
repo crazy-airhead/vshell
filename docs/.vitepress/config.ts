@@ -110,7 +110,7 @@ export default defineConfig({
           text: '设计规范',
           collapsed: false,
           items: [
-            { text: '岛屿设计语言（vShell）', link: '/ui/vshell-design-language' },
+            { text: '设计语言', link: '/ui/vshell-design-language' },
           ],
         },
       ],
