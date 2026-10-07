@@ -1,0 +1,135 @@
+name: Release
+
+# 推送 v* 标签触发：三平台构建打包 → 汇总发布 GitHub Release。
+# 版本号以标签为唯一真源，构建时注入 Info.plist / info.json / nfpm.yaml。
+# workflow_dispatch 用于不发版验证构建（不创建 Release）。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest, platform: darwin }
+          - { os: ubuntu-latest, platform: linux }
+          - { os: windows-latest, platform: windows }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install wails3 CLI (version pinned to go.mod)
+        run: |
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+        shell: bash
+
+      - name: Install Linux build dependencies (GTK4 / WebKit)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+
+      - name: Install NSIS (Windows installer)
+        if: matrix.platform == 'windows'
+        run: choco install nsis -y --no-progress
+
+      - name: Inject version into packaging configs
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Building version ${VERSION}"
+          sed -i.bak "s/^version: \".*\"/version: \"${VERSION}\"/" build/linux/nfpm/nfpm.yaml && rm -f build/linux/nfpm/nfpm.yaml.bak
+          sed -i.bak -e "s/\"file_version\": \".*\"/\"file_version\": \"${VERSION}\"/" -e "s/\"ProductVersion\": \".*\"/\"ProductVersion\": \"${VERSION}\"/" build/windows/info.json && rm -f build/windows/info.json.bak
+        shell: bash
+
+      - name: Build & package (macOS, universal)
+        if: matrix.platform == 'darwin'
+        run: |
+          plutil -replace CFBundleVersion -string "${GITHUB_REF_NAME#v}" build/darwin/Info.plist
+          plutil -replace CFBundleShortVersionString -string "${GITHUB_REF_NAME#v}" build/darwin/Info.plist
+          wails3 task -dir build/darwin package:universal
+
+      - name: Build & package (Linux, deb/rpm/portable)
+        if: matrix.platform == 'linux'
+        run: wails3 task -dir build/linux create:deb create:rpm
+
+      - name: Build & package (Windows, nsis + portable)
+        if: matrix.platform == 'windows'
+        run: wails3 task -dir build/windows package
+        shell: bash
+
+      - name: Collect release files
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p release
+          case "${{ matrix.platform }}" in
+            darwin)
+              ditto -c -k --keepParent bin/vShell.app "release/vShell-${VERSION}-macos-universal.zip"
+              ;;
+            linux)
+              tar -czf "release/vShell-${VERSION}-linux-amd64.tar.gz" -C bin vShell
+              cp bin/*.deb bin/*.rpm release/
+              ;;
+            windows)
+              cp bin/vShell.exe "release/vShell-${VERSION}-windows-amd64-portable.exe"
+              cp build/windows/nsis/vShell-installer.exe "release/vShell-${VERSION}-windows-amd64-installer.exe"
+              ;;
+          esac
+          ls -l release
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.platform }}
+          path: release/*
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: release
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            更新内容见[更新记录](https://l4qiang.goldsyear.com/vshell/changelog)。
+
+            | 平台 | 文件 | 说明 |
+            |------|------|------|
+            | macOS (Intel + Apple Silicon) | `*-macos-universal.zip` | 通用二进制，未公证（首次打开需右键 → 打开） |
+            | Windows | `*-windows-amd64-installer.exe` | NSIS 安装包 |
+            | Windows | `*-windows-amd64-portable.exe` | 免安装单文件 |
+            | Linux | `*.deb` / `*.rpm` | 系统包 |
+            | Linux | `*-linux-amd64.tar.gz` | 便携版 |
+          files: release/*
