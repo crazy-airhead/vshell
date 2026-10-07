@@ -65,6 +65,10 @@ jobs:
           sed -i.bak -e "s/\"file_version\": \".*\"/\"file_version\": \"${VERSION}\"/" -e "s/\"ProductVersion\": \".*\"/\"ProductVersion\": \"${VERSION}\"/" build/windows/info.json && rm -f build/windows/info.json.bak
         shell: bash
 
+      - name: Keep committed icon assets (CI 上跳过 icons 重新生成，actool 不可用)
+        run: touch build/darwin/icons.icns build/windows/icon.ico
+        shell: bash
+
       - name: Build & package (macOS, universal)
         if: matrix.platform == 'darwin'
         run: |
@@ -74,7 +78,9 @@ jobs:
 
       - name: Build & package (Linux, deb/rpm/portable)
         if: matrix.platform == 'linux'
-        run: wails3 task linux:create:deb linux:create:rpm
+        run: |
+          wails3 task linux:create:deb
+          wails3 task linux:create:rpm
 
       - name: Build & package (Windows, nsis + portable)
         if: matrix.platform == 'windows'
@@ -84,6 +90,7 @@ jobs:
       - name: Collect release files
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          ls -l bin/ || true
           mkdir -p release
           case "${{ matrix.platform }}" in
             darwin)
