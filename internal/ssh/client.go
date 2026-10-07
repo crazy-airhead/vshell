@@ -1,7 +1,12 @@
 package ssh
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"net"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,7 +18,7 @@ import (
 
 type Manager struct {
 	mu       sync.RWMutex
-	dialMu   sync.Mutex // 串行化同连接的并发拨号（双击连开多标签场景）
+	dialMu   sync.Mutex             // 串行化同连接的并发拨号（双击连开多标签场景）
 	clients  map[string]*ssh.Client // connectionID -> SSH client
 	sessions map[string]*Session    // sessionID -> terminal session
 	connSess map[string][]string    // connectionID -> []sessionID
@@ -52,6 +57,11 @@ func (m *Manager) Connect(conn *models.Connection, sessionID string) (*Session, 
 
 	session, err := newSession(client, sessionID, m.onEvent)
 	if err != nil {
+		if !isConnLevelError(err) {
+			// 服务端拒绝新会话（如 sshd MaxSessions 上限）：client 本身是活的，
+			// 驱逐会连累该连接上所有已打开的终端（ISSUE-0010），直接把原因报给用户。
+			return nil, fmt.Errorf("create session: %w", friendlySessionError(err))
+		}
 		// 缓存的 client 可能已被服务端断开（空闲超时等）：驱逐后重拨一次
 		m.evictClient(conn.ID, client)
 		client, err = m.clientFor(conn.ID, addr, config)
@@ -60,8 +70,10 @@ func (m *Manager) Connect(conn *models.Connection, sessionID string) (*Session, 
 		}
 		session, err = newSession(client, sessionID, m.onEvent)
 		if err != nil {
-			m.evictClient(conn.ID, client)
-			return nil, fmt.Errorf("create session: %w", err)
+			if isConnLevelError(err) {
+				m.evictClient(conn.ID, client)
+			}
+			return nil, fmt.Errorf("create session: %w", friendlySessionError(err))
 		}
 	}
 
@@ -378,4 +390,51 @@ func (m *Manager) GetSSHClient(connectionID string) (*ssh.Client, error) {
 		return nil, fmt.Errorf("no active session for connection %s", connectionID)
 	}
 	return client, nil
+}
+
+// isConnLevelError reports whether err means the SSH connection itself is dead
+// (EOF, reset, transport disconnect). Only such failures may evict the shared
+// client — a per-channel refusal (e.g. sshd MaxSessions) must not, or every
+// terminal already open on that client dies with it.
+func isConnLevelError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, os.ErrClosed) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	for _, frag := range []string{
+		"eof",
+		"connection reset",
+		"connection refused",
+		"broken pipe",
+		"use of closed network connection",
+		"connection lost",
+		"ssh: disconnected",
+		// x/crypto/ssh yields a nil reply when the transport dies while a
+		// channel open is in flight; any real protocol violation also kills
+		// the connection, so both are conn-level.
+		"unexpected packet in response to channel open",
+	} {
+		if strings.Contains(msg, frag) {
+			return true
+		}
+	}
+	return false
+}
+
+// friendlySessionError rewrites server-side session-channel refusals into an
+// actionable message. MaxSessions (OpenSSH default 10) is the common cause
+// when many tabs of one connection are open at once.
+func friendlySessionError(err error) error {
+	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "administratively prohibited") || strings.Contains(msg, "resource shortage") {
+		return fmt.Errorf("server refused a new session (sshd MaxSessions limit, default 10): close unused tabs of this connection or raise MaxSessions in sshd_config: %w", err)
+	}
+	return err
 }
