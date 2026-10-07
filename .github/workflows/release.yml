@@ -50,12 +50,23 @@ jobs:
       - name: Install wails3 CLI (version pinned to go.mod)
         run: |
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+          for i in 1 2 3; do
+            if go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28; then
+              exit 0
+            fi
+            echo "go install attempt $i failed, retrying in 20s..."
+            sleep 20
+          done
+          exit 1
         shell: bash
 
       - name: Install NSIS (Windows installer)
         if: matrix.platform == 'windows'
-        run: choco install nsis -y --no-progress
+        shell: bash
+        run: |
+          choco install nsis -y --no-progress
+          # choco 修改的是机器级 PATH，当前 job 不会刷新，显式追加给后续步骤
+          echo 'C:\Program Files (x86)\NSIS' >> "$GITHUB_PATH"
 
       - name: Inject version into packaging configs
         run: |
