@@ -105,12 +105,13 @@ tasks:
     cmds:
       - wails3 generate bindings -f '{{.BUILD_FLAGS}}' -clean=true
 
+  # NOTE: Assets.car (macOS) 不在此任务生成——actool 仅在装了完整 Xcode 工具链的本机可用；
+  # appicon.icon 变更后需手动执行：
+  #   wails3 generate icons -input appicon.png -macfilename darwin/icons.icns \
+  #     -windowsfilename windows/icon.ico -iconcomposerinput appicon.icon -macassetdir darwin
+  # 重新生成并提交。
   generate:icons:
-    summary: Generates Windows `.ico` and Mac `.icns` from an image. NOTE: Assets.car
-      (macOS) 不在此任务生成——actool 仅在装了完整 Xcode 工具链的本机可用；
-      appicon.icon 变更后需手动执行 `wails3 generate icons -input appicon.png
-      -macfilename darwin/icons.icns -windowsfilename windows/icon.ico
-      -iconcomposerinput appicon.icon -macassetdir darwin` 重新生成并提交。
+    summary: Generates Windows `.ico` and Mac `.icns` from an image (Assets.car not regenerated here)
     dir: build
     sources:
       - "appicon.png"
