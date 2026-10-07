@@ -113,7 +113,7 @@ jobs:
               ;;
             windows)
               cp bin/vshell.exe "release/vShell-${VERSION}-windows-amd64-portable.exe"
-              cp build/windows/nsis/vshell-installer.exe "release/vShell-${VERSION}-windows-amd64-installer.exe"
+              cp bin/vshell-*-installer.exe "release/vShell-${VERSION}-windows-amd64-installer.exe"
               ;;
           esac
           ls -l release
