@@ -89,9 +89,11 @@ func main() {
 		Title:          "vShell",
 		EnableFileDrop: true,
 		Mac: application.MacWindow{
-			// 48 对齐 GMark：红绿灯纵向位置与 40px 工具栏视觉居中（见设计语言 §3.5）
+			// 对齐 GMark：HiddenInset 会装透明 NSToolbar，系统自动把红绿灯
+			// 在工具栏条内垂直居中（与 40px 自绘工具栏视觉对齐，见设计语言 §3.5）；
+			// 48 为顶部原生拖拽热区高度
 			InvisibleTitleBarHeight: 48,
-			TitleBar:                application.MacTitleBarHidden,
+			TitleBar:                application.MacTitleBarHiddenInset,
 		},
 		BackgroundColour: application.NewRGB(43, 45, 48),
 		Width:            1280,
