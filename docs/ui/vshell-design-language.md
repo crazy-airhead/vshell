@@ -251,9 +251,13 @@ frontend/src/styles/global.css        ← 唯一事实源（亮暗成对镜像�
 
 ### 3.5 红绿灯（macOS 原生）
 
-- 无边框窗口（`MacTitleBarHidden` + `InvisibleTitleBarHeight 48`，
-  对齐 GMark——红绿灯纵向位置与 40px 工具栏视觉居中），主工具栏
-  岛左侧预留 `--traffic-light-w`（76px），区内不放置任何交互元素。
+- 无边框窗口（`MacTitleBarHiddenInset` + `InvisibleTitleBarHeight 48`，
+  对齐 GMark）。`HiddenInset` 会安装一个透明 NSToolbar，macOS 自动把
+  红绿灯在工具栏条内垂直居中——与 40px 自绘工具栏视觉对齐（实测偏差
+  ≤1px）；纯 `MacTitleBarHidden` 下灯位固定在系统 28pt 标题栏中线，
+  会高出工具栏中线约 12px。`InvisibleTitleBarHeight 48` 仅为顶部原生
+  拖拽热区高度（40px 工具栏 + 6px 岛缝）。主工具栏岛左侧预留
+  `--traffic-light-w`（76px），区内不放置任何交互元素。
 - 主工具栏岛为**唯一窗口拖拽区**（`-webkit-app-region: drag`，双击
   最大化）；工具栏内按钮 `no-drag`。
 
