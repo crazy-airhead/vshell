@@ -11,7 +11,7 @@ info:
   description: "SSH Client Management Tool" # The application description
   copyright: "(c) 2025, vShell" # Copyright text
   comments: "Some Product Comments" # Comments
-  version: "0.2.0" # The application version（随发布 tag 对齐）
+  version: "0.2.1" # The application version（随发布 tag 对齐）
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
   #                               # Should match the name of your .icon file without the extension
   #                               # If not set and Assets.car exists, defaults to "appicon"
