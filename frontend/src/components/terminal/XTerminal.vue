@@ -33,6 +33,7 @@ const isMac = navigator.platform.includes('Mac')
 let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
+let dprQuery: MediaQueryList | null = null
 
 const ctxShow = ref(false)
 const ctxX = ref(0)
@@ -124,6 +125,11 @@ onMounted(() => {
   })
   resizeObserver.observe(terminalRef.value)
 
+  // dpr 变化时容器 css 尺寸可能不变（如两块同分辨率不同缩放的屏），
+  // ResizeObserver 不触发，需单独监听 refit（ISSUE-0011）
+  dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+  dprQuery.addEventListener('change', onDprChange)
+
   // Defer initial fit past the first paint to ensure the container
   // has its final flex layout dimensions. Without this, the first
   // tab's terminal may get 0 height and the WebGL renderer won't
@@ -186,6 +192,24 @@ onMounted(() => {
   })
 })
 
+/**
+ * 行高变化（字号 / 字体 / dpr）后主动 refit：此类变化不改变容器尺寸，
+ * ResizeObserver 不会触发；xterm 只重测行高、不重算行数，行数仍按旧行高
+ * 计算时 rows × 新行高会超出容器，最后一行溢出下缘被裁（ISSUE-0011）。
+ * option 变更时 xterm 同步重测，双 rAF 等布局稳定后按新行高取整行数。
+ */
+function scheduleFit() {
+  requestAnimationFrame(() => requestAnimationFrame(() => fitAddon?.fit()))
+}
+
+/** dpr 变化（窗口在 Retina / 外接屏间移动）时跟随新档位继续监听并 refit */
+function onDprChange() {
+  scheduleFit()
+  dprQuery?.removeEventListener('change', onDprChange)
+  dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+  dprQuery.addEventListener('change', onDprChange)
+}
+
 watch(() => settings.isDark, () => {
   if (term) term.options.theme = getTermTheme()
 })
@@ -196,14 +220,23 @@ watch(() => settings.terminalColorScheme, () => {
 
 watch(() => settings.terminalFontSize, (size) => {
   if (term) term.options.fontSize = size
+  scheduleFit()
 })
 
 watch(() => settings.terminalFontFamily, (family) => {
   if (term) term.options.fontFamily = family
+  scheduleFit()
+})
+
+// 标签激活时兜底 fit：隐藏期间若发生未触发 ResizeObserver 的失同步，此时收敛
+watch(() => terminalStore.activeTabID === props.sessionID, (active) => {
+  if (active) scheduleFit()
 })
 
 onUnmounted(() => {
   unregisterTerminal(props.sessionID)
+  dprQuery?.removeEventListener('change', onDprChange)
+  dprQuery = null
   resizeObserver?.disconnect()
   term?.dispose()
   term = null
@@ -294,7 +327,9 @@ defineExpose({ fit })
 </script>
 
 <template>
-  <div ref="terminalRef" class="xterminal-container" @contextmenu="onContextMenu"></div>
+  <div class="xterminal-container">
+    <div ref="terminalRef" class="xterm-host" @contextmenu="onContextMenu"></div>
+  </div>
   <NDropdown
     trigger="manual"
     :show="ctxShow"
@@ -311,7 +346,16 @@ defineExpose({ fit })
 .xterminal-container {
   width: 100%;
   height: 100%;
-  /* 岛式 §5：内容与 20px 岛圆角之间留 ≥6px，防角部字形被裁 */
+  /* 岛式 §5：内容与 20px 岛圆角之间留 ≥6px，防角部字形被裁。
+     padding 必须留在本层、.xterm 挂在内层无 padding 的 .xterm-host 上：
+     FitAddon 按 `.xterm` 父元素 computed height 减 `.xterm` 自身 padding
+     算行数，而 box-sizing:border-box 下 computed height 含 padding —— 若
+     .xterm 直接挂本层，上下 6px 永不被扣除，行数多算，最后一行溢出底缘
+     被中心岛 overflow-hidden 裁切（ISSUE-0011）。 */
   padding: var(--space-3);
+}
+.xterm-host {
+  width: 100%;
+  height: 100%;
 }
 </style>
