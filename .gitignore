@@ -7,3 +7,5 @@ docs/.vitepress/cache
 *.swo
 *~
 /vshell
+.gmark/gmark.local.toml
+CLAUDE.local.md
