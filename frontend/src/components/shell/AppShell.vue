@@ -20,14 +20,15 @@ import IconRefreshCw from '~icons/lucide/refresh-cw'
 import IconKeyRound from '~icons/lucide/key-round'
 import IconPencil from '~icons/lucide/pencil'
 import IconFileInput from '~icons/lucide/file-input'
-import { useLayoutStore, type SidebarView, type BottomTool } from '../../stores/layout'
+import { useLayoutStore, type SidebarView } from '../../stores/layout'
 
 /**
  * 岛式画布（设计语言 §3）：
  * 画布级纵向 flex（gap = --island-bw，四周 padding 同值）；
  * 主区行 = 左条（通高，自主工具栏岛下缘到状态栏岛上缘，高度固定
  * 不随底部工具窗展开而压缩）+ 中央列；
- * 中央列内部 = 编辑行（左工具窗 + 竖热区 + 中心岛）+ 横热区 + 底部工具窗岛。
+ * 中央列内部 = 编辑行（左工具窗 + 竖热区 + 中心岛）+ 横热区 +
+ * 底部工具窗岛（SFTP / 监控两岛互斥，ISSUE-0012）。
  * 热区在面板隐藏时随 v-if 移除——热区视觉与普通接缝无异，移除无跳变；
  * 收起面板自身以负 margin 吃掉 gap 槽（§3.2-3，见 ToolWindow）。
  */
@@ -80,15 +81,6 @@ const VIEW_ACTIONS: Record<SidebarView, () => { icon: typeof IconPlus; label: st
 }
 
 const leftActions = computed(() => VIEW_ACTIONS[layout.activeSidebar]())
-
-const bottomTabs: { tool: BottomTool; label: string }[] = [
-  { tool: 'monitor', label: 'monitor.title' },
-  { tool: 'sftp', label: 'sftp.title' },
-]
-
-function selectBottomTab(tool: BottomTool) {
-  layout.bottomTool = tool
-}
 </script>
 
 <template>
@@ -151,25 +143,27 @@ function selectBottomTab(tool: BottomTool) {
           @update:model-value="layout.setBottomHeight"
         />
 
+        <!-- 监控 / SFTP 两座独立工具窗岛，互斥显示（§3.1 / ISSUE-0012）：
+             常挂载不卸载，切换保监控选择态与 SFTP 浏览状态；切换时两岛
+             高度互补过渡，坞高不变；隐藏钮收起整坞 -->
         <ToolWindow
           placement="bottom"
-          :visible="layout.bottomVisible"
+          :title="t('sftp.title')"
+          :visible="layout.bottomTool === 'sftp'"
           :size="layout.bottomHeight"
           @hide="layout.bottomTool = null"
         >
-          <template #tabs>
-            <button
-              v-for="tab in bottomTabs"
-              :key="tab.tool"
-              class="tool-tab"
-              :class="{ 'tool-tab-active': layout.bottomTool === tab.tool }"
-              @click="selectBottomTab(tab.tool)"
-            >{{ t(tab.label) }}</button>
-          </template>
+          <SFTPArea />
+        </ToolWindow>
 
-          <!-- 两面板同时挂载、v-show 切换（§3.1：保监控选择态与 SFTP 浏览状态） -->
-          <MonitorPanel v-show="layout.bottomTool === 'monitor'" />
-          <SFTPArea v-show="layout.bottomTool === 'sftp'" />
+        <ToolWindow
+          placement="bottom"
+          :title="t('monitor.title')"
+          :visible="layout.bottomTool === 'monitor'"
+          :size="layout.bottomHeight"
+          @hide="layout.bottomTool = null"
+        >
+          <MonitorPanel />
         </ToolWindow>
       </div>
     </div>
@@ -177,30 +171,3 @@ function selectBottomTab(tool: BottomTool) {
     <StatusBarIsland />
   </div>
 </template>
-
-<style scoped>
-/* 底部工具窗药丸标签（§4.3 #tabs 槽）：24 高 · 圆角 8 · 激活 --tab-selected-bg */
-.tool-tab {
-  height: 24px;
-  padding: 0 10px;
-  border: none;
-  border-radius: var(--radius-m);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background-color 150ms ease, color 150ms ease;
-}
-.tool-tab:hover {
-  background: var(--hover-overlay);
-  color: var(--text-primary);
-}
-.tool-tab-active {
-  background: var(--tab-selected-bg);
-  color: var(--text-primary);
-}
-.tool-tab-active:hover {
-  background: var(--tab-selected-bg);
-}
-</style>

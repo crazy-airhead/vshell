@@ -55,10 +55,6 @@ const style = computed<Record<string, string>>(() => {
       <!-- 标题：IDEA medium 档 = 基准−1（相对偏移，跟随用户字号缩放） -->
       <h2 v-if="title" class="tw-title text-[var(--text-secondary)] font-normal whitespace-nowrap">{{ title }}</h2>
 
-      <div v-if="$slots.tabs" class="flex items-center gap-[var(--space-3)] min-w-0">
-        <slot name="tabs" />
-      </div>
-
       <div class="ml-auto flex items-center gap-[2px]">
         <slot name="actions" />
         <button
